@@ -379,15 +379,14 @@ button {
 .hero-copy h1 {
   position: relative;
   left: -46px;
-  margin: 0 0 41px;
+  margin: 0 0 47px;
   color: var(--text);
   font-family: "Noto Serif SC Variable", "Songti SC", STSong, serif;
-  font-size: clamp(44px, 4.8vw, 68px);
+  font-size: clamp(42px, 4.25vw, 60px);
   font-weight: 500;
-  line-height: 72px;
-  letter-spacing: 1px;
+  line-height: 66px;
+  letter-spacing: 0.5px;
   text-align: center;
-  transform: scaleX(1.1);
 }
 
 .hero-copy h1 span {
@@ -501,6 +500,10 @@ button {
   background: var(--surface);
 }
 
+.theme-celadon .featured-card {
+  background: color-mix(in srgb, var(--surface) 68%, transparent);
+}
+
 .featured-visual,
 .gallery-card {
   position: relative;
@@ -594,10 +597,10 @@ button {
   margin: 0 0 10px;
   color: var(--text);
   font-family: "Noto Serif SC Variable", "Songti SC", STSong, serif;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 400;
-  line-height: 1.58;
-  letter-spacing: 0.04em;
+  line-height: 1.68;
+  letter-spacing: 0.02em;
 }
 
 .tag-row {
@@ -638,13 +641,12 @@ button {
   display: -webkit-box;
   overflow: hidden;
   margin: 0;
-  color: color-mix(in srgb, var(--text) 65%, var(--muted));
-  font-family: "Noto Sans SC Variable", "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: color-mix(in srgb, var(--text) 78%, var(--muted));
+  font-family: "Noto Serif SC Variable", "Songti SC", STSong, serif;
   font-size: 13px;
   font-weight: 400;
-  line-height: 1.65;
-  letter-spacing: 0.02em;
-  white-space: pre-line;
+  line-height: 1.72;
+  letter-spacing: 0.01em;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -891,7 +893,7 @@ button {
 
   .hero-copy h1 {
     margin-bottom: 18px;
-    font-size: clamp(38px, 9vw, 58px);
+    font-size: clamp(36px, 8vw, 52px);
     text-align: left;
     transform: none;
   }
@@ -923,7 +925,7 @@ button {
   }
 
   .hero-copy h1 {
-    font-size: 37px;
+    font-size: 34px;
     line-height: 1.25;
   }
 

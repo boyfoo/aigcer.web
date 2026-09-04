@@ -48,7 +48,8 @@ When implementing from a selected generated mock, treat that image as the source
 - Use a single thin, low-contrast document scrollbar with a vermilion hover state.
 - Match the approved light search control as one 1044×68px rounded outer shell with an inset 163×53px vermilion button and roughly 7px internal breathing room.
 - Light-theme sidebar option text should remain legible at 14px; section headings use 19px serif type.
-- Keep the desktop hero title restrained at 68px with a lighter display weight; it must not overpower the search and storyboard below.
-- Preserve the featured-card type hierarchy from the light reference: serif description and action labels, sans-serif tags and prompt body, with explicit sizes and weights rather than Ant Design defaults.
+- Keep the desktop hero title restrained at 60px with a lighter display weight; it must not overpower the search and storyboard below.
+- Do not treat the current Noto Serif SC rendering as the final typography choice: the user finds its Song-style character unsuitable. Use the real-font comparison page at `/font-test.html` and wait for a selected candidate before finalizing the hero and featured-card text families.
+- Let prompt copy wrap naturally from the available width; do not insert manual line breaks to imitate one screenshot.
 
 Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts/prepare-sites-build.mjs`, and `tests/sites-worker.test.mjs` intact so the same local prototype can be handed to Sites. Before a Sites handoff, run `npm run build` and `npm run test:sites`; the build must leave `dist/client/index.html`, `dist/server/index.js`, and `dist/.openai/hosting.json`.
