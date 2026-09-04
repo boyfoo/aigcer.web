@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>夜间主题视觉对照</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #1b1b1b; color: #fff; font-family: system-ui, sans-serif; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; }
+      h1 { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
+      .frame { position: relative; width: 100%; aspect-ratio: 1488 / 1058; overflow: hidden; border: 1px solid #555; background: #050505; }
+      img { display: block; width: 100%; height: 100%; object-fit: contain; }
+      iframe { position: absolute; inset: 0 auto auto 0; width: 1488px; height: 1058px; border: 0; transform-origin: 0 0; }
+    </style>
+  </head>
+  <body>
+    <main class="grid">
+      <section><h1>参考图 · 夜间</h1><div class="frame"><img src="./reference-dark.png" alt="夜间参考图" /></div></section>
+      <section><h1>当前实现 · 夜间</h1><div class="frame"><iframe src="/?theme=midnight" title="夜间实现"></iframe></div></section>
+    </main>
+    <script>
+      const fitPreview = () => document.querySelectorAll('.frame iframe').forEach((frame) => {
+        frame.style.transform = `scale(${frame.parentElement.clientWidth / 1488})`;
+      });
+      addEventListener('resize', fitPreview);
+      fitPreview();
+    </script>
+  </body>
+</html>
