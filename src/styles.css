@@ -391,12 +391,12 @@ button {
 .hero-copy h1 {
   position: relative;
   left: -46px;
-  margin: 0 0 47px;
+  margin: 0 0 28px;
   color: var(--text);
   font-family: "Noto Serif SC Variable", "Songti SC", STSong, serif;
-  font-size: clamp(42px, 4.25vw, 60px);
+  font-size: clamp(36px, 3.4vw, 48px);
   font-weight: 500;
-  line-height: 66px;
+  line-height: 1.2;
   letter-spacing: 0.5px;
   text-align: center;
 }
@@ -905,7 +905,7 @@ button {
 
   .hero-copy h1 {
     margin-bottom: 18px;
-    font-size: clamp(36px, 8vw, 52px);
+    font-size: clamp(36px, 8vw, 48px);
     text-align: left;
     transform: none;
   }

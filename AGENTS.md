@@ -50,7 +50,7 @@ When implementing from a selected generated mock, treat that image as the source
 - Use a single thin, low-contrast document scrollbar with a hover state matching the current theme's accent.
 - Match the approved light search control as one 1044×68px rounded outer shell with an inset 163×53px vermilion button and roughly 7px internal breathing room.
 - Light-theme sidebar option text should remain legible at 14px; section headings use 19px serif type.
-- Keep the desktop hero title restrained at 60px with a lighter display weight; it must not overpower the search and storyboard below.
+- 桌面主标题以 48px 为上限，行高 1.2，标题下方间距为 28px；在窄屏继续缩小，保持搜索和镜头内容为页面重点。
 - Do not treat the current Noto Serif SC rendering as the final typography choice: the user finds its Song-style character unsuitable. Use the real-font comparison page at `/font-test.html` and wait for a selected candidate before finalizing the hero and featured-card text families.
 - Let prompt copy wrap naturally from the available width; do not insert manual line breaks to imitate one screenshot.
 
