@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   App as AntApp,
   Avatar,
@@ -22,11 +22,15 @@ import {
   MenuOutlined,
   PlayCircleFilled,
   SearchOutlined,
+  SettingOutlined,
   StarFilled,
 } from "@ant-design/icons";
-import { filterGroups, nightStoryboardItems, storyboardItems } from "./data.js";
+import { nightStoryboardItems, storyboardItems } from "./data.js";
+import { TagSettings } from "./TagSettings.jsx";
+import { createInitialTagFilters, loadTagGroups, matchesTagFilters, reconcileTagFilters, saveTagGroups } from "./tagSettings.js";
 
 const THEME_KEY = "jingjie-theme";
+const getCurrentPage = () => window.location.pathname.replace(/\/$/, "") === "/settings" ? "settings" : "home";
 
 function getInitialTheme() {
   try {
@@ -43,29 +47,70 @@ function getInitialTheme() {
 }
 
 function AppContent({ mode, onThemeToggle }) {
-  const { message } = AntApp.useApp();
+  const { message, modal } = AntApp.useApp();
   const searchRef = useRef(null);
+  const settingsDirtyRef = useRef(false);
   const modeItems = mode === "midnight" ? nightStoryboardItems : storyboardItems;
   const curatedLabel = mode === "midnight" ? "午夜精选" : "本周精选";
   const [draftQuery, setDraftQuery] = useState("");
   const [query, setQuery] = useState("");
-  const [filters, setFilters] = useState({
-    type: "",
-    emotion: "温暖",
-    lighting: "自然光",
-    movement: "固定镜头",
-  });
+  const [tagGroups, setTagGroups] = useState(loadTagGroups);
+  const [filters, setFilters] = useState(() => createInitialTagFilters(tagGroups));
   const [filtersApplied, setFiltersApplied] = useState(false);
   const [selectedId, setSelectedId] = useState("tea-room");
   const [activeSection, setActiveSection] = useState("本周精选");
   const [promptOpen, setPromptOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
+  const [page, setPage] = useState(getCurrentPage);
   const [savedIds, setSavedIds] = useState(new Set());
+
+  const updateSettingsDirty = useCallback((dirty) => {
+    settingsDirtyRef.current = dirty;
+  }, []);
+
+  const confirmLeaveSettings = useCallback((onLeave, onCancel) => {
+    if (!settingsDirtyRef.current) return onLeave();
+    modal.confirm({
+      title: "放弃未保存的标签修改？",
+      content: "左侧菜单会保留上次保存的配置。",
+      okText: "放弃修改",
+      cancelText: "继续编辑",
+      onOk: onLeave,
+      onCancel,
+    });
+  }, [modal]);
+
+  const navigateTo = (nextPage, afterNavigate) => {
+    const navigate = () => {
+      if (page !== nextPage) {
+        window.history.pushState(null, "", `${nextPage === "settings" ? "/settings" : "/"}${window.location.search}`);
+        setPage(nextPage);
+      }
+      afterNavigate?.();
+    };
+    if (page === "settings" && nextPage !== page) confirmLeaveSettings(navigate);
+    else navigate();
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const nextPage = getCurrentPage();
+      if (nextPage === page) return;
+      if (page === "settings") {
+        confirmLeaveSettings(
+          () => setPage(nextPage),
+          () => window.history.pushState(null, "", `/settings${window.location.search}`),
+        );
+      } else setPage(nextPage);
+    };
+    window.addEventListener("popstate", handlePopState);
+    window.scrollTo({ top: 0, behavior: "instant" });
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [page, confirmLeaveSettings]);
 
   useEffect(() => {
     setSelectedId(mode === "midnight" ? "night-cinema" : "tea-room");
-    setFilters({ type: "", emotion: "温暖", lighting: "自然光", movement: "固定镜头" });
     setFiltersApplied(false);
   }, [mode]);
 
@@ -78,7 +123,7 @@ function AppContent({ mode, onThemeToggle }) {
         item.kind === activeSection;
       const filterMatch =
         !filtersApplied ||
-        Object.entries(filters).every(([key, value]) => !value || item[key] === value);
+        matchesTagFilters(item, tagGroups, filters);
       const haystack = [
         item.title,
         item.description,
@@ -94,7 +139,7 @@ function AppContent({ mode, onThemeToggle }) {
         .toLowerCase();
       return sectionMatch && filterMatch && (!normalizedQuery || haystack.includes(normalizedQuery));
     });
-  }, [activeSection, filters, filtersApplied, modeItems, query]);
+  }, [activeSection, filters, filtersApplied, modeItems, query, tagGroups]);
 
   const selectedItem =
     filteredItems.find((item) => item.id === selectedId) ??
@@ -117,14 +162,14 @@ function AppContent({ mode, onThemeToggle }) {
     setFiltersApplied(true);
     setFilters((current) => ({
       ...current,
-      [key]: option === "全部" ? "" : option,
+      [key]: option,
     }));
   };
 
   const resetFilters = () => {
     setDraftQuery("");
     setQuery("");
-    setFilters({ type: "", emotion: "温暖", lighting: "自然光", movement: "固定镜头" });
+    setFilters(createInitialTagFilters(tagGroups));
     setFiltersApplied(false);
     setActiveSection("本周精选");
     setSelectedId(mode === "midnight" ? "night-cinema" : "tea-room");
@@ -150,30 +195,43 @@ function AppContent({ mode, onThemeToggle }) {
     }
   };
 
+  const handleSaveTagSettings = (draft) => {
+    try {
+      const nextGroups = saveTagGroups(draft);
+      setTagGroups(nextGroups);
+      setFilters((current) => reconcileTagFilters(nextGroups, current));
+      message.success("标签设置已保存，左侧菜单已更新");
+      return nextGroups;
+    } catch {
+      message.error("保存失败，请检查浏览器是否允许本地存储后重试；修改仍保留在设置中");
+    }
+  };
+
   const renderFilters = () => (
     <div className="filters" aria-label="镜头筛选">
-      {filterGroups.map((group) => {
-        const activeValue = filters[group.key] || "全部";
+      {!tagGroups.length && <p className="sidebar-empty">还没有标签，可在个人中心的设置中添加。</p>}
+      {tagGroups.map((group) => {
+        const activeValue = filters[group.id] || "";
         return (
-          <section className="filter-group" key={group.key}>
+          <section className="filter-group" key={group.id}>
             <div className="filter-heading">
               <h2>{group.label}</h2>
               <span aria-hidden="true" />
             </div>
             <div className="filter-options">
-              {group.options.map((option) => {
-                const active = activeValue === option;
+              {[{ id: "", label: "全部" }, ...group.options].map((option) => {
+                const active = activeValue === option.id;
                 return (
                   <button
                     className={active ? "filter-option is-active" : "filter-option"}
-                    key={option}
+                    key={option.id}
                     type="button"
                     aria-pressed={active}
-                    onClick={() => updateFilter(group.key, option)}
+                    onClick={() => updateFilter(group.id, option.id)}
                   >
                     <span className="option-dot" aria-hidden="true" />
-                    <span>{option}</span>
-                    {active && option !== "全部" ? (
+                    <span>{option.label}</span>
+                    {active && option.id ? (
                       <PlayCircleFilled className="option-arrow" aria-hidden="true" />
                     ) : null}
                   </button>
@@ -191,10 +249,11 @@ function AppContent({ mode, onThemeToggle }) {
       { key: "profile", label: "个人资料" },
       { key: "projects", label: "我的项目" },
       { key: "theme", label: mode === "celadon" ? "切换夜间模式" : "切换日间模式" },
-      { key: "settings", label: "偏好设置" },
+      { key: "settings", label: "设置", icon: <SettingOutlined /> },
     ],
     onClick: ({ key }) => {
       if (key === "theme") onThemeToggle();
+      else if (key === "settings") navigateTo("settings");
       else message.info(`已选择：${key}`);
     },
   };
@@ -204,7 +263,7 @@ function AppContent({ mode, onThemeToggle }) {
       <div className="paper-texture" aria-hidden="true" />
 
       <header className="topbar">
-        <button className="brand" type="button" onClick={resetFilters} aria-label="返回本周精选">
+        <button className="brand" type="button" onClick={() => navigateTo("home", resetFilters)} aria-label="返回本周精选">
           镜界
         </button>
         <nav className="primary-nav" aria-label="主要导航">
@@ -213,11 +272,11 @@ function AppContent({ mode, onThemeToggle }) {
               key={item}
               type="button"
               className={
-                (index === 0 && activeSection === "本周精选") || activeSection === item
+                page === "home" && ((index === 0 && activeSection === "本周精选") || activeSection === item)
                   ? "nav-link is-active"
                   : "nav-link"
               }
-              onClick={() => setActiveSection(index === 0 ? "本周精选" : item)}
+              onClick={() => navigateTo("home", () => setActiveSection(index === 0 ? "本周精选" : item))}
             >
               {item}
             </button>
@@ -230,7 +289,7 @@ function AppContent({ mode, onThemeToggle }) {
               shape="circle"
               aria-label="定位到搜索"
               icon={<SearchOutlined />}
-              onClick={() => searchRef.current?.focus?.()}
+              onClick={() => navigateTo("home", () => requestAnimationFrame(() => searchRef.current?.focus?.()))}
             />
           </Tooltip>
           <Tooltip title="我的收藏">
@@ -243,7 +302,7 @@ function AppContent({ mode, onThemeToggle }) {
             />
           </Tooltip>
           <Dropdown menu={profileMenu} trigger={["click"]}>
-            <button className="profile-button" type="button" aria-label="打开个人菜单">
+            <button className="profile-button" type="button" aria-label="打开个人中心">
               <Avatar size={38} src="/images/avatar-curator.png" />
               <DownOutlined aria-hidden="true" />
             </button>
@@ -251,6 +310,9 @@ function AppContent({ mode, onThemeToggle }) {
         </div>
       </header>
 
+      {page === "settings" ? (
+        <TagSettings groups={tagGroups} onBack={() => navigateTo("home")} onSave={handleSaveTagSettings} onDirtyChange={updateSettingsDirty} />
+      ) : (
       <div className="page-layout">
         <aside className="sidebar">{renderFilters()}</aside>
 
@@ -364,6 +426,7 @@ function AppContent({ mode, onThemeToggle }) {
           )}
         </main>
       </div>
+      )}
 
       <Modal
         open={promptOpen}
@@ -421,10 +484,10 @@ function AppContent({ mode, onThemeToggle }) {
                 key={item.id}
                 type="button"
                 className="saved-item"
-                onClick={() => {
+                onClick={() => navigateTo("home", () => {
                   setSelectedId(item.id);
                   setSavedOpen(false);
-                }}
+                })}
               >
                 <img src={item.image} alt="" />
                 <span>

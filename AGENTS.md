@@ -32,6 +32,8 @@ When implementing from a selected generated mock, treat that image as the source
 
 ## Product-specific design decisions
 
+- 个人中心的“设置”提供一级、二级标签管理，一级标签对应左侧菜单分组，二级标签对应筛选项；当前使用 mock 初始数据，配置保存到当前浏览器，保存后同步桌面侧栏与移动端筛选菜单。
+- 设置使用独立页面（`/settings`），不使用侧边抽屉；页面提供返回入口，保存后停留在设置页。
 - Keep the interface visually calm even when the filtering model is rich: one strong focal image, clear supporting imagery, generous whitespace, and no dashboard-style card clutter.
 - Ship one shared component/layout system with two themes: `celadon` for the light daytime experience and `midnight` for the dark nighttime experience.
 - Treat the approved light and dark screenshots as two distinct source-of-truth states: they share the same layout system, but each theme has its own curated copy, active-label presentation, and complete image set.
