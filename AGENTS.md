@@ -36,16 +36,18 @@ When implementing from a selected generated mock, treat that image as the source
 - Ship one shared component/layout system with two themes: `celadon` for the light daytime experience and `midnight` for the dark nighttime experience.
 - Treat the approved light and dark screenshots as two distinct source-of-truth states: they share the same layout system, but each theme has its own curated copy, active-label presentation, and complete image set.
 - For screenshot restoration, measure and compare at 1488 × 1058 before changing CSS; do not invent typography, spacing, imagery, or visible controls that are absent from the approved references.
-- Preserve the selected references' Chinese editorial character, serif display typography, warm vermilion accent, left taxonomy, prominent search, and asymmetric featured-image composition.
+- Preserve the selected references' Chinese editorial character, serif display typography, warm vermilion accent in the light theme, left taxonomy, prominent search, and asymmetric featured-image composition.
+- 夜晚模式的选中态与交互强调色使用 `#FCD535`，黄色实心按钮搭配深色文字以保证对比度；白天模式保留原有朱红色。
 - The light-theme torn paper edge must remain visibly continuous from the top of the viewport to the bottom, protruding farther into the header before receding to the sidebar width.
 - Light-theme text uses a deep green-black ink color rather than a washed-out gray-green.
 - Let the desktop shell, top bar, and page grid use the full viewport width; keep the internal search and storyboard maximum widths so imagery does not stretch on ultrawide screens.
 - Keep vertical scrolling on the document root only; horizontal clipping on the app shell must use `overflow-x: clip` so it does not create a second vertical scroll container.
 - Derive the light-theme paper background from the approved reference image; keep the sidebar only subtly darker than the main page and do not invent a heavier paper treatment.
 - Use one uniform, reference-derived seamless main-paper texture across the entire light-theme viewport at every width; never switch background assets at the 1488px reference boundary.
-- Layer only a transparent left overlay containing the subtly darker sidebar paper, continuous torn edge, and bamboo decoration above that uniform base; the overlay remains about 420px wide but is transparent to the right of its natural torn edge and foliage.
+- Layer only a transparent left overlay containing the subtly darker sidebar paper, continuous torn edge, and selected storyboard-to-film decoration above that uniform base; the overlay remains about 420px wide and is transparent beyond the natural paper edge and decorative artwork.
+- 白日模式侧栏使用用户选定的第三张“分镜到成片”设计替换竹叶：上方是窗边人物的铅笔分镜，中间保留细箭头与机位草图，下方是同构图的褪色胶片印样。图案略缩小、胶片适度淡化，保留原纸色、连续撕边与留白；不要将设计稿中的横线或播放按钮烘焙进装饰图。
 - Keep the main paper near RGB `242, 240, 229`; avoid the yellower, heavier RGB `244, 240, 226` treatment and keep paper fibers low-contrast.
-- Use a single thin, low-contrast document scrollbar with a vermilion hover state.
+- Use a single thin, low-contrast document scrollbar with a hover state matching the current theme's accent.
 - Match the approved light search control as one 1044×68px rounded outer shell with an inset 163×53px vermilion button and roughly 7px internal breathing room.
 - Light-theme sidebar option text should remain legible at 14px; section headings use 19px serif type.
 - Keep the desktop hero title restrained at 60px with a lighter display weight; it must not overpower the search and storyboard below.

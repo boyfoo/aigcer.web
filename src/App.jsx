@@ -461,7 +461,11 @@ export function App() {
       theme={{
         algorithm: isDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
         token: {
-          colorPrimary: isDark ? "#c7462c" : "#b75f41",
+          colorPrimary: isDark ? "#fcd535" : "#b75f41",
+          ...(isDark && {
+            colorPrimaryHover: "#ffe36b",
+            colorPrimaryActive: "#e0b920",
+          }),
           colorBgBase: isDark ? "#0b0d0c" : "#f7f5ed",
           colorBgContainer: isDark ? "#111411" : "#fbfaf4",
           colorTextBase: isDark ? "#ede7dc" : "#1f3128",
@@ -472,7 +476,10 @@ export function App() {
             '"Noto Sans SC Variable", "PingFang SC", "Microsoft YaHei", sans-serif',
         },
         components: {
-          Button: { fontWeight: 500 },
+          Button: {
+            fontWeight: 500,
+            ...(isDark && { primaryColor: "#0b0d0c" }),
+          },
           Input: { activeShadow: "none" },
           Tag: { borderRadiusSM: 999 },
         },

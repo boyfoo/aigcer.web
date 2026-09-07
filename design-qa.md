@@ -1,72 +1,52 @@
-# 镜界前端 Design QA
-
-## 验收证据
-
-- Source visual truth path: `D:\code\ai\aigcer\web\public\qa\reference-light-approved-v2.png`
-- Implementation screenshot path: `D:\code\ai\aigcer\web\public\qa\implementation-final.png`
-- Full-view comparison evidence: `D:\code\ai\aigcer\web\public\qa\compare-final.png`
-- Focused hero comparison evidence: `D:\code\ai\aigcer\web\public\qa\focus-hero-final.png`
-- Focused featured-card typography evidence: `D:\code\ai\aigcer\web\public\qa\focus-details-final.png`
-- Viewport: 1488 × 1058 CSS px
-- Source pixels: 1487 × 1058
-- Implementation pixels: 1488 × 1058
-- Device scale factor: 1
-- Density normalization: 对照页将 1487px 宽参考图等比放入 1488 × 1058 参考框；实现以 1488 × 1058、DPR 1 原尺寸捕获，两侧使用相同显示比例。
-- State: `celadon` 日间主题、默认筛选、竹影茶室为主镜头、搜索框为空。
-
-## Findings
-
-- 无仍需处理的 P0/P1/P2 差异。用户指出的主标题、搜索框和下方内容字体均已在同尺寸对照中通过。
-- Fonts and typography: 主标题为 68px / 72px、500 字重，通过横向比例补偿匹配参考字面宽度；描述与操作使用宋体层级，标签和提示词正文使用黑体层级，分行与参考一致。
-- Spacing and layout rhythm: 搜索框最终坐标为 x=300、y=237、1044 × 68px，按钮为 163 × 53px；卡片分隔线、提示词区和 61px 底部操作区与参考纵向节奏一致。
-- Colors and visual tokens: 搜索按钮使用参考图的朱红色，第二个收藏操作恢复朱红强调；纸张、墨色、标签底色和描边均沿用现有日间主题令牌。
-- Image quality and asset fidelity: 图片清晰、裁切与布局无新增退化。当前图像内容与参考图的具体画面差异为既有且本次明确保留的范围约束，不属于本轮三个修正项。
-- Copy and content: 主标题、搜索占位文案、描述、标签、提示词和操作文案均与目标状态一致；茶室提示词加入展示换行以匹配参考的两行排版，语义内容未改动。
-
-## Comparison History
-
-### 第一轮
-
-- Earlier finding [P1]: 标题使用 74px / 600，视觉高度与重量过强。
-- Fix: 调整为 68px / 72px、500 字重，并以 `scaleX(1.1)` 补偿字体本身偏窄的问题。
-- Post-fix evidence: `public/qa/focus-hero-final.png` 中标题视觉高度已降低，同时保留参考图的横向张力。
-- Earlier finding [P1]: Ant Design Search 的内部结构带来默认描边、背景和间距漂移。
-- Fix: 改为语义化搜索表单，明确图标、输入框和按钮的三列结构；固定外框、内边距、圆角与按钮尺寸。
-- Post-fix evidence: 搜索框在焦点对照中左右边界、图标、占位文字和按钮均与参考对齐。
-- Earlier finding [P2]: 卡片正文、标签、提示词与底部操作沿用组件默认字体，层级和分行不一致。
-- Fix: 显式设置字体族、字号、字重、行高和字距；收藏操作恢复朱红强调。
-- Post-fix evidence: `public/qa/focus-details-final.png` 中描述和提示词均按参考位置分为两行。
-
-### 第二轮
-
-- Earlier finding [P2]: 提示词分隔线与底部操作区仍有 3–6px 的纵向偏差。
-- Fix: 调整标签区下间距、提示词标题间距与底部按钮高度。
-- Post-fix evidence: 最终焦点对照中分隔线、提示词标题和底部操作线已对齐，无剩余 P2 偏差。
-
-## 交互与工程检查
-
-- 搜索输入“湖面”并提交后，结果正确切换到“湖上晨光”。
-- 点击“镜界”可恢复默认竹影茶室状态。
-- 夜间主题在相同桌面视口下复核，无标题、搜索框或画板布局回归。
-- 浏览器 console error/warning: 0。
-- 页面尺寸：`scrollWidth=1488`、`scrollHeight=1058`，无横向或额外纵向溢出。
-- `npm run build` 通过。
-- `npm run test:sites` 通过，4/4 测试成功。
-
-## Open Questions
-
-- 无。
-
-## Implementation Checklist
-
-- [x] 收紧主标题字号与字重。
-- [x] 重建与设计稿一致的搜索框结构和视觉状态。
-- [x] 校准描述、标签、提示词和操作按钮的字体属性。
-- [x] 完成 1488 × 1058 同尺寸全图与焦点区域对照。
-- [x] 验证搜索、重置、夜间主题和生产构建。
-
-## Follow-up Polish
-
-- [P3] 若后续拿到设计稿中的原始字体或单独图片素材，可继续消除字形与画面内容的非结构性差异。
+# 白日模式侧栏装饰验证
 
 final result: passed
+
+## 范围与设计来源
+
+- 本次范围：将白日模式侧栏竹叶替换为用户选定的“分镜到成片”装饰，适当缩小并淡化；保留原应用布局、文字、主题行为和主纸纹。
+- 原始选定设计：`C:/Users/yao/.codex/generated_images/01a07a67-c63e-7243-8277-61340fac7d33/exec-db4f0b8f-e95b-4352-9c8d-97f73280362f.png`，994 × 1582。
+- 项目资产：`public/images/sidebar-storyboard-paper-v1.png`，790 × 1989，RGB。使用内置 ImageGen 从选定设计与原纸面资产生成；提示词要求保留连续撕边，将竹叶替换为窗边人物铅笔分镜、箭头与机位图、同构图胶片，缩小并右移，排除文字、按钮和额外横线。
+- 最终资产使用纯黑底配合 CSS luminance mask；414px 遮罩配合 420px 背景消除黑底采样边缘，不修改原图片像素。
+
+## 浏览器证据与归一化
+
+- 桌面基准与最终截图：`public/qa/sidebar-storyboard/before-desktop.png`、`public/qa/sidebar-storyboard/after-desktop.png`，均为 1488 × 1058，CSS 视口 1488 × 1058，截图比例 1:1。
+- 同屏比较：`public/qa/sidebar-storyboard/comparison.png`。上方并置选定概念和实际侧栏局部，下方并置修改前后完整页面，已查看并比较。
+- 局部来自完整截图的 x112、y82、168 × 306 区域，通过 QA 页面原比例定位显示，避免截图接口忽略裁剪偏移的问题。
+- 设计稿是装饰概念局部，并非完整网页；按插画主体、上下顺序、纸色与留白进行对照，不将稿中的控制图形作为新增 UI。
+- 夜间回归截图：`public/qa/sidebar-storyboard/after-midnight.png`。
+- 窄屏截图：`public/qa/sidebar-storyboard/after-mobile.png`，实际编码 380 × 822；请求的 CSS 视口 390 × 844。窄屏仅验证侧栏与装饰隐藏行为，不进行与桌面概念稿的像素匹配。
+- QA 图片由浏览器编码，文件后缀不用于推断像素尺寸；尺寸已通过图像解码读取。
+
+## 发现与修复记录
+
+1. 首次接入：`first-pass-desktop.png` 可见撕边存在黑色细线，评为 P2。原因是同尺寸亮度遮罩将黑底过渡像素部分保留。
+2. 修复：将遮罩宽度收至 414px，背景仍为 420px，使可见纸边落在亮色区域内。
+3. 复查：`after-desktop.png` 与 `comparison.png` 显示连续浅色撕边，无黑底或棋盘格；手稿、箭头与胶片顺序正确，筛选文字与选中图标清晰。无本次变更新增的 P0/P1/P2 问题。
+
+## 五项检查
+
+- 字体：未变更字号、字体、字重、行高与换行规则；完整页面并置未见文字漂移。
+- 布局：侧栏仍为 226px；桌面 document scrollWidth 为 1488px，未增加横向溢出。图案落在文字右侧，背景层保留 pointer-events: none。
+- 色彩：主纸纹继续复用既有平铺图，装饰为低对比灰绿；夜间强调色仍为 #FCD535，夜间伪元素 content 为 none。
+- 图像：主体与选定稿一致，使用真实生成图片。生成纸轮廓有轻微自然差异，属于局部装饰替换的可接受变化；最终纸边持续至页面底部。
+- 文案：未增加或修改页面文字，未烘焙设计稿中的播放按钮和横线；可见红色选中图标仍由真实筛选组件提供。
+
+## 交互与构建
+
+- 点击“纪录片”筛选后，选中状态及空结果提示正确；“清除筛选”恢复结果。
+- 通过个人菜单切换夜间模式，确认黄色主题及装饰隐藏；交付时已恢复白日模式。
+- 390px 窄屏下 sidebar 和装饰 display 均为 none，沿用原有响应式规则。既有移动端标题和搜索左偏排版不属于此次装饰替换范围。
+- 浏览器错误日志为空。
+- 当前环境没有 npm，直接运行 package.json 中等价的 Vite build、prepare-sites-build.mjs 与 node --test 命令；构建成功，4 项 Sites 测试通过。存在既有的 500 kB chunk 提示。
+- 已恢复浏览器默认视口并保留白日模式预览。
+
+## 实施检查表
+
+- [x] 接入选定方向的独立项目资产。
+- [x] 修复黑底边缘并完成同屏视觉复查。
+- [x] 验证筛选、主题切换及窄屏装饰隐藏。
+- [x] 完成生产构建与 Sites 测试。
+
+后续细节：本次范围没有需阻塞交付的遗留项。

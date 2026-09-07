@@ -10,6 +10,8 @@
   --line-strong: #bdb6a5;
   --accent: #b75f41;
   --accent-strong: #a8492c;
+  --search-button-bg: #b45432;
+  --search-button-hover: #a94c2c;
   --tag-bg: #e7e8dc;
   --media-border: rgba(55, 67, 58, 0.22);
   --header-bg: rgba(246, 244, 235, 0.9);
@@ -26,13 +28,15 @@
   --muted: #aaa69d;
   --line: #393a34;
   --line-strong: #565146;
-  --accent: #c7462c;
-  --accent-strong: #df5839;
+  --accent: #fcd535;
+  --accent-strong: #ffe36b;
+  --search-button-bg: var(--accent);
+  --search-button-hover: var(--accent-strong);
   --tag-bg: #2b2a24;
   --media-border: rgba(220, 201, 165, 0.33);
   --header-bg: rgba(11, 13, 12, 0.9);
   --scroll-thumb: rgba(237, 231, 220, 0.28);
-  --scroll-thumb-hover: rgba(223, 88, 57, 0.74);
+  --scroll-thumb-hover: rgba(252, 213, 53, 0.74);
 }
 
 * {
@@ -100,6 +104,7 @@ button {
 }
 
 .theme-celadon.app-shell::before {
+  --sidebar-artwork: url("/images/sidebar-storyboard-paper-v1.png");
   content: "";
   position: absolute;
   top: 0;
@@ -109,7 +114,14 @@ button {
   width: min(420px, 100%);
   min-height: 1058px;
   pointer-events: none;
-  background: url("/images/reference-left-paper-overlay-v2.png") left top / 420px 100% no-repeat;
+  background: var(--sidebar-artwork) left top / 420px 100% no-repeat;
+  /* The generated artwork has a black matte; luminance reveals the paper and drawing. */
+  mask-image: var(--sidebar-artwork);
+  mask-mode: luminance;
+  mask-position: left top;
+  /* Inset the matte slightly to keep its dark fringe outside the visible torn edge. */
+  mask-size: 414px 100%;
+  mask-repeat: no-repeat;
 }
 
 .paper-texture {
@@ -447,7 +459,7 @@ button {
   height: 53px;
   border-color: transparent;
   border-radius: 7px !important;
-  background: #b45432;
+  background: var(--search-button-bg);
   box-shadow: none;
   font-family: "Noto Serif SC Variable", "Songti SC", STSong, serif;
   font-size: 17px;
@@ -458,7 +470,7 @@ button {
 .hero-search .hero-search-button:hover,
 .hero-search .hero-search-button:focus-visible {
   border-color: transparent !important;
-  background: #a94c2c !important;
+  background: var(--search-button-hover) !important;
 }
 
 .mobile-filter-button {
