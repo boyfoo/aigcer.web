@@ -2,7 +2,11 @@ import { createRoot } from "react-dom/client";
 import "@fontsource-variable/noto-sans-sc/wght.css";
 import "@fontsource-variable/noto-serif-sc/wght.css";
 import "@fontsource/zcool-xiaowei";
+import { storyboardItems } from "./data.js";
+import "./styles.css";
 import "./font-test.css";
+
+const sampleItem = storyboardItems[0];
 
 const candidates = [
   {
@@ -61,19 +65,15 @@ function DetailPreview({ candidate }) {
   return (
     <div className="detail-preview" style={{ "--candidate-font": candidate.family }}>
       <p className="sample-description">
-        清晨的茶室，竹影透过纱窗落在青瓷与木案上，空气中有茶香与墨的气息，万物安静而温柔。
+        {sampleItem.description}
       </p>
       <div className="sample-tags" aria-label="标签示例">
-        <span>宁静</span>
-        <span>自然光</span>
-        <span>固定镜头</span>
-        <span>室内</span>
-        <span>日常生活</span>
+        {sampleItem.tags.map((tag) => <span key={tag}>{tag}</span>)}
       </div>
       <div className="sample-prompt">
         <strong>提示词</strong>
         <p>
-          清晨，自然光透过纱窗洒入中式茶室，竹影摇曳，青瓷茶具、木案、宣纸与墨盏，空气中有茶与墨的气息。宁静的生活氛围，固定镜头，35mm 电影质感，浅景深，柔和色调。
+          {sampleItem.prompt}
         </p>
       </div>
       <div className="sample-actions">
@@ -93,18 +93,8 @@ function FontTest() {
           <h1>同一句话，直接看字形差异</h1>
           <p className="intro">每组都用同一套主标题和下方内容结构渲染，标签保持黑体，避免变量太多。</p>
         </div>
-        <a href="/?theme=celadon">返回当前页面</a>
+        <a href="/">返回当前页面</a>
       </header>
-
-      <section className="reference-strip" aria-label="原设计图主标题">
-        <div className="section-label">
-          <strong>原设计图</strong>
-          <span>仅作为字形与气质参照</span>
-        </div>
-        <div className="source-crop">
-          <img src="/qa/reference-light-approved-v2.png" alt="原设计图主标题裁切" />
-        </div>
-      </section>
 
       <div className="candidate-list">
         {candidates.map((candidate, index) => (

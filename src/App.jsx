@@ -25,39 +25,23 @@ import {
   SettingOutlined,
   StarFilled,
 } from "@ant-design/icons";
-import { nightStoryboardItems, storyboardItems } from "./data.js";
+import { storyboardItems } from "./data.js";
 import { TagSettings } from "./TagSettings.jsx";
 import { createInitialTagFilters, loadTagGroups, matchesTagFilters, reconcileTagFilters, saveTagGroups } from "./tagSettings.js";
 
-const THEME_KEY = "jingjie-theme";
 const getCurrentPage = () => window.location.pathname.replace(/\/$/, "") === "/settings" ? "settings" : "home";
 
-function getInitialTheme() {
-  try {
-    const previewTheme = new URLSearchParams(window.location.search).get("theme");
-    if (previewTheme === "celadon" || previewTheme === "midnight") return previewTheme;
-    const saved = window.localStorage.getItem(THEME_KEY);
-    if (saved === "celadon" || saved === "midnight") return saved;
-    return window.matchMedia?.("(prefers-color-scheme: dark)").matches
-      ? "midnight"
-      : "celadon";
-  } catch {
-    return "celadon";
-  }
-}
-
-function AppContent({ mode, onThemeToggle }) {
+function AppContent() {
   const { message, modal } = AntApp.useApp();
   const searchRef = useRef(null);
   const settingsDirtyRef = useRef(false);
-  const modeItems = mode === "midnight" ? nightStoryboardItems : storyboardItems;
-  const curatedLabel = mode === "midnight" ? "午夜精选" : "本周精选";
+  const curatedLabel = "午夜精选";
   const [draftQuery, setDraftQuery] = useState("");
   const [query, setQuery] = useState("");
   const [tagGroups, setTagGroups] = useState(loadTagGroups);
   const [filters, setFilters] = useState(() => createInitialTagFilters(tagGroups));
   const [filtersApplied, setFiltersApplied] = useState(false);
-  const [selectedId, setSelectedId] = useState("tea-room");
+  const [selectedId, setSelectedId] = useState("night-cinema");
   const [activeSection, setActiveSection] = useState("本周精选");
   const [promptOpen, setPromptOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -109,14 +93,9 @@ function AppContent({ mode, onThemeToggle }) {
     return () => window.removeEventListener("popstate", handlePopState);
   }, [page, confirmLeaveSettings]);
 
-  useEffect(() => {
-    setSelectedId(mode === "midnight" ? "night-cinema" : "tea-room");
-    setFiltersApplied(false);
-  }, [mode]);
-
   const filteredItems = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return modeItems.filter((item) => {
+    return storyboardItems.filter((item) => {
       const sectionMatch =
         activeSection === "本周精选" ||
         activeSection === "提示词" ||
@@ -139,16 +118,16 @@ function AppContent({ mode, onThemeToggle }) {
         .toLowerCase();
       return sectionMatch && filterMatch && (!normalizedQuery || haystack.includes(normalizedQuery));
     });
-  }, [activeSection, filters, filtersApplied, modeItems, query, tagGroups]);
+  }, [activeSection, filters, filtersApplied, query, tagGroups]);
 
   const selectedItem =
     filteredItems.find((item) => item.id === selectedId) ??
     filteredItems[0] ??
-    modeItems.find((item) => item.id === selectedId) ??
-    modeItems[0];
+    storyboardItems.find((item) => item.id === selectedId) ??
+    storyboardItems[0];
 
   const supportingItems = filteredItems.filter((item) => item.id !== selectedItem.id);
-  const savedItems = [...storyboardItems, ...nightStoryboardItems].filter((item) =>
+  const savedItems = storyboardItems.filter((item) =>
     savedIds.has(item.id),
   );
 
@@ -172,7 +151,7 @@ function AppContent({ mode, onThemeToggle }) {
     setFilters(createInitialTagFilters(tagGroups));
     setFiltersApplied(false);
     setActiveSection("本周精选");
-    setSelectedId(mode === "midnight" ? "night-cinema" : "tea-room");
+    setSelectedId("night-cinema");
   };
 
   const toggleSaved = (itemId) => {
@@ -248,18 +227,16 @@ function AppContent({ mode, onThemeToggle }) {
     items: [
       { key: "profile", label: "个人资料" },
       { key: "projects", label: "我的项目" },
-      { key: "theme", label: mode === "celadon" ? "切换夜间模式" : "切换日间模式" },
       { key: "settings", label: "设置", icon: <SettingOutlined /> },
     ],
     onClick: ({ key }) => {
-      if (key === "theme") onThemeToggle();
-      else if (key === "settings") navigateTo("settings");
+      if (key === "settings") navigateTo("settings");
       else message.info(`已选择：${key}`);
     },
   };
 
   return (
-    <div className={`app-shell theme-${mode}`}>
+    <div className="app-shell">
       <div className="paper-texture" aria-hidden="true" />
 
       <header className="topbar">
@@ -319,7 +296,7 @@ function AppContent({ mode, onThemeToggle }) {
         <main className="main-content">
           <section className="hero-copy" aria-labelledby="page-title">
             <div className="hero-topline">
-              <p>{mode === "celadon" ? "青瓷日间 · CURATED" : "午夜夜间 · CURATED"}</p>
+              <p>午夜夜间 · CURATED</p>
               <Button
                 className="mobile-filter-button"
                 icon={<MenuOutlined />}
@@ -506,33 +483,18 @@ function AppContent({ mode, onThemeToggle }) {
 }
 
 export function App() {
-  const [mode, setMode] = useState(getInitialTheme);
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = mode;
-    try {
-      window.localStorage.setItem(THEME_KEY, mode);
-    } catch {
-      // The theme still works when storage is unavailable.
-    }
-  }, [mode]);
-
-  const isDark = mode === "midnight";
-
   return (
     <ConfigProvider
       theme={{
-        algorithm: isDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
+        algorithm: antdTheme.darkAlgorithm,
         token: {
-          colorPrimary: isDark ? "#fcd535" : "#b75f41",
-          ...(isDark && {
-            colorPrimaryHover: "#ffe36b",
-            colorPrimaryActive: "#e0b920",
-          }),
-          colorBgBase: isDark ? "#0b0d0c" : "#f7f5ed",
-          colorBgContainer: isDark ? "#111411" : "#fbfaf4",
-          colorTextBase: isDark ? "#ede7dc" : "#1f3128",
-          colorBorder: isDark ? "#494439" : "#d6d0c0",
+          colorPrimary: "#fcd535",
+          colorPrimaryHover: "#ffe36b",
+          colorPrimaryActive: "#e0b920",
+          colorBgBase: "#0b0d0c",
+          colorBgContainer: "#111411",
+          colorTextBase: "#ede7dc",
+          colorBorder: "#494439",
           borderRadius: 8,
           controlHeight: 40,
           fontFamily:
@@ -541,7 +503,7 @@ export function App() {
         components: {
           Button: {
             fontWeight: 500,
-            ...(isDark && { primaryColor: "#0b0d0c" }),
+            primaryColor: "#0b0d0c",
           },
           Input: { activeShadow: "none" },
           Tag: { borderRadiusSM: 999 },
@@ -549,10 +511,7 @@ export function App() {
       }}
     >
       <AntApp>
-        <AppContent
-          mode={mode}
-          onThemeToggle={() => setMode((current) => (current === "celadon" ? "midnight" : "celadon"))}
-        />
+        <AppContent />
       </AntApp>
     </ConfigProvider>
   );

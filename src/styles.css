@@ -1,25 +1,5 @@
 :root {
   font-family: "Noto Sans SC Variable", "PingFang SC", "Microsoft YaHei", sans-serif;
-  color-scheme: light;
-  --page-bg: #f3f1e7;
-  --surface: #fbfaf4;
-  --surface-soft: #efeee5;
-  --text: #1f3128;
-  --muted: #5f6962;
-  --line: #d8d2c2;
-  --line-strong: #bdb6a5;
-  --accent: #b75f41;
-  --accent-strong: #a8492c;
-  --search-button-bg: #b45432;
-  --search-button-hover: #a94c2c;
-  --tag-bg: #e7e8dc;
-  --media-border: rgba(55, 67, 58, 0.22);
-  --header-bg: rgba(246, 244, 235, 0.9);
-  --scroll-thumb: rgba(45, 65, 54, 0.28);
-  --scroll-thumb-hover: rgba(183, 95, 65, 0.72);
-}
-
-:root[data-theme="midnight"] {
   color-scheme: dark;
   --page-bg: #0b0d0c;
   --surface: #111411;
@@ -92,36 +72,6 @@ button {
   overflow-x: clip;
   background: var(--page-bg);
   color: var(--text);
-  transition: background-color 220ms ease, color 220ms ease;
-}
-
-.theme-celadon.app-shell {
-  background-color: var(--page-bg);
-  background-image: url("/images/reference-paper-tile-v4.png");
-  background-position: left top;
-  background-repeat: repeat;
-  background-size: 1254px 1254px;
-}
-
-.theme-celadon.app-shell::before {
-  --sidebar-artwork: url("/images/sidebar-storyboard-paper-v1.png");
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 0;
-  width: min(420px, 100%);
-  min-height: 1058px;
-  pointer-events: none;
-  background: var(--sidebar-artwork) left top / 420px 100% no-repeat;
-  /* The generated artwork has a black matte; luminance reveals the paper and drawing. */
-  mask-image: var(--sidebar-artwork);
-  mask-mode: luminance;
-  mask-position: left top;
-  /* Inset the matte slightly to keep its dark fringe outside the visible torn edge. */
-  mask-size: 414px 100%;
-  mask-repeat: no-repeat;
 }
 
 .paper-texture {
@@ -131,18 +81,9 @@ button {
   pointer-events: none;
   background-image: url("/images/paper-texture.png");
   background-size: 700px auto;
-  opacity: 0.12;
-  mix-blend-mode: multiply;
-}
-
-.theme-midnight .paper-texture {
   opacity: 0.07;
   mix-blend-mode: soft-light;
   filter: invert(1);
-}
-
-.theme-celadon .paper-texture {
-  display: none;
 }
 
 .topbar,
@@ -161,11 +102,6 @@ button {
   border-bottom: 1px solid transparent;
   background: var(--header-bg);
   backdrop-filter: blur(16px);
-}
-
-.theme-celadon .topbar {
-  background: transparent;
-  backdrop-filter: none;
 }
 
 .brand {
@@ -280,11 +216,6 @@ button {
   border-right: 1px solid color-mix(in srgb, var(--line) 58%, transparent);
 }
 
-.theme-celadon .sidebar {
-  border-right: 0;
-  background: transparent;
-}
-
 .filters {
   display: flex;
   flex-direction: column;
@@ -390,7 +321,7 @@ button {
 
 .hero-copy h1 {
   position: relative;
-  left: -46px;
+  left: -62px;
   margin: 0 0 28px;
   color: var(--text);
   font-family: "Noto Serif SC Variable", "Songti SC", STSong, serif;
@@ -415,7 +346,7 @@ button {
   align-items: center;
   width: 100%;
   height: 68px;
-  max-width: 1044px;
+  max-width: 1061px;
   margin: 0 auto;
   padding: 7px 7px 6px 22px;
   border: 1px solid color-mix(in srgb, var(--line-strong) 82%, var(--page-bg));
@@ -479,28 +410,14 @@ button {
 
 .storyboard-layout {
   position: relative;
-  left: 20px;
+  left: 7px;
   display: grid;
-  grid-template-columns: minmax(0, 1.09fr) minmax(420px, 1fr);
+  grid-template-columns: minmax(0, 1.08fr) minmax(420px, 1fr);
   gap: 9px;
   width: 100%;
   max-width: 1173px;
   min-height: 688px;
   margin: 0 auto;
-}
-
-.theme-midnight .hero-copy h1 {
-  left: -62px;
-}
-
-.theme-midnight .hero-search {
-  left: -35px;
-  max-width: 1061px;
-}
-
-.theme-midnight .storyboard-layout {
-  left: 7px;
-  grid-template-columns: minmax(0, 1.08fr) minmax(420px, 1fr);
 }
 
 .featured-card {
@@ -510,10 +427,6 @@ button {
   border: 1px solid var(--media-border);
   border-radius: 9px;
   background: var(--surface);
-}
-
-.theme-celadon .featured-card {
-  background: color-mix(in srgb, var(--surface) 68%, transparent);
 }
 
 .featured-visual,
@@ -727,14 +640,6 @@ button {
 }
 
 .gallery-card-5 {
-  grid-column: 4 / 6;
-}
-
-.gallery-card-6 {
-  grid-column: 6 / 7;
-}
-
-.theme-midnight .gallery-card-5 {
   grid-column: 4 / 7;
 }
 
@@ -1045,10 +950,6 @@ button {
 }
 
 @media (max-width: 900px) {
-  .theme-celadon.app-shell::before {
-    display: none;
-  }
-
   .topbar {
     height: 66px;
     grid-template-columns: auto 1fr;
@@ -1217,8 +1118,7 @@ button {
   }
 
   .gallery-card-2,
-  .gallery-card-4,
-  .gallery-card-6 {
+  .gallery-card-4 {
     grid-column: 1 / 2;
   }
 

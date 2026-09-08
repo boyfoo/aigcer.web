@@ -45,12 +45,12 @@ test("deleting active children and groups releases their filters", () => {
 
 test("new custom groups can filter existing mock case tags", () => {
   const groups = normalizeTagGroups([{ id: "custom", label: " 场景 ", options: [
-    { id: "indoor", label: " 室内 ", value: null },
+    { id: "outdoor", label: " 室外 ", value: null },
   ] }]);
   assert.equal(groups[0].label, "场景");
-  assert.equal(groups[0].options[0].value, "室内");
-  assert.equal(matchesTagFilters(storyboardItems[0], groups, { custom: "indoor" }), true);
-  assert.equal(matchesTagFilters(storyboardItems[1], groups, { custom: "indoor" }), false);
+  assert.equal(groups[0].options[0].value, "室外");
+  assert.equal(matchesTagFilters(storyboardItems[0], groups, { custom: "outdoor" }), true);
+  assert.equal(matchesTagFilters(storyboardItems[1], groups, { custom: "outdoor" }), false);
 });
 
 test("validation prevents empty, duplicate, reserved and malformed labels", () => {
