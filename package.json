@@ -4,21 +4,25 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build && node scripts/prepare-sites-build.mjs",
-    "preview": "vite preview",
+    "dev": "next dev --hostname 127.0.0.1 --port 5174",
+    "build": "next build",
+    "build:sites": "node scripts/build-sites.mjs",
+    "start": "next start --hostname 127.0.0.1 --port 5174",
+    "preview": "npm run start",
+    "test": "node --test tests/tag-settings.test.mjs tests/content.test.mjs",
     "test:sites": "node --test tests/sites-worker.test.mjs"
   },
+  "engines": { "node": ">=22.12.0" },
   "dependencies": {
     "@ant-design/icons": "^6.3.4",
     "@fontsource-variable/noto-sans-sc": "^5.3.0",
     "@fontsource-variable/noto-serif-sc": "^5.3.0",
     "@fontsource/ma-shan-zheng": "^5.3.1",
     "@fontsource/zcool-xiaowei": "^5.3.0",
-    "@vitejs/plugin-react": "5.0.4",
+    "@ant-design/nextjs-registry": "1.3.0",
     "antd": "^6.6.2",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "vite": "6.4.2"
+    "next": "16.3.4"
   }
 }

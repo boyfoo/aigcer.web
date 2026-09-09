@@ -1,4 +1,4 @@
-main {
+.font-test-page {
   width: min(1380px, calc(100% - 48px));
   margin: 0 auto;
   padding: 38px 0 64px;
@@ -100,21 +100,6 @@ main {
   display: inline;
 }
 
-.candidate-title {
-  width: max-content;
-  max-width: 100%;
-  margin-bottom: 18px;
-  color: var(--text);
-  font-size: 44px;
-  line-height: 54px;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-}
-
-.candidate-title span {
-  color: var(--accent);
-}
-
 .detail-preview {
   width: 100%;
   overflow: hidden;
@@ -206,7 +191,7 @@ main {
 }
 
 @media (max-width: 760px) {
-  main {
+  .font-test-page {
     width: min(100% - 28px, 1380px);
     padding-top: 24px;
   }
@@ -224,9 +209,4 @@ main {
     padding-inline: 16px;
   }
 
-  .candidate-title {
-    font-size: clamp(30px, 8.5vw, 48px);
-    line-height: 1.25;
-    white-space: normal;
-  }
 }

@@ -4,8 +4,8 @@
 
 ## 技术栈与代码位置
 
-- 项目使用 React 19、Vite 6 和 Ant Design 6。
-- 应用代码放在 `src/`，静态资源放在 `public/`。
+- 项目使用 Next.js 16 App Router、React 19 和 Ant Design 6。
+- 应用代码放在 `src/`，路由放在 `src/app/`，静态资源放在 `public/`。
 - 优先复用现有组件、数据结构和主题变量，避免重复实现或无必要地新增依赖。
 
 ## Node.js 与 npm 版本选择
@@ -72,11 +72,12 @@ Get-Command node.exe, npm.cmd | Select-Object Name, Source
 ```bash
 npm run dev
 npm run build
+npm run build:sites
 npm run test:sites
 ```
 
 - 修改前端代码后至少运行 `npm run build`。
-- 涉及 Sites 构建、部署配置或 Worker 时，同时运行 `npm run test:sites`。
+- 涉及 Sites 构建、部署配置或 Worker 时，运行 `npm run build:sites` 和 `npm run test:sites`；内容与标签逻辑检查使用 `npm test`。
 - 不得在源码中写入密钥、令牌、密码或其他敏感信息。
 
 # Prototype Instructions
@@ -89,7 +90,12 @@ When implementing from a selected generated mock, treat that image as the source
 
 ## Product-specific design decisions
 
-- 个人中心的“设置”提供一级、二级标签管理，一级标签对应左侧菜单分组，二级标签对应筛选项；当前使用 mock 初始数据，配置保存到当前浏览器，保存后同步桌面侧栏与移动端筛选菜单。
+- 公开首页、案例详情与分类页使用 Next.js 静态生成，正文、标题和描述必须存在于初始 HTML；案例和分类之间使用可抓取的真实链接，未知网址返回 404。
+- 案例网址使用稳定 ID：`/cases/[slug]`；公开分类使用 `/collections/[slug]`。内容统一通过 `src/lib/content.js` 读取，当前数据源仍为 `src/data.js`。
+- 生产域名通过构建环境的 `SITE_URL` 配置，用于 canonical、Open Graph 和 sitemap；未配置时按私有预览处理。设置页与字体对比页始终不参与搜索收录。
+- 本阶段完成 Next.js 迁移，管理后台和数据库后续实现。普通 Next.js 构建保留后端能力，Sites 静态导出不承担动态内容写入。
+- 个人中心的“设置”提供一级、二级标签管理，一级标签对应页面菜单分组，二级标签对应筛选项；当前使用 mock 初始数据，配置保存到当前浏览器，保存后同步页面菜单。
+- 分类筛选只保留一套页面内菜单：桌面显示在左侧，窄屏直接排列在内容上方；不提供额外的“筛选”按钮或弹出筛选菜单。
 - 设置使用独立页面（`/settings`），不使用侧边抽屉；页面提供返回入口，保存后停留在设置页。
 - Keep the interface visually calm even when the filtering model is rich: one strong focal image, clear supporting imagery, generous whitespace, and no dashboard-style card clutter.
 - 全站只维护一套固定主题，首页、设置页、弹窗、抽屉和字体对比页共用相同的设计变量与组件样式。
@@ -99,9 +105,10 @@ When implementing from a selected generated mock, treat that image as the source
 - 选中态与交互强调色使用 `#FCD535`，黄色实心按钮搭配深色文字以保证对比度。
 - Let the desktop shell, top bar, and page grid use the full viewport width; keep the internal search and storyboard maximum widths so imagery does not stretch on ultrawide screens.
 - Keep vertical scrolling on the document root only; horizontal clipping on the app shell must use `overflow-x: clip` so it does not create a second vertical scroll container.
-- Use a single thin, low-contrast document scrollbar with a hover state matching the accent.
-- 桌面主标题以 48px 为上限，行高 1.2，标题下方间距为 28px；在窄屏继续缩小，保持搜索和镜头内容为页面重点。
-- Do not treat the current Noto Serif SC rendering as the final typography choice: the user finds its Song-style character unsuitable. Use the real-font comparison page at `/font-test.html` and wait for a selected candidate before finalizing the hero and featured-card text families.
+- 隐藏页面和组件的可见滚动条，保留滚轮、触摸与键盘滚动，不通过禁止滚动来隐藏滚动条。
+- 全站不展示顶部宣传标语或大标题横幅；首页与分类页以搜索和镜头内容为重点，移除标语占位及其留白，字体对比页也不再重复该标语。案例名称、设置标题等内容与功能标题保留，首页和分类页使用不占视觉空间的语义标题供辅助技术识别。
+- 分类页不展示搜索框上方的介绍文字，不保留其占位或间距；分类描述继续用于页面的 SEO 元数据。
+- Do not treat the current Noto Serif SC rendering as the final typography choice: the user finds its Song-style character unsuitable. Use the real-font comparison page at `/font-test.html` and wait for a selected candidate before finalizing the featured-card text families.
 - Let prompt copy wrap naturally from the available width; do not insert manual line breaks to imitate one screenshot.
 
-Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts/prepare-sites-build.mjs`, and `tests/sites-worker.test.mjs` intact so the same local prototype can be handed to Sites. Before a Sites handoff, run `npm run build` and `npm run test:sites`; the build must leave `dist/client/index.html`, `dist/server/index.js`, and `dist/.openai/hosting.json`.
+Build app UI in `src/`. Preserve the packaging roles of `.openai/hosting.json`, `worker/index.js`, `scripts/prepare-sites-build.mjs`, and `tests/sites-worker.test.mjs`. Before a Sites handoff, run `npm run build:sites` and `npm run test:sites`; the export must leave `dist/client/index.html`, `dist/server/index.js`, and `dist/.openai/hosting.json`. Normal `npm run build` writes the runnable Next.js server to `.next-app/`.

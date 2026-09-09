@@ -1,25 +1,25 @@
+"use client";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   App as AntApp,
   Avatar,
   Button,
-  ConfigProvider,
   Drawer,
   Dropdown,
   Empty,
   Modal,
   Tag,
   Tooltip,
-  theme as antdTheme,
 } from "antd";
 import {
   BookOutlined,
   BookFilled,
-  CloseOutlined,
   CopyOutlined,
   DownOutlined,
   FileTextOutlined,
-  MenuOutlined,
   PlayCircleFilled,
   SearchOutlined,
   SettingOutlined,
@@ -27,27 +27,24 @@ import {
 } from "@ant-design/icons";
 import { storyboardItems } from "./data.js";
 import { TagSettings } from "./TagSettings.jsx";
-import { createInitialTagFilters, loadTagGroups, matchesTagFilters, reconcileTagFilters, saveTagGroups } from "./tagSettings.js";
+import { usePreferences } from "./Providers.jsx";
+import { casePath, collectionPath } from "./lib/content.js";
+import { createInitialTagFilters, matchesTagFilters, reconcileTagFilters, saveTagGroups } from "./tagSettings.js";
 
-const getCurrentPage = () => window.location.pathname.replace(/\/$/, "") === "/settings" ? "settings" : "home";
-
-function AppContent() {
+export function App({ page = "home", items, initialCaseId, collection }) {
   const { message, modal } = AntApp.useApp();
+  const router = useRouter();
+  const { tagGroups, setTagGroups, tagsLoaded, savedIds, setSavedIds } = usePreferences();
   const searchRef = useRef(null);
   const settingsDirtyRef = useRef(false);
   const curatedLabel = "午夜精选";
   const [draftQuery, setDraftQuery] = useState("");
   const [query, setQuery] = useState("");
-  const [tagGroups, setTagGroups] = useState(loadTagGroups);
   const [filters, setFilters] = useState(() => createInitialTagFilters(tagGroups));
   const [filtersApplied, setFiltersApplied] = useState(false);
-  const [selectedId, setSelectedId] = useState("night-cinema");
-  const [activeSection, setActiveSection] = useState("本周精选");
+  const [selectedId, setSelectedId] = useState(initialCaseId ?? items[0]?.id);
   const [promptOpen, setPromptOpen] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
-  const [page, setPage] = useState(getCurrentPage);
-  const [savedIds, setSavedIds] = useState(new Set());
 
   const updateSettingsDirty = useCallback((dirty) => {
     settingsDirtyRef.current = dirty;
@@ -66,40 +63,29 @@ function AppContent() {
   }, [modal]);
 
   const navigateTo = (nextPage, afterNavigate) => {
+    const href = nextPage === "home" ? "/" : nextPage === "settings" ? "/settings" : nextPage;
     const navigate = () => {
-      if (page !== nextPage) {
-        window.history.pushState(null, "", `${nextPage === "settings" ? "/settings" : "/"}${window.location.search}`);
-        setPage(nextPage);
-      }
       afterNavigate?.();
+      router.push(href);
     };
     if (page === "settings" && nextPage !== page) confirmLeaveSettings(navigate);
     else navigate();
   };
 
   useEffect(() => {
-    const handlePopState = () => {
-      const nextPage = getCurrentPage();
-      if (nextPage === page) return;
-      if (page === "settings") {
-        confirmLeaveSettings(
-          () => setPage(nextPage),
-          () => window.history.pushState(null, "", `/settings${window.location.search}`),
-        );
-      } else setPage(nextPage);
-    };
-    window.addEventListener("popstate", handlePopState);
-    window.scrollTo({ top: 0, behavior: "instant" });
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [page, confirmLeaveSettings]);
+    setFilters((current) => reconcileTagFilters(tagGroups, current));
+  }, [tagGroups]);
+
+  const guardNavigation = (event) => {
+    if (!settingsDirtyRef.current || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    const href = event.currentTarget.getAttribute("href");
+    confirmLeaveSettings(() => router.push(href));
+  };
 
   const filteredItems = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return storyboardItems.filter((item) => {
-      const sectionMatch =
-        activeSection === "本周精选" ||
-        activeSection === "提示词" ||
-        item.kind === activeSection;
+    return items.filter((item) => {
       const filterMatch =
         !filtersApplied ||
         matchesTagFilters(item, tagGroups, filters);
@@ -116,17 +102,17 @@ function AppContent() {
       ]
         .join(" ")
         .toLowerCase();
-      return sectionMatch && filterMatch && (!normalizedQuery || haystack.includes(normalizedQuery));
+      return filterMatch && (!normalizedQuery || haystack.includes(normalizedQuery));
     });
-  }, [activeSection, filters, filtersApplied, query, tagGroups]);
+  }, [items, filters, filtersApplied, query, tagGroups]);
 
-  const selectedItem =
+  const selectedItem = page === "case" ? items.find((item) => item.id === initialCaseId) : (
     filteredItems.find((item) => item.id === selectedId) ??
     filteredItems[0] ??
-    storyboardItems.find((item) => item.id === selectedId) ??
-    storyboardItems[0];
+    items.find((item) => item.id === selectedId) ??
+    items[0]);
 
-  const supportingItems = filteredItems.filter((item) => item.id !== selectedItem.id);
+  const supportingItems = filteredItems.filter((item) => item.id !== selectedItem?.id);
   const savedItems = storyboardItems.filter((item) =>
     savedIds.has(item.id),
   );
@@ -150,8 +136,7 @@ function AppContent() {
     setQuery("");
     setFilters(createInitialTagFilters(tagGroups));
     setFiltersApplied(false);
-    setActiveSection("本周精选");
-    setSelectedId("night-cinema");
+    setSelectedId(items[0]?.id);
   };
 
   const toggleSaved = (itemId) => {
@@ -240,23 +225,19 @@ function AppContent() {
       <div className="paper-texture" aria-hidden="true" />
 
       <header className="topbar">
-        <button className="brand" type="button" onClick={() => navigateTo("home", resetFilters)} aria-label="返回本周精选">
+        <Link className="brand" href="/" onClick={(event) => { guardNavigation(event); if (!event.defaultPrevented) resetFilters(); }} aria-label="返回本周精选">
           镜界
-        </button>
+        </Link>
         <nav className="primary-nav" aria-label="主要导航">
-          {[curatedLabel, "分镜", "视频", "提示词"].map((item, index) => (
-            <button
-              key={item}
-              type="button"
-              className={
-                page === "home" && ((index === 0 && activeSection === "本周精选") || activeSection === item)
-                  ? "nav-link is-active"
-                  : "nav-link"
-              }
-              onClick={() => navigateTo("home", () => setActiveSection(index === 0 ? "本周精选" : item))}
+          {[{ title: curatedLabel, href: "/", slug: undefined }, { title: "分镜", href: collectionPath("storyboards"), slug: "storyboards" }, { title: "视频", href: collectionPath("videos"), slug: "videos" }, { title: "提示词", href: collectionPath("prompts"), slug: "prompts" }].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={page === "home" && collection?.slug === item.slug ? "nav-link is-active" : "nav-link"}
+              onClick={guardNavigation}
             >
-              {item}
-            </button>
+              {item.title}
+            </Link>
           ))}
         </nav>
         <div className="top-actions">
@@ -288,26 +269,27 @@ function AppContent() {
       </header>
 
       {page === "settings" ? (
-        <TagSettings groups={tagGroups} onBack={() => navigateTo("home")} onSave={handleSaveTagSettings} onDirtyChange={updateSettingsDirty} />
+        <TagSettings key={String(tagsLoaded)} groups={tagGroups} onBack={() => navigateTo("home")} onSave={handleSaveTagSettings} onDirtyChange={updateSettingsDirty} />
+      ) : page === "case" ? (
+        <main className="case-page">
+          <nav className="case-breadcrumb" aria-label="面包屑"><Link href="/">镜头参考</Link><span>/</span><span>{selectedItem.title}</span></nav>
+          <article>
+            <header className="case-heading"><p>{selectedItem.kind} · {selectedItem.duration}</p><h1>{selectedItem.title}</h1><p>{selectedItem.description}</p></header>
+            <img className="case-image" src={selectedItem.image} alt={selectedItem.title} />
+            <div className="case-body">
+              <section><h2>画面信息</h2><dl className="case-facts">{[["类型", selectedItem.type], ["情绪", selectedItem.emotion], ["光影", selectedItem.lighting], ["运镜", selectedItem.movement]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><div className="tag-row">{selectedItem.tags.map((tag) => <Tag key={tag}>{tag}</Tag>)}</div></section>
+              <section><h2>提示词参考</h2><p className="case-prompt">{selectedItem.prompt}</p><div className="case-actions"><Button icon={<CopyOutlined />} onClick={copyPrompt}>复制提示词</Button><Button type="primary" icon={<BookOutlined />} onClick={() => toggleSaved(selectedItem.id)}>{savedIds.has(selectedItem.id) ? "已收藏" : "收藏参考"}</Button></div></section>
+            </div>
+          </article>
+          <section className="related-cases"><h2>对比其他镜头</h2><div>{items.filter((item) => item.id !== selectedItem.id).slice(0, 3).map((item) => <Link href={casePath(item.id)} key={item.id}><img src={item.image} alt="" /><h3>{item.title}</h3><p>{item.tags.slice(0, 3).join(" · ")}</p></Link>)}</div></section>
+        </main>
       ) : (
       <div className="page-layout">
         <aside className="sidebar">{renderFilters()}</aside>
 
         <main className="main-content">
-          <section className="hero-copy" aria-labelledby="page-title">
-            <div className="hero-topline">
-              <p>午夜夜间 · CURATED</p>
-              <Button
-                className="mobile-filter-button"
-                icon={<MenuOutlined />}
-                onClick={() => setFilterOpen(true)}
-              >
-                筛选
-              </Button>
-            </div>
-            <h1 id="page-title">
-              为下一个镜头，找到它的<span>情绪</span>
-            </h1>
+          <section className="search-section" aria-labelledby="page-title">
+            <h1 id="page-title" className="visually-hidden">{collection?.title ?? "AI 视频与分镜参考"}</h1>
             <form
               className="hero-search"
               role="search"
@@ -333,11 +315,10 @@ function AppContent() {
           {filteredItems.length ? (
             <section className="storyboard-layout" aria-label="镜头参考结果">
               <article className="featured-card">
-                <button
-                  type="button"
+                <Link
+                  href={casePath(selectedItem.id)}
                   className="featured-visual"
-                  onClick={() => setPromptOpen(true)}
-                  aria-label={`查看${selectedItem.title}完整提示词`}
+                  aria-label={`查看案例：${selectedItem.title}`}
                 >
                   <img src={selectedItem.image} alt={selectedItem.title} />
                   <span className="featured-badge">
@@ -346,7 +327,7 @@ function AppContent() {
                   <span className="duration-badge">
                     <PlayCircleFilled /> {selectedItem.duration}
                   </span>
-                </button>
+                </Link>
                 <div className="featured-details">
                   <p className="description">{selectedItem.description}</p>
                   <div className="tag-row" aria-label="镜头标签">
@@ -376,19 +357,18 @@ function AppContent() {
 
               <div className="supporting-grid" aria-label="更多镜头参考">
                 {supportingItems.slice(0, 6).map((item, index) => (
-                  <button
+                  <Link
+                    href={casePath(item.id)}
                     key={item.id}
                     className={`gallery-card gallery-card-${index + 1}`}
-                    type="button"
-                    aria-label={`选择镜头：${item.title}`}
-                    onClick={() => setSelectedId(item.id)}
+                    aria-label={`查看案例：${item.title}`}
                   >
                     <img src={item.image} alt="" />
                     <span className="gallery-title">{item.title}</span>
                     <span className="duration-badge">
                       <PlayCircleFilled /> {item.duration}
                     </span>
-                  </button>
+                  </Link>
                 ))}
               </div>
             </section>
@@ -405,7 +385,7 @@ function AppContent() {
       </div>
       )}
 
-      <Modal
+      {selectedItem && <Modal
         open={promptOpen}
         width={640}
         title={selectedItem.title}
@@ -434,18 +414,7 @@ function AppContent() {
         </div>
         <h3>提示词原文</h3>
         <p className="modal-prompt">{selectedItem.prompt}</p>
-      </Modal>
-
-      <Drawer
-        open={filterOpen}
-        title="筛选镜头"
-        placement="left"
-        size={310}
-        closeIcon={<CloseOutlined />}
-        onClose={() => setFilterOpen(false)}
-      >
-        {renderFilters()}
-      </Drawer>
+      </Modal>}
 
       <Drawer
         open={savedOpen}
@@ -457,21 +426,18 @@ function AppContent() {
         {savedItems.length ? (
           <div className="saved-list">
             {savedItems.map((item) => (
-              <button
+              <Link
+                href={casePath(item.id)}
                 key={item.id}
-                type="button"
                 className="saved-item"
-                onClick={() => navigateTo("home", () => {
-                  setSelectedId(item.id);
-                  setSavedOpen(false);
-                })}
+                onClick={(event) => { guardNavigation(event); if (!event.defaultPrevented) setSavedOpen(false); }}
               >
                 <img src={item.image} alt="" />
                 <span>
                   <strong>{item.title}</strong>
                   <small>{item.tags.slice(0, 3).join(" · ")}</small>
                 </span>
-              </button>
+              </Link>
             ))}
           </div>
         ) : (
@@ -479,40 +445,5 @@ function AppContent() {
         )}
       </Drawer>
     </div>
-  );
-}
-
-export function App() {
-  return (
-    <ConfigProvider
-      theme={{
-        algorithm: antdTheme.darkAlgorithm,
-        token: {
-          colorPrimary: "#fcd535",
-          colorPrimaryHover: "#ffe36b",
-          colorPrimaryActive: "#e0b920",
-          colorBgBase: "#0b0d0c",
-          colorBgContainer: "#111411",
-          colorTextBase: "#ede7dc",
-          colorBorder: "#494439",
-          borderRadius: 8,
-          controlHeight: 40,
-          fontFamily:
-            '"Noto Sans SC Variable", "PingFang SC", "Microsoft YaHei", sans-serif',
-        },
-        components: {
-          Button: {
-            fontWeight: 500,
-            primaryColor: "#0b0d0c",
-          },
-          Input: { activeShadow: "none" },
-          Tag: { borderRadiusSM: 999 },
-        },
-      }}
-    >
-      <AntApp>
-        <AppContent />
-      </AntApp>
-    </ConfigProvider>
   );
 }

@@ -1,4 +1,3 @@
-import { createRoot } from "react-dom/client";
 import "@fontsource-variable/noto-sans-sc/wght.css";
 import "@fontsource-variable/noto-serif-sc/wght.css";
 import "@fontsource/zcool-xiaowei";
@@ -14,52 +13,38 @@ const candidates = [
     name: "思源黑体",
     meta: "Noto Sans SC · 现代、克制",
     family: '"Noto Sans SC Variable", sans-serif',
-    titleWeight: 500,
   },
   {
     key: "yahei",
     name: "微软雅黑",
     meta: "Microsoft YaHei · 清晰、偏 UI",
     family: '"Microsoft YaHei", sans-serif',
-    titleWeight: 400,
   },
   {
     key: "zcool",
     name: "站酷小薇体",
     meta: "ZCOOL XiaoWei · 文艺、轻复古",
     family: '"ZCOOL XiaoWei", serif',
-    titleWeight: 400,
   },
   {
     key: "kaiti",
     name: "楷体",
     meta: "KaiTi · 手写感、温润",
     family: 'KaiTi, "STKaiti", serif',
-    titleWeight: 400,
   },
   {
     key: "fangsong",
     name: "仿宋",
     meta: "FangSong · 编辑感、细长",
     family: 'FangSong, "STFangsong", serif',
-    titleWeight: 400,
   },
   {
     key: "noto-serif",
     name: "思源宋体（当前基准）",
     meta: "Noto Serif SC · 古典、正式",
     family: '"Noto Serif SC Variable", serif',
-    titleWeight: 500,
   },
 ];
-
-function Title() {
-  return (
-    <>
-      为下一个镜头，找到它的<span>情绪</span>
-    </>
-  );
-}
 
 function DetailPreview({ candidate }) {
   return (
@@ -84,14 +69,14 @@ function DetailPreview({ candidate }) {
   );
 }
 
-function FontTest() {
+export default function FontTest() {
   return (
-    <main>
+    <main className="font-test-page">
       <header className="page-heading">
         <div>
           <p className="eyebrow">镜界 · 字体实机对比</p>
           <h1>同一句话，直接看字形差异</h1>
-          <p className="intro">每组都用同一套主标题和下方内容结构渲染，标签保持黑体，避免变量太多。</p>
+          <p className="intro">每组都用同一套案例描述、提示词和操作文字渲染，标签保持黑体，避免变量太多。</p>
         </div>
         <a href="/">返回当前页面</a>
       </header>
@@ -106,12 +91,6 @@ function FontTest() {
                 <p>{candidate.meta}</p>
               </div>
             </div>
-            <div
-              className="candidate-title"
-              style={{ fontFamily: candidate.family, fontWeight: candidate.titleWeight }}
-            >
-              <Title />
-            </div>
             <DetailPreview candidate={candidate} />
           </section>
         ))}
@@ -119,7 +98,3 @@ function FontTest() {
     </main>
   );
 }
-
-const rootElement = document.getElementById("font-test-root");
-window.__jingjieFontTestRoot ??= createRoot(rootElement);
-window.__jingjieFontTestRoot.render(<FontTest />);
