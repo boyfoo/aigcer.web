@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { App as AntApp, ConfigProvider, theme } from "antd";
 import { createDefaultTagGroups, loadTagGroups } from "./tagSettings.js";
+import { ReferenceProjectsProvider } from "./ReferenceProjects.jsx";
 
 const PreferencesContext = createContext(null);
 export const usePreferences = () => useContext(PreferencesContext);
@@ -26,6 +27,6 @@ export function Providers({ children }) {
     },
     components: { Button: { fontWeight: 500, primaryColor: "#0b0d0c" }, Input: { activeShadow: "none" }, Tag: { borderRadiusSM: 999 } },
   }}><AntApp><PreferencesContext.Provider value={{ tagGroups, setTagGroups, tagsLoaded, savedIds, setSavedIds }}>
-    {children}
+    <ReferenceProjectsProvider>{children}</ReferenceProjectsProvider>
   </PreferencesContext.Provider></AntApp></ConfigProvider>;
 }

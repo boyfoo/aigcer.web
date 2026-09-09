@@ -1,3 +1,5 @@
+import { mockVideo } from "./mockVideo.js";
+
 export const filterGroups = [
   {
     key: "type",
@@ -35,8 +37,9 @@ export const storyboardItems = [
     id: "night-cinema",
     title: "雨夜老电影院",
     image: "/images/night-cinema.png",
-    duration: "00:12",
+    duration: "00:32",
     kind: "视频",
+    video: mockVideo,
     type: "故事片",
     emotion: "温暖",
     lighting: "自然光",
@@ -51,8 +54,9 @@ export const storyboardItems = [
     id: "night-projector",
     title: "放映室的光",
     image: "/images/night-projector.png",
-    duration: "00:15",
+    duration: "00:32",
     kind: "视频",
+    video: mockVideo,
     type: "纪录片",
     emotion: "怀旧",
     lighting: "硬光",
@@ -96,8 +100,9 @@ export const storyboardItems = [
     id: "night-rain-street",
     title: "雨巷独行",
     image: "/images/night-rain-street.png",
-    duration: "00:11",
+    duration: "00:32",
     kind: "视频",
+    video: mockVideo,
     type: "纪录片",
     emotion: "孤独",
     lighting: "硬光",

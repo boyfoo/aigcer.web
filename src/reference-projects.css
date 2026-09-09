@@ -1,0 +1,46 @@
+.reference-storage-note { color: var(--muted); font-size: 12px; }
+.ant-drawer .ant-drawer-section.reference-library { background: var(--page-bg); }
+.reference-library .ant-drawer-header { border-bottom-color: var(--line); }
+.ant-modal.reference-modal .ant-modal-container { background: var(--surface); }
+.reference-preview { display: flex; align-items: center; gap: 16px; margin: 18px 0 24px; }
+.reference-preview img { width: 112px; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 8px; }
+.reference-preview p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+.reference-field { display: flex; flex-direction: column; gap: 8px; margin-block: 16px; font-size: 14px; }
+.reference-library-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 28px; }
+.reference-project-list { border-right: 1px solid var(--line); padding-right: 20px; }
+.reference-new-project, .reference-new-group { display: flex; gap: 8px; margin-bottom: 22px; }
+.reference-project { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 10px; margin-block: 4px; border: 0; border-radius: 7px; background: transparent; text-align: left; cursor: pointer; }
+.reference-project span:nth-child(2) { flex: 1; overflow-wrap: anywhere; }
+.reference-project small { color: var(--muted); }
+.reference-project.is-active { background: var(--surface-soft); color: var(--accent); }
+.reference-project-content { min-width: 0; }
+.reference-project-heading, .reference-group-heading, .reference-entry-top, .reference-entry-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.reference-project-heading { margin-bottom: 24px; }
+.reference-project-heading h2 { margin: 0; font-size: 22px; overflow-wrap: anywhere; }
+.reference-project-heading p { color: var(--muted); margin: 6px 0 0; font-size: 13px; }
+.reference-project-heading > div:last-child, .reference-group-heading > div { flex-shrink: 0; }
+.reference-group { margin-top: 24px; }
+.reference-group-heading { margin-bottom: 12px; }
+.reference-group-heading h3 { margin: 0; font-size: 16px; overflow-wrap: anywhere; }
+.reference-group-heading small { color: var(--muted); margin-left: 8px; font-weight: 400; }
+.reference-empty-group { padding: 20px; color: var(--muted); font-size: 14px; border: 1px dashed var(--line); border-radius: 8px; }
+.reference-entry { margin-bottom: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
+.reference-entry-top { margin-bottom: 12px; }
+.reference-drag { color: var(--muted); cursor: grab; padding-block: 12px; }
+.reference-entry-link { display: flex; align-items: center; flex: 1; min-width: 0; gap: 12px; color: var(--text); }
+.reference-entry-link img { width: 80px; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 6px; }
+.reference-entry-link strong { display: block; font-size: 14px; }
+.reference-entry-link small { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; }
+.reference-entry-link:hover strong { color: var(--accent); }
+.reference-entry-order { display: flex; flex-direction: column; flex-shrink: 0; }
+.reference-entry-footer { margin-top: 10px; }
+.reference-entry-footer .ant-select { width: 160px; max-width: 55%; }
+.reference-project:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 700px) {
+  .reference-library-layout { grid-template-columns: minmax(0, 1fr); }
+  .reference-project-list { padding: 0 0 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .reference-entry { padding: 12px; }
+  .reference-entry-link { gap: 8px; }
+  .reference-entry-link img { width: 60px; }
+  .reference-library .ant-drawer-body { padding: 16px; }
+}

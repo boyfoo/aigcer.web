@@ -20,6 +20,7 @@ import {
   CopyOutlined,
   DownOutlined,
   FileTextOutlined,
+  FolderOutlined,
   PlayCircleFilled,
   SearchOutlined,
   SettingOutlined,
@@ -27,6 +28,8 @@ import {
 } from "@ant-design/icons";
 import { storyboardItems } from "./data.js";
 import { TagSettings } from "./TagSettings.jsx";
+import { VideoStudy } from "./VideoStudy.jsx";
+import { useReferenceProjects } from "./ReferenceProjects.jsx";
 import { usePreferences } from "./Providers.jsx";
 import { casePath, collectionPath } from "./lib/content.js";
 import { createInitialTagFilters, matchesTagFilters, reconcileTagFilters, saveTagGroups } from "./tagSettings.js";
@@ -34,6 +37,7 @@ import { createInitialTagFilters, matchesTagFilters, reconcileTagFilters, saveTa
 export function App({ page = "home", items, initialCaseId, collection }) {
   const { message, modal } = AntApp.useApp();
   const router = useRouter();
+  const { openLibrary } = useReferenceProjects();
   const { tagGroups, setTagGroups, tagsLoaded, savedIds, setSavedIds } = usePreferences();
   const searchRef = useRef(null);
   const settingsDirtyRef = useRef(false);
@@ -211,11 +215,12 @@ export function App({ page = "home", items, initialCaseId, collection }) {
   const profileMenu = {
     items: [
       { key: "profile", label: "个人资料" },
-      { key: "projects", label: "我的项目" },
+      { key: "projects", label: "项目参考集" },
       { key: "settings", label: "设置", icon: <SettingOutlined /> },
     ],
     onClick: ({ key }) => {
       if (key === "settings") navigateTo("settings");
+      else if (key === "projects") openLibrary(guardNavigation);
       else message.info(`已选择：${key}`);
     },
   };
@@ -250,6 +255,7 @@ export function App({ page = "home", items, initialCaseId, collection }) {
               onClick={() => navigateTo("home", () => requestAnimationFrame(() => searchRef.current?.focus?.()))}
             />
           </Tooltip>
+          <Tooltip title="项目参考集"><Button type="text" shape="circle" aria-label="打开项目参考集" icon={<FolderOutlined />} onClick={() => openLibrary(guardNavigation)} /></Tooltip>
           <Tooltip title="我的收藏">
             <Button
               type="text"
@@ -271,7 +277,11 @@ export function App({ page = "home", items, initialCaseId, collection }) {
       {page === "settings" ? (
         <TagSettings key={String(tagsLoaded)} groups={tagGroups} onBack={() => navigateTo("home")} onSave={handleSaveTagSettings} onDirtyChange={updateSettingsDirty} />
       ) : page === "case" ? (
-        <main className="case-page">
+        <main className={`case-page${selectedItem.video ? " has-video-study" : ""}`}>
+          {selectedItem.video ? (
+            <VideoStudy key={selectedItem.id} item={selectedItem} saved={savedIds.has(selectedItem.id)} onToggleSaved={() => toggleSaved(selectedItem.id)} />
+          ) : (
+          <>
           <nav className="case-breadcrumb" aria-label="面包屑"><Link href="/">镜头参考</Link><span>/</span><span>{selectedItem.title}</span></nav>
           <article>
             <header className="case-heading"><p>{selectedItem.kind} · {selectedItem.duration}</p><h1>{selectedItem.title}</h1><p>{selectedItem.description}</p></header>
@@ -281,6 +291,8 @@ export function App({ page = "home", items, initialCaseId, collection }) {
               <section><h2>提示词参考</h2><p className="case-prompt">{selectedItem.prompt}</p><div className="case-actions"><Button icon={<CopyOutlined />} onClick={copyPrompt}>复制提示词</Button><Button type="primary" icon={<BookOutlined />} onClick={() => toggleSaved(selectedItem.id)}>{savedIds.has(selectedItem.id) ? "已收藏" : "收藏参考"}</Button></div></section>
             </div>
           </article>
+          </>
+          )}
           <section className="related-cases"><h2>对比其他镜头</h2><div>{items.filter((item) => item.id !== selectedItem.id).slice(0, 3).map((item) => <Link href={casePath(item.id)} key={item.id}><img src={item.image} alt="" /><h3>{item.title}</h3><p>{item.tags.slice(0, 3).join(" · ")}</p></Link>)}</div></section>
         </main>
       ) : (
