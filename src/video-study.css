@@ -5,7 +5,7 @@
 .video-study-name { justify-content: flex-start; min-width: 0; }
 .video-study-back { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); }
 .video-study-back:hover { color: var(--accent); border-color: var(--accent); }
-.video-study-heading h1 { margin: 0; font-size: 24px; font-weight: 600; line-height: 1.4; }
+.video-study-heading h1 { margin: 0; font-size: 24px; font-weight: 500; line-height: 1.3; }
 .video-study-heading p { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 0; color: var(--muted); font-size: 13px; }
 .video-study-actions { flex-shrink: 0; gap: 8px; }
 .video-study-heading .is-saved { color: var(--accent); border-color: var(--accent); }
@@ -62,20 +62,20 @@
 .shot-node strong { display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; line-height: 1.5; }
 .shot-node.is-selected strong { color: var(--accent); }
 .shot-time { font-size: 11px; color: var(--muted); }
-.study-reading-column { min-width: 0; padding-left: 28px; border-left: 1px solid var(--line); }
+.study-reading-column { min-width: 0; width: 100%; max-width: calc(var(--reading-width) + 29px); padding-left: 28px; border-left: 1px solid var(--line); }
 .selected-shot-heading { gap: 12px; align-items: flex-start; }
 .selected-shot-heading > div { min-width: 0; }
 .selected-shot-heading p { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 10px; color: var(--accent); font-size: 12px; }
 .selected-shot-heading p span { color: var(--muted); font-variant-numeric: tabular-nums; }
-.selected-shot-heading h2 { margin: 0; font-size: 22px; font-weight: 600; line-height: 1.4; }
+.selected-shot-heading h2 { margin: 0; font-size: 22px; font-weight: 500; line-height: 1.35; }
 .selected-shot-heading > .ant-btn { flex-shrink: 0; margin-top: 4px; }
-.study-reading-status { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 12px 0 18px; color: var(--muted); font-size: 11px; }
+.study-reading-status { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 12px 0 18px; color: var(--muted); font-size: 12px; }
 .follow-playback { display: block; margin: -6px 0 14px; font-size: 12px; text-align: left; }
 .study-detail-tabs { display: flex; gap: 28px; border-bottom: 1px solid var(--line); margin-bottom: 24px; }
 .study-detail-tabs button { padding: 10px 0 14px; color: var(--muted); background: transparent; border: 0; border-bottom: 2px solid transparent; font: inherit; font-size: 15px; cursor: pointer; }
 .study-detail-tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
 .shot-panel { display: block; }
-.shot-summary { margin: 0 0 22px; color: var(--text); font-size: 16px; line-height: 1.85; }
+.shot-summary { margin: 0 0 var(--paragraph-gap); color: var(--text); font-size: var(--reading-size); line-height: var(--reading-line); }
 .shot-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 0 0 24px; }
 .shot-facts dt { margin-bottom: 6px; color: var(--muted); font-size: 12px; }
 .shot-facts dd { margin: 0; font-size: 14px; line-height: 1.6; }
@@ -87,10 +87,10 @@
 .analysis-annotation-options strong { margin: 6px 0 12px; font-size: 13px; font-weight: 500; }
 .analysis-annotation-options small { color: var(--accent); font-size: 11px; }
 .analysis-annotation-options small .anticon { display: inline; }
-.shot-analysis-notes { display: grid; gap: 22px; }
+.shot-analysis-notes { display: grid; gap: var(--paragraph-gap); }
 .shot-analysis-notes > div { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 16px; }
 .shot-analysis-notes h3 { margin: 4px 0 0; color: var(--text); font-size: 14px; font-weight: 500; }
-.shot-analysis-notes p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.9; }
+.shot-analysis-notes p { margin: 0; color: var(--muted); font-size: var(--reading-size); line-height: var(--reading-line); }
 .structured-prompt + .structured-prompt { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--line); }
 .structured-prompt header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 16px; }
 .structured-prompt h3 { margin: 0; font-size: 16px; font-weight: 500; }
@@ -98,11 +98,11 @@
 .structured-prompt dl { margin: 0; }
 .structured-prompt dl > div { display: grid; grid-template-columns: 38px minmax(0, 1fr) 28px; gap: 12px; align-items: start; margin-bottom: 14px; }
 .structured-prompt dt { padding: 3px 0; border-radius: 4px; color: var(--accent); background: #fcd5350d; text-align: center; font-size: 11px; line-height: 1.7; }
-.structured-prompt dd { margin: 0; color: var(--text); font-size: 15px; line-height: 1.9; overflow-wrap: anywhere; }
+.structured-prompt dd { margin: 0; color: var(--text); font-size: var(--reading-size); line-height: var(--reading-line); overflow-wrap: anywhere; }
 .structured-prompt dl .ant-btn { margin-top: 2px; color: var(--muted); }
 .structured-prompt details { margin-top: 16px; color: var(--muted); font-size: 13px; }
 .structured-prompt summary, .video-case-context summary { cursor: pointer; }
-.structured-prompt details p, .video-case-context p { font-size: 15px; line-height: 1.9; overflow-wrap: anywhere; }
+.structured-prompt details p, .video-case-context p { margin-block: var(--paragraph-gap); font-size: var(--reading-size); line-height: var(--reading-line); overflow-wrap: anywhere; }
 .video-case-context { margin-top: 30px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
 .video-case-context summary { padding-block: 4px; }
 .video-study button:focus-visible, .video-study summary:focus-visible, .video-study-back:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
@@ -130,7 +130,6 @@
   .study-overlay-toolbar { padding-bottom: 8px; }
   .filmstrip-heading { margin-bottom: 7px; }
   .study-detail-tabs { margin-bottom: 20px; }
-  .shot-analysis-notes p { font-size: 16px; }
 }
 @media (max-width: 480px) {
   .video-study-heading { align-items: flex-start; gap: 10px; }
@@ -146,7 +145,6 @@
   .selected-shot-heading h2 { font-size: 20px; }
   .selected-shot-heading > .ant-btn { padding-inline: 10px; }
   .structured-prompt dl > div { gap: 8px; }
-  .study-reading-status { font-size: 11px; }
 }
 @media (max-height: 640px) { .study-media-column, .study-player { position: static; } }
 @media (prefers-reduced-motion: reduce) { .shot-node, .shot-node-image img, .shot-play-icon { transition: none; } }

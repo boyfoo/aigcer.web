@@ -16,15 +16,15 @@
   margin: 0 0 7px;
   color: var(--accent);
   font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
 .page-heading h1 {
   margin: 0 0 8px;
-  font-family: "Noto Serif SC Variable", serif;
+  font-family: var(--font-sans);
   font-size: 28px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .intro {
@@ -93,7 +93,7 @@
   display: inline;
   margin: 0 12px 0 0;
   font-size: 15px;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .candidate-heading p {
@@ -113,10 +113,10 @@
   margin: 0;
   padding: 17px 20px 9px;
   font-family: var(--candidate-font);
-  font-size: 15px;
+  font-size: 1rem;
   font-weight: 400;
-  line-height: 1.68;
-  letter-spacing: 0.02em;
+  line-height: var(--reading-line);
+  letter-spacing: 0;
 }
 
 .sample-tags {
@@ -124,7 +124,7 @@
   flex-wrap: wrap;
   gap: 5px;
   padding: 0 20px 25px;
-  font-family: "Noto Sans SC Variable", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-sans);
 }
 
 .sample-tags span {
@@ -145,9 +145,9 @@
 
 .sample-prompt strong {
   display: block;
-  margin-bottom: 1px;
+  margin-bottom: 6px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.5;
 }
 
@@ -156,10 +156,10 @@
   overflow: hidden;
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
-  line-height: 1.72;
-  letter-spacing: 0.01em;
+  line-height: var(--reading-line);
+  letter-spacing: 0;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }

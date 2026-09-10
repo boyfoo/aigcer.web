@@ -1,7 +1,6 @@
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { Providers } from "../Providers.jsx";
 import "@fontsource-variable/noto-sans-sc/wght.css";
-import "@fontsource-variable/noto-serif-sc/wght.css";
 import "../styles.css";
 import { siteDescription, siteName } from "../lib/seo.js";
 

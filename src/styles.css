@@ -1,5 +1,12 @@
 :root {
-  font-family: "Noto Sans SC Variable", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-sans: "Noto Sans SC Variable", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --reading-size: 1.0625rem;
+  --reading-line: 1.75;
+  --reading-width: 40rem;
+  --paragraph-gap: 1.5rem;
+  font-family: var(--font-sans);
+  font-optical-sizing: auto;
+  font-feature-settings: "liga" 1, "calt" 1;
   color-scheme: dark;
   --page-bg: #0b0d0c;
   --surface: #111411;
@@ -35,11 +42,28 @@ body {
   -webkit-font-smoothing: antialiased;
   background: var(--page-bg);
   color: var(--text);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.65;
+  letter-spacing: 0;
 }
 
 button,
-input {
+input,
+textarea,
+select {
   font: inherit;
+}
+
+h1, h2, h3, h4 {
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
 }
 
 button {
@@ -100,11 +124,11 @@ a:focus-visible {
   border: 0;
   background: transparent;
   color: var(--text);
-  font-family: "Noto Serif SC Variable", "Songti SC", STSong, serif;
+  font-family: var(--font-sans);
   font-size: 38px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.1;
-  letter-spacing: 0.1em;
+  letter-spacing: -0.025em;
   cursor: pointer;
 }
 
@@ -124,9 +148,9 @@ a:focus-visible {
   padding: 0 2px;
   background: transparent;
   color: var(--text);
-  font-family: "Noto Serif SC Variable", "Songti SC", STSong, serif;
+  font-family: var(--font-sans);
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 400;
   cursor: pointer;
   opacity: 1;
 }
@@ -223,11 +247,11 @@ a:focus-visible {
 
 .filter-heading h2 {
   margin: 0;
-  font-family: "Noto Serif SC Variable", "Songti SC", STSong, serif;
-  font-size: 19px;
-  font-weight: 600;
-  line-height: 25px;
-  letter-spacing: 0.08em;
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 26px;
+  letter-spacing: 0;
 }
 
 .filter-heading span {
@@ -267,7 +291,7 @@ a:focus-visible {
 
 .filter-option.is-active {
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 500;
   opacity: 1;
 }
 
@@ -341,7 +365,7 @@ a:focus-visible {
   outline: 0;
   background: transparent;
   color: var(--text);
-  font-family: "Noto Sans SC Variable", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-sans);
   font-size: 17px;
   font-weight: 400;
   line-height: 1.5;
@@ -364,10 +388,10 @@ a:focus-visible {
   border-radius: 7px !important;
   background: var(--search-button-bg);
   box-shadow: none;
-  font-family: "Noto Serif SC Variable", "Songti SC", STSong, serif;
+  font-family: var(--font-sans);
   font-size: 17px;
   font-weight: 500;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 
 .hero-search .hero-search-button:hover,
@@ -487,20 +511,20 @@ a:focus-visible {
 }
 
 .description {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   color: var(--text);
-  font-family: "Noto Serif SC Variable", "Songti SC", STSong, serif;
-  font-size: 15px;
+  font-family: var(--font-sans);
+  font-size: 1rem;
   font-weight: 400;
-  line-height: 1.68;
-  letter-spacing: 0.02em;
+  line-height: var(--reading-line);
+  letter-spacing: 0;
 }
 
 .tag-row {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  margin-bottom: 26px;
+  margin-bottom: var(--paragraph-gap);
 }
 
 .tag-row .ant-tag,
@@ -510,7 +534,7 @@ a:focus-visible {
   border: 0;
   background: var(--tag-bg);
   color: var(--muted);
-  font-family: "Noto Sans SC Variable", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 400;
   line-height: 22px;
@@ -523,10 +547,10 @@ a:focus-visible {
 
 .prompt-preview strong {
   display: block;
-  margin-bottom: 0;
-  font-family: "Noto Serif SC Variable", "Songti SC", STSong, serif;
+  margin-bottom: 6px;
+  font-family: var(--font-sans);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.5;
 }
 
@@ -535,11 +559,11 @@ a:focus-visible {
   overflow: hidden;
   margin: 0;
   color: color-mix(in srgb, var(--text) 78%, var(--muted));
-  font-family: "Noto Serif SC Variable", "Songti SC", STSong, serif;
-  font-size: 13px;
+  font-family: var(--font-sans);
+  font-size: 14px;
   font-weight: 400;
-  line-height: 1.72;
-  letter-spacing: 0.01em;
+  line-height: var(--reading-line);
+  letter-spacing: 0;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -555,10 +579,10 @@ a:focus-visible {
   height: 61px;
   border-radius: 0;
   color: var(--text);
-  font-family: "Noto Serif SC Variable", "Songti SC", STSong, serif;
+  font-family: var(--font-sans);
   font-size: 15px;
   font-weight: 500;
-  letter-spacing: 0.015em;
+  letter-spacing: 0;
 }
 
 .featured-actions .ant-btn .anticon {
@@ -660,9 +684,10 @@ a:focus-visible {
 }
 
 .modal-prompt {
+  margin-block: 0 var(--paragraph-gap);
   color: var(--muted);
-  font-size: 15px;
-  line-height: 1.8;
+  font-size: 1rem;
+  line-height: var(--reading-line);
 }
 
 .saved-list {
@@ -745,7 +770,7 @@ a:focus-visible {
   margin: 0 0 6px;
   color: var(--text);
   font-size: 16px;
-  line-height: 1.7;
+  line-height: var(--reading-line);
 }
 
 .tag-settings-intro > span,
@@ -785,7 +810,7 @@ a:focus-visible {
   margin: 0;
   color: var(--text);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .tag-section-heading > span,
@@ -918,19 +943,30 @@ a:focus-visible {
   color: var(--accent);
 }
 
+.case-heading {
+  max-width: var(--reading-width);
+}
+
 .case-heading h1,
 .not-found-page h1 {
   margin: 0 0 20px;
-  font-family: "Noto Serif SC Variable", "Songti SC", STSong, serif;
+  font-family: var(--font-sans);
   font-size: clamp(30px, 4vw, 48px);
-  line-height: 1.3;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
 }
 
 .case-heading > p {
-  max-width: 840px;
+  margin: 0 0 var(--paragraph-gap);
   color: var(--muted);
-  font-size: 16px;
-  line-height: 1.9;
+  font-size: var(--reading-size);
+  line-height: var(--reading-line);
+}
+
+.case-heading > p:first-child {
+  margin-bottom: 16px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .case-image {
@@ -949,9 +985,14 @@ a:focus-visible {
   gap: 48px;
 }
 
+.case-body > section {
+  min-width: 0;
+  max-width: var(--reading-width);
+}
+
 .case-body h2,
 .related-cases h2 {
-  margin: 0 0 20px;
+  margin: 0 0 var(--paragraph-gap);
   font-size: 22px;
 }
 
@@ -974,9 +1015,9 @@ a:focus-visible {
 }
 
 .case-prompt {
-  margin: 0 0 24px;
-  font-size: 16px;
-  line-height: 2;
+  margin: 0 0 var(--paragraph-gap);
+  font-size: var(--reading-size);
+  line-height: var(--reading-line);
 }
 
 .case-actions {
@@ -1050,6 +1091,10 @@ a:focus-visible {
 }
 
 @media (max-width: 900px) {
+  :root {
+    --reading-size: 1rem;
+  }
+
   .topbar {
     height: 66px;
     grid-template-columns: auto 1fr;
@@ -1128,7 +1173,12 @@ a:focus-visible {
     margin-bottom: 20px;
   }
 
+  .hero-search {
+    left: 0;
+  }
+
   .storyboard-layout {
+    left: 0;
     grid-template-columns: 1fr;
   }
 

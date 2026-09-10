@@ -10,9 +10,9 @@ const sampleItem = storyboardItems[0];
 const candidates = [
   {
     key: "noto-sans",
-    name: "思源黑体",
+    name: "思源黑体（当前方案）",
     meta: "Noto Sans SC · 现代、克制",
-    family: '"Noto Sans SC Variable", sans-serif',
+    family: 'var(--font-sans)',
   },
   {
     key: "yahei",
@@ -40,7 +40,7 @@ const candidates = [
   },
   {
     key: "noto-serif",
-    name: "思源宋体（当前基准）",
+    name: "思源宋体",
     meta: "Noto Serif SC · 古典、正式",
     family: '"Noto Serif SC Variable", serif',
   },

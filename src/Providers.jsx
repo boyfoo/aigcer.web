@@ -23,7 +23,7 @@ export function Providers({ children }) {
       colorPrimary: "#fcd535", colorPrimaryHover: "#ffe36b", colorPrimaryActive: "#e0b920",
       colorBgBase: "#0b0d0c", colorBgContainer: "#111411", colorTextBase: "#ede7dc", colorBorder: "#494439",
       borderRadius: 8, controlHeight: 40,
-      fontFamily: '"Noto Sans SC Variable", "PingFang SC", "Microsoft YaHei", sans-serif',
+      fontFamily: "var(--font-sans)", fontWeightStrong: 500, lineHeight: 1.65,
     },
     components: { Button: { fontWeight: 500, primaryColor: "#0b0d0c" }, Input: { activeShadow: "none" }, Tag: { borderRadiusSM: 999 } },
   }}><AntApp><PreferencesContext.Provider value={{ tagGroups, setTagGroups, tagsLoaded, savedIds, setSavedIds }}>

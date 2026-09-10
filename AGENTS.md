@@ -101,14 +101,14 @@ When implementing from a selected generated mock, treat that image as the source
 - 全站只维护一套固定主题，首页、设置页、弹窗、抽屉和字体对比页共用相同的设计变量与组件样式。
 - 保留既有布局、精选文案和案例图片，统一使用深色背景与黄色强调色。
 - For screenshot restoration, measure and compare at 1488 × 1058 before changing CSS; do not invent typography, spacing, imagery, or visible controls that are absent from the approved references.
-- Preserve the selected reference's Chinese editorial character, serif display typography, left taxonomy, prominent search, and asymmetric featured-image composition.
+- 保留既有左侧分类、突出搜索和非对称精选图片布局；字体采用下述已确认的无衬线方案。
 - 选中态与交互强调色使用 `#FCD535`，黄色实心按钮搭配深色文字以保证对比度。
 - Let the desktop shell, top bar, and page grid use the full viewport width; keep the internal search and storyboard maximum widths so imagery does not stretch on ultrawide screens.
 - Keep vertical scrolling on the document root only; horizontal clipping on the app shell must use `overflow-x: clip` so it does not create a second vertical scroll container.
 - 隐藏页面和组件的可见滚动条，保留滚轮、触摸与键盘滚动，不通过禁止滚动来隐藏滚动条。
 - 全站不展示顶部宣传标语或大标题横幅；首页与分类页以搜索和镜头内容为重点，移除标语占位及其留白，字体对比页也不再重复该标语。案例名称、设置标题等内容与功能标题保留，首页和分类页使用不占视觉空间的语义标题供辅助技术识别。
 - 分类页不展示搜索框上方的介绍文字，不保留其占位或间距；分类描述继续用于页面的 SEO 元数据。
-- Do not treat the current Noto Serif SC rendering as the final typography choice: the user finds its Song-style character unsuitable. Use the real-font comparison page at `/font-test.html` and wait for a selected candidate before finalizing the featured-card text families.
+- 已确认字体方案：参考 OpenAI 的排版比例，全站产品界面统一使用已有的 `Noto Sans SC Variable`（思源黑体），备用为 `PingFang SC`、`Microsoft YaHei` 和 `sans-serif`。正文 400、标题以 500 为主；中文正文字距为 0，标题仅轻微收紧；长文 16–17px、行高约 28–30px、阅读宽度上限 640px、段距 24px。保留深色背景与黄色强调色，不引入 OpenAI Sans 或恢复宋体界面。`/font-test.html` 保留其他字体作对比，思源黑体标记为当前方案。
 - Let prompt copy wrap naturally from the available width; do not insert manual line breaks to imitate one screenshot.
 
 Build app UI in `src/`. Preserve the packaging roles of `.openai/hosting.json`, `worker/index.js`, `scripts/prepare-sites-build.mjs`, and `tests/sites-worker.test.mjs`. Before a Sites handoff, run `npm run build:sites` and `npm run test:sites`; the export must leave `dist/client/index.html`, `dist/server/index.js`, and `dist/.openai/hosting.json`. Normal `npm run build` writes the runnable Next.js server to `.next-app/`.
