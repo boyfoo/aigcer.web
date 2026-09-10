@@ -26,4 +26,6 @@ export function getCollectionCases(slug) {
 }
 
 export const casePath = (id) => `/cases/${encodeURIComponent(id)}`;
+export const draftPath = (id) => `/case-preview?id=${encodeURIComponent(id)}`;
+export const shotPath = (caseId, shotId) => `${casePath(caseId)}${casePath(caseId).includes("?") ? "&" : "?"}shot=${encodeURIComponent(shotId)}`;
 export const collectionPath = (slug) => `/collections/${encodeURIComponent(slug)}`;

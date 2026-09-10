@@ -3,7 +3,8 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { App as AntApp, Alert, Button, Drawer, Empty, Input, Modal, Popconfirm, Select } from "antd";
 import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, EditOutlined, FolderOutlined, HolderOutlined, PlusOutlined } from "@ant-design/icons";
-import { getCase, casePath } from "./lib/content.js";
+import { shotPath } from "./lib/content.js";
+import { useContentCases } from "./ContentProvider.jsx";
 import { formatVideoTime } from "./lib/videoTimeline.js";
 import { REFERENCE_STORAGE_KEY, decodeReferenceProjects, encodeReferenceProjects, updateReferenceProjects } from "./lib/referenceProjects.js";
 import "./reference-projects.css";
@@ -75,7 +76,8 @@ function AddReferenceDialog({ reference, preferredId, onClose, onAdded }) {
   const [name, setName] = useState("");
   const [groupId, setGroupId] = useState("");
   const [note, setNote] = useState("");
-  const item = getCase(reference.caseId);
+  const { items } = useContentCases();
+  const item = items.find(({ id }) => id === reference.caseId);
   const shot = item?.video?.shots.find(({ id }) => id === reference.shotId);
   const project = projects.find(({ id }) => id === projectId);
   const exists = project?.references.some((entry) => entry.caseId === reference.caseId && entry.shotId === reference.shotId);
@@ -145,13 +147,14 @@ function ReferenceEntry({ reference, project, index, count, onNavigate, onDragSt
   const { commit } = useReferenceProjects();
   const { message } = AntApp.useApp();
   const [note, setNote] = useState(reference.note);
-  const item = getCase(reference.caseId);
+  const { items } = useContentCases();
+  const item = items.find(({ id }) => id === reference.caseId);
   const shot = item?.video?.shots.find(({ id }) => id === reference.shotId);
   useEffect(() => setNote(reference.note), [reference.note]);
   return <article className="reference-entry" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); onDrop(); }}>
     <div className="reference-entry-top">
       <span className="reference-drag" draggable onDragStart={(event) => { event.dataTransfer.setData("text/plain", reference.id); event.dataTransfer.effectAllowed = "move"; onDragStart(); }} onDragEnd={onDragEnd} title="拖动调整顺序"><HolderOutlined /></span>
-      {shot ? <a className="reference-entry-link" href={`${casePath(item.id)}?shot=${encodeURIComponent(shot.id)}`} onClick={onNavigate}><img src={shot.image} alt="" draggable={false} /><span><strong>{shot.title}</strong><small>{item.title} · {formatVideoTime(shot.start)}–{formatVideoTime(shot.end)}</small></span></a> : <strong>原镜头暂不可用</strong>}
+      {shot ? <a className="reference-entry-link" href={shotPath(item.id, shot.id)} onClick={onNavigate}><img src={shot.image} alt="" draggable={false} /><span><strong>{shot.title}</strong><small>{item.title} · {formatVideoTime(shot.start)}–{formatVideoTime(shot.end)}</small></span></a> : <strong>原镜头暂不可用</strong>}
       <div className="reference-entry-order"><Button size="small" type="text" icon={<ArrowUpOutlined />} aria-label={`上移 ${shot?.title ?? "镜头"}`} disabled={index === 0} onClick={() => commit({ type: "moveReference", projectId: project.id, referenceId: reference.id, direction: -1 })} /><Button size="small" type="text" icon={<ArrowDownOutlined />} aria-label={`下移 ${shot?.title ?? "镜头"}`} disabled={index === count - 1} onClick={() => commit({ type: "moveReference", projectId: project.id, referenceId: reference.id, direction: 1 })} /><Popconfirm title="从项目中移除这个镜头？" okText="移除" cancelText="取消" onConfirm={() => commit({ type: "removeReference", projectId: project.id, referenceId: reference.id })}><Button size="small" type="text" icon={<DeleteOutlined />} aria-label={`移除 ${shot?.title ?? "镜头"}`} /></Popconfirm></div>
     </div>
     <Input.TextArea aria-label={`${shot?.title ?? "镜头"}的项目备注`} value={note} onChange={(event) => setNote(event.target.value)} placeholder="这个镜头对项目有什么帮助？" maxLength={2000} autoSize={{ minRows: 2, maxRows: 6 }} />

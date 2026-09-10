@@ -1,28 +1,43 @@
 import { useEffect, useState } from "react";
-import { App, Button, Empty, Input, Popconfirm, Tooltip } from "antd";
+import { Alert, App, Button, Empty, Input, Popconfirm, Tooltip } from "antd";
 import { ArrowDownOutlined, ArrowLeftOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
-import { moveTagEntry, validateTagGroups } from "./tagSettings.js";
+import { moveTagEntry, validateTagGroups, normalizeTagGroups, TAG_SETTINGS_KEY } from "./tagSettings.js";
+import { contentReadOnly } from "./lib/contentClient.js";
 
-export function TagSettings({ groups, onBack, onSave, onDirtyChange }) {
+export function TagSettings({ groups, revision, onBack, onSave, onDirtyChange }) {
   const { message } = App.useApp();
   const [draft, setDraft] = useState(() => structuredClone(groups));
   const [selectedId, setSelectedId] = useState(groups[0]?.id);
+  const [saving, setSaving] = useState(false);
+  const [baseline, setBaseline] = useState({ groups, revision });
+  const [legacy, setLegacy] = useState(null);
   const selected = draft.find((group) => group.id === selectedId);
   const selectedIndex = draft.findIndex((group) => group.id === selectedId);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(groups);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(baseline.groups);
+  useEffect(() => {
+    if (!dirty && !saving && revision !== baseline.revision) {
+      setDraft(structuredClone(groups)); setBaseline({ groups, revision });
+    }
+  }, [groups, revision, dirty, saving, baseline.revision]);
+  useEffect(() => {
+    try {
+      const old = JSON.parse(localStorage.getItem(TAG_SETTINGS_KEY));
+      if (old?.version === 1) setLegacy(normalizeTagGroups(old.groups));
+    } catch { /* Keep the original browser backup if it cannot be read. */ }
+  }, []);
 
   useEffect(() => {
-    onDirtyChange(dirty);
+    onDirtyChange(dirty || saving);
     const beforeUnload = (event) => {
       event.preventDefault();
       event.returnValue = "";
     };
-    if (dirty) window.addEventListener("beforeunload", beforeUnload);
+    if (dirty || saving) window.addEventListener("beforeunload", beforeUnload);
     return () => {
       onDirtyChange(false);
       window.removeEventListener("beforeunload", beforeUnload);
     };
-  }, [dirty, onDirtyChange]);
+  }, [dirty, saving, onDirtyChange]);
 
   const updateGroup = (changes) => {
     setDraft((current) => current.map((group) => group.id === selectedId ? { ...group, ...changes } : group));
@@ -40,11 +55,12 @@ export function TagSettings({ groups, onBack, onSave, onDirtyChange }) {
     setSelectedId(next[Math.min(selectedIndex, next.length - 1)]?.id);
   };
 
-  const save = () => {
+  const save = async () => {
     const error = validateTagGroups(draft);
     if (error) return message.error(error);
-    const saved = onSave(draft);
-    if (saved) setDraft(saved);
+    setSaving(true);
+    try { const saved = await onSave(draft, baseline.revision); if (saved) { setDraft(saved.groups); setBaseline(saved); } }
+    finally { setSaving(false); }
   };
 
   return (
@@ -56,9 +72,10 @@ export function TagSettings({ groups, onBack, onSave, onDirtyChange }) {
       <div className="tag-settings-intro">
         <h1 id="settings-page-title">标签管理</h1>
         <p>一级标签是左侧菜单分组，二级标签是分组下的筛选项。</p>
-        <span>保存后更新菜单，仅在当前浏览器生效。</span>
+        <span>{contentReadOnly ? "当前是静态浏览版本，标签设置需在网站服务中保存。" : "保存后更新全站菜单；同类标签满足任意一个，不同类别需同时满足。"}</span>
       </div>
-      <div className="tag-settings-layout">
+      {legacy && JSON.stringify(legacy) !== JSON.stringify(groups) && !contentReadOnly && <Alert type="info" title="发现旧版浏览器标签" description="可载入编辑区检查，点击保存设置后才会更新全站；原记录仍保留。" action={<Button disabled={dirty || saving} onClick={() => { setDraft(structuredClone(legacy)); setSelectedId(legacy[0]?.id); setLegacy(null); }}>载入旧版标签</Button>} />}
+      <fieldset className="tag-settings-layout" style={{ margin: 0, padding: 0, border: 0, minInlineSize: 0 }} disabled={saving || contentReadOnly}>
         <section className="tag-group-list" aria-label="一级标签">
           <div className="tag-section-heading"><h3>一级标签</h3><span>{draft.length}</span></div>
           <div className="tag-group-options">
@@ -125,12 +142,12 @@ export function TagSettings({ groups, onBack, onSave, onDirtyChange }) {
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="先新增一个一级标签，再添加二级标签" />
           )}
         </section>
-      </div>
+      </fieldset>
       <div className="tag-settings-footer">
         <span role="status">{dirty ? "有未保存的修改" : "暂无修改"}</span>
         <div>
-          <Button onClick={onBack}>返回</Button>
-          <Button type="primary" onClick={save} disabled={!dirty}>保存设置</Button>
+          <Button onClick={onBack} disabled={saving}>返回</Button>
+          <Button type="primary" onClick={save} loading={saving} disabled={!dirty || contentReadOnly}>保存设置</Button>
         </div>
       </div>
     </main>

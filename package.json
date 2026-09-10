@@ -9,10 +9,11 @@
     "build:sites": "node scripts/build-sites.mjs",
     "start": "next start --hostname 127.0.0.1 --port 5174",
     "preview": "npm run start",
-    "test": "node --test tests/tag-settings.test.mjs tests/content.test.mjs tests/reference-projects.test.mjs",
+    "test": "node --test tests/tag-settings.test.mjs tests/content.test.mjs tests/reference-projects.test.mjs tests/content-entries.test.mjs tests/publishing.test.mjs",
+    "test:publishing": "node scripts/test-publishing.mjs",
     "test:sites": "node --test tests/sites-worker.test.mjs"
   },
-  "engines": { "node": ">=22.12.0" },
+  "engines": { "node": ">=22.13.0" },
   "dependencies": {
     "@ant-design/icons": "^6.3.4",
     "@fontsource-variable/noto-sans-sc": "^5.3.0",

@@ -3,7 +3,8 @@ import test from "node:test";
 import { access } from "node:fs/promises";
 import { casePath, collections, collectionPath, getCase, getCases, getCollectionCases } from "../src/lib/content.js";
 import { getSiteUrl, pageMetadata } from "../src/lib/seo.js";
-import sitemap from "../src/app/sitemap.js";
+import { buildSitemap } from "../src/lib/sitemap.js";
+const sitemap = () => buildSitemap(getCases(), getSiteUrl());
 import robots from "../src/app/robots.js";
 import { clampSeekTime, formatVideoTime, getShotAtTime } from "../src/lib/videoTimeline.js";
 

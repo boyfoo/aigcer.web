@@ -26,17 +26,18 @@ test("renaming and sorting preserve case associations and active filters", () =>
   type.options = moveTagEntry(type.options, tag.id, -1);
   const renamed = normalizeTagGroups(moveTagEntry(groups, "type", 1));
   assert.deepEqual(storyboardItems.filter((item) => matchesTagFilters(item, renamed, filters)), before);
-  assert.equal(reconcileTagFilters(renamed, filters).type, tag.id);
+  assert.deepEqual(reconcileTagFilters(renamed, filters).type, [tag.id]);
 });
 
 test("deleting active children and groups releases their filters", () => {
   const groups = createDefaultTagGroups();
   const filters = createInitialTagFilters(groups);
+  filters.emotion = [groups.find((group) => group.id === "emotion").options[0].id];
   const emotion = groups.find((group) => group.id === "emotion");
-  emotion.options = emotion.options.filter((option) => option.id !== filters.emotion);
+  emotion.options = emotion.options.filter((option) => !filters.emotion.includes(option.id));
   const reduced = groups.filter((group) => group.id !== "lighting");
   const next = reconcileTagFilters(reduced, filters);
-  assert.equal(next.emotion, "");
+  assert.deepEqual(next.emotion, []);
   assert.equal("lighting" in next, false);
   assert.equal(matchesTagFilters(storyboardItems[0], reduced, next), true);
   assert.deepEqual(reconcileTagFilters([], filters), {});

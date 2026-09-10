@@ -1,7 +1,7 @@
 import { filterGroups } from "./data.js";
+import { caseTagValues, tagValues } from "./lib/contentEntries.js";
 
 export const TAG_SETTINGS_KEY = "jingjie-tag-settings-v1";
-const DEFAULT_SELECTIONS = { emotion: "温暖", lighting: "自然光", movement: "固定镜头" };
 
 export function createDefaultTagGroups() {
   return filterGroups.map((group) => ({
@@ -82,27 +82,21 @@ export function saveTagGroups(groups) {
 }
 
 export function createInitialTagFilters(groups) {
-  return Object.fromEntries(groups.map((group) => [
-    group.id,
-    group.options.find((option) => option.value === DEFAULT_SELECTIONS[group.id])?.id ?? "",
-  ]));
+  return Object.fromEntries(groups.map((group) => [group.id, []]));
 }
 
 export function reconcileTagFilters(groups, filters) {
   return Object.fromEntries(groups.map((group) => [
     group.id,
-    group.options.some((option) => option.id === filters[group.id]) ? filters[group.id] : "",
+    tagValues(filters[group.id]).filter((id) => group.options.some((option) => option.id === id)),
   ]));
 }
 
 export function matchesTagFilters(item, groups, filters) {
   return groups.every((group) => {
-    const option = group.options.find((candidate) => candidate.id === filters[group.id]);
-    if (!option) return true;
-    if (filterGroups.some((candidate) => candidate.key === group.id)) {
-      return item[group.id] === option.value;
-    }
-    return item.tags.includes(option.value);
+    const options = group.options.filter((candidate) => tagValues(filters[group.id]).includes(candidate.id));
+    if (!options.length) return true;
+    return options.some((option) => caseTagValues(item, group.id).includes(option.value));
   });
 }
 

@@ -4,6 +4,7 @@ import { getShotAnnotation } from "./lib/shotPresentation.js";
 export function ShotAnnotations({ shot, mode }) {
   const markerId = `annotation-arrow-${useId().replace(/:/g, "")}`;
   const data = getShotAnnotation(shot);
+  if (!data) return null;
   const fixed = data.path.every(([x, y]) => x === data.path[0][0] && y === data.path[0][1]);
   const [sourceX, sourceY, targetX, targetY] = data.light;
   return <div className={`shot-annotation-layer annotation-${mode}`} aria-hidden="true">

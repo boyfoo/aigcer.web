@@ -50,4 +50,4 @@ const annotations = {
   movement: { point: [50, 38], lines: [[4, 98, 50, 38], [96, 98, 50, 38], [50, 15, 50, 93]], light: [85, 20, 55, 74], path: [[50, 90], [48, 69], [50, 43]], label: "纵深与人物位置" },
   ending: { point: [63, 54], lines: [[17, 12, 83, 12], [83, 12, 83, 87], [83, 87, 17, 87], [17, 87, 17, 12]], light: [72, 42, 47, 74], path: [[50, 50], [50, 50]], label: "框中框" },
 };
-export const getShotAnnotation = (shot) => annotations[shot.id] ?? annotations.establishing;
+export const getShotAnnotation = (shot) => annotations[shot.id] ?? null;

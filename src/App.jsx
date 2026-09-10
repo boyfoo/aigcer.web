@@ -26,19 +26,23 @@ import {
   SettingOutlined,
   StarFilled,
 } from "@ant-design/icons";
-import { storyboardItems } from "./data.js";
 import { TagSettings } from "./TagSettings.jsx";
+import { ContentEntry } from "./ContentEntry.jsx";
+import { useContentCases } from "./ContentProvider.jsx";
 import { VideoStudy } from "./VideoStudy.jsx";
 import { useReferenceProjects } from "./ReferenceProjects.jsx";
 import { usePreferences } from "./Providers.jsx";
 import { casePath, collectionPath } from "./lib/content.js";
-import { createInitialTagFilters, matchesTagFilters, reconcileTagFilters, saveTagGroups } from "./tagSettings.js";
+import { displayTags, tagValues } from "./lib/contentEntries.js";
+import { createInitialTagFilters, matchesTagFilters, reconcileTagFilters } from "./tagSettings.js";
 
-export function App({ page = "home", items, initialCaseId, collection }) {
+export function App({ page = "home", initialCaseId, collection, previewItem, serverItem }) {
   const { message, modal } = AntApp.useApp();
   const router = useRouter();
   const { openLibrary } = useReferenceProjects();
-  const { tagGroups, setTagGroups, tagsLoaded, savedIds, setSavedIds } = usePreferences();
+  const { tagGroups, tagRevision, saveTags, tagsLoaded, savedIds, toggleFavorite, favoritesError } = usePreferences();
+  const { items: allItems } = useContentCases();
+  const items = useMemo(() => collection?.kind ? allItems.filter((item) => item.kind === collection.kind) : allItems, [allItems, collection]);
   const searchRef = useRef(null);
   const settingsDirtyRef = useRef(false);
   const curatedLabel = "午夜精选";
@@ -57,22 +61,22 @@ export function App({ page = "home", items, initialCaseId, collection }) {
   const confirmLeaveSettings = useCallback((onLeave, onCancel) => {
     if (!settingsDirtyRef.current) return onLeave();
     modal.confirm({
-      title: "放弃未保存的标签修改？",
-      content: "左侧菜单会保留上次保存的配置。",
+      title: page === "content" ? "放弃未保存的内容？" : "放弃未保存的标签修改？",
+      content: "页面会保留上次保存的内容。",
       okText: "放弃修改",
       cancelText: "继续编辑",
       onOk: onLeave,
       onCancel,
     });
-  }, [modal]);
+  }, [modal, page]);
 
   const navigateTo = (nextPage, afterNavigate) => {
-    const href = nextPage === "home" ? "/" : nextPage === "settings" ? "/settings" : nextPage;
+    const href = nextPage === "home" ? "/" : nextPage === "settings" ? "/settings" : nextPage === "content" ? "/content" : nextPage;
     const navigate = () => {
       afterNavigate?.();
       router.push(href);
     };
-    if (page === "settings" && nextPage !== page) confirmLeaveSettings(navigate);
+    if (settingsDirtyRef.current) confirmLeaveSettings(navigate);
     else navigate();
   };
 
@@ -96,6 +100,7 @@ export function App({ page = "home", items, initialCaseId, collection }) {
       const haystack = [
         item.title,
         item.description,
+        item.analysis,
         item.prompt,
         item.kind,
         item.type,
@@ -103,6 +108,7 @@ export function App({ page = "home", items, initialCaseId, collection }) {
         item.lighting,
         item.movement,
         ...item.tags,
+        ...Object.values(item.tagValues ?? {}).flat(),
       ]
         .join(" ")
         .toLowerCase();
@@ -110,14 +116,14 @@ export function App({ page = "home", items, initialCaseId, collection }) {
     });
   }, [items, filters, filtersApplied, query, tagGroups]);
 
-  const selectedItem = page === "case" ? items.find((item) => item.id === initialCaseId) : (
+  const selectedItem = page === "case" ? previewItem ?? items.find((item) => item.id === initialCaseId) ?? serverItem : (
     filteredItems.find((item) => item.id === selectedId) ??
     filteredItems[0] ??
     items.find((item) => item.id === selectedId) ??
     items[0]);
 
   const supportingItems = filteredItems.filter((item) => item.id !== selectedItem?.id);
-  const savedItems = storyboardItems.filter((item) =>
+  const savedItems = allItems.filter((item) =>
     savedIds.has(item.id),
   );
 
@@ -131,7 +137,7 @@ export function App({ page = "home", items, initialCaseId, collection }) {
     setFiltersApplied(true);
     setFilters((current) => ({
       ...current,
-      [key]: option,
+      [key]: option ? (tagValues(current[key]).includes(option) ? tagValues(current[key]).filter((id) => id !== option) : [...tagValues(current[key]), option]) : [],
     }));
   };
 
@@ -144,14 +150,8 @@ export function App({ page = "home", items, initialCaseId, collection }) {
   };
 
   const toggleSaved = (itemId) => {
-    const wasSaved = savedIds.has(itemId);
-    setSavedIds((current) => {
-      const next = new Set(current);
-      if (next.has(itemId)) next.delete(itemId);
-      else next.add(itemId);
-      return next;
-    });
-    message.success(wasSaved ? "已移出收藏" : "已收藏这条镜头参考");
+    try { message.success(toggleFavorite(itemId) ? "已收藏，刷新后仍会保留" : "已移出收藏"); }
+    catch (error) { message.error(error.message || "收藏保存失败，请检查浏览器存储权限"); }
   };
 
   const copyPrompt = async () => {
@@ -163,15 +163,14 @@ export function App({ page = "home", items, initialCaseId, collection }) {
     }
   };
 
-  const handleSaveTagSettings = (draft) => {
+  const handleSaveTagSettings = async (draft, revision) => {
     try {
-      const nextGroups = saveTagGroups(draft);
-      setTagGroups(nextGroups);
-      setFilters((current) => reconcileTagFilters(nextGroups, current));
+      const next = await saveTags(draft, revision);
+      setFilters((current) => reconcileTagFilters(next.groups, current));
       message.success("标签设置已保存，左侧菜单已更新");
-      return nextGroups;
-    } catch {
-      message.error("保存失败，请检查浏览器是否允许本地存储后重试；修改仍保留在设置中");
+      return next;
+    } catch (error) {
+      message.error(error.message || "保存失败，修改仍保留在设置中");
     }
   };
 
@@ -179,7 +178,7 @@ export function App({ page = "home", items, initialCaseId, collection }) {
     <div className="filters" aria-label="镜头筛选">
       {!tagGroups.length && <p className="sidebar-empty">还没有标签，可在个人中心的设置中添加。</p>}
       {tagGroups.map((group) => {
-        const activeValue = filters[group.id] || "";
+        const activeValues = tagValues(filters[group.id]);
         return (
           <section className="filter-group" key={group.id}>
             <div className="filter-heading">
@@ -188,7 +187,7 @@ export function App({ page = "home", items, initialCaseId, collection }) {
             </div>
             <div className="filter-options">
               {[{ id: "", label: "全部" }, ...group.options].map((option) => {
-                const active = activeValue === option.id;
+                const active = option.id ? activeValues.includes(option.id) : !activeValues.length;
                 return (
                   <button
                     className={active ? "filter-option is-active" : "filter-option"}
@@ -216,10 +215,12 @@ export function App({ page = "home", items, initialCaseId, collection }) {
     items: [
       { key: "profile", label: "个人资料" },
       { key: "projects", label: "项目参考集" },
+      { key: "content", label: "内容录入", icon: <FileTextOutlined /> },
       { key: "settings", label: "设置", icon: <SettingOutlined /> },
     ],
     onClick: ({ key }) => {
       if (key === "settings") navigateTo("settings");
+      else if (key === "content") navigateTo("content");
       else if (key === "projects") openLibrary(guardNavigation);
       else message.info(`已选择：${key}`);
     },
@@ -275,20 +276,24 @@ export function App({ page = "home", items, initialCaseId, collection }) {
       </header>
 
       {page === "settings" ? (
-        <TagSettings key={String(tagsLoaded)} groups={tagGroups} onBack={() => navigateTo("home")} onSave={handleSaveTagSettings} onDirtyChange={updateSettingsDirty} />
+        <TagSettings key={String(tagsLoaded)} groups={tagGroups} revision={tagRevision} onBack={() => navigateTo("home")} onSave={handleSaveTagSettings} onDirtyChange={updateSettingsDirty} />
+      ) : page === "content" ? (
+        <ContentEntry onBack={() => navigateTo("home")} onNavigate={navigateTo} onDirtyChange={updateSettingsDirty} />
+      ) : page === "case" && !selectedItem ? (
+        <main className="tag-settings-page"><h1>这个案例已不存在</h1><Link href="/content">返回内容录入</Link></main>
       ) : page === "case" ? (
-        <main className={`case-page${selectedItem.video ? " has-video-study" : ""}`}>
-          {selectedItem.video ? (
+        <main className={`case-page${(selectedItem.video?.src && selectedItem.video?.shots.length) ? " has-video-study" : ""}`}>
+          {(selectedItem.video?.src && selectedItem.video?.shots.length) ? (
             <VideoStudy key={selectedItem.id} item={selectedItem} saved={savedIds.has(selectedItem.id)} onToggleSaved={() => toggleSaved(selectedItem.id)} />
           ) : (
           <>
           <nav className="case-breadcrumb" aria-label="面包屑"><Link href="/">镜头参考</Link><span>/</span><span>{selectedItem.title}</span></nav>
           <article>
             <header className="case-heading"><p>{selectedItem.kind} · {selectedItem.duration}</p><h1>{selectedItem.title}</h1><p>{selectedItem.description}</p></header>
-            <img className="case-image" src={selectedItem.image} alt={selectedItem.title} />
+            {selectedItem.video?.src ? <video className="case-simple-video" src={selectedItem.video.src} poster={selectedItem.image} controls playsInline preload="metadata" aria-label={`${selectedItem.title}视频播放器`}>浏览器暂不支持视频播放，可使用<a href={selectedItem.video.src}>视频原链接</a>观看。</video> : <img className="case-image" src={selectedItem.image} alt={selectedItem.title} />}
             <div className="case-body">
-              <section><h2>画面信息</h2><dl className="case-facts">{[["类型", selectedItem.type], ["情绪", selectedItem.emotion], ["光影", selectedItem.lighting], ["运镜", selectedItem.movement]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><div className="tag-row">{selectedItem.tags.map((tag) => <Tag key={tag}>{tag}</Tag>)}</div></section>
-              <section><h2>提示词参考</h2><p className="case-prompt">{selectedItem.prompt}</p><div className="case-actions"><Button icon={<CopyOutlined />} onClick={copyPrompt}>复制提示词</Button><Button type="primary" icon={<BookOutlined />} onClick={() => toggleSaved(selectedItem.id)}>{savedIds.has(selectedItem.id) ? "已收藏" : "收藏参考"}</Button></div></section>
+              <section><h2>画面信息</h2><dl className="case-facts">{[["类型", selectedItem.type], ["情绪", selectedItem.emotion], ["光影", selectedItem.lighting], ["运镜", selectedItem.movement]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{displayTags(value) || "—"}</dd></div>)}</dl><div className="tag-row">{selectedItem.tags.map((tag) => <Tag key={tag}>{tag}</Tag>)}</div></section>
+              <section>{selectedItem.analysis && <><h2>案例分析</h2><p className="case-prompt">{selectedItem.analysis}</p></>}<h2>提示词参考</h2><p className="case-prompt">{selectedItem.prompt || "暂未提供提示词"}</p><div className="case-actions"><Button disabled={!selectedItem.prompt} icon={<CopyOutlined />} onClick={copyPrompt}>复制提示词</Button><Button type="primary" icon={<BookOutlined />} onClick={() => toggleSaved(selectedItem.id)}>{savedIds.has(selectedItem.id) ? "已收藏" : "收藏参考"}</Button></div></section>
             </div>
           </article>
           </>
@@ -348,8 +353,8 @@ export function App({ page = "home", items, initialCaseId, collection }) {
                     ))}
                   </div>
                   <div className="prompt-preview">
-                    <strong>提示词</strong>
-                    <p>{selectedItem.prompt}</p>
+                    <strong>{selectedItem.prompt ? "提示词" : "案例分析"}</strong>
+                    <p>{selectedItem.prompt || selectedItem.analysis || "查看分镜拆解"}</p>
                   </div>
                   <div className="featured-actions">
                     <Button type="text" icon={<FileTextOutlined />} onClick={() => setPromptOpen(true)}>
@@ -418,7 +423,7 @@ export function App({ page = "home", items, initialCaseId, collection }) {
       >
         <img className="modal-image" src={selectedItem.image} alt={selectedItem.title} />
         <div className="modal-meta">
-          {[selectedItem.type, selectedItem.emotion, selectedItem.lighting, selectedItem.movement].map(
+          {[...new Set([selectedItem.type, selectedItem.emotion, selectedItem.lighting, selectedItem.movement].flat())].filter(Boolean).map(
             (tag) => (
               <Tag key={tag}>{tag}</Tag>
             ),
@@ -435,6 +440,8 @@ export function App({ page = "home", items, initialCaseId, collection }) {
         size={380}
         onClose={() => setSavedOpen(false)}
       >
+        {favoritesError && <p role="alert">{favoritesError}</p>}
+        {savedIds.size > savedItems.length && <p>有 {savedIds.size - savedItems.length} 条收藏暂未公开，重新上架后可继续查看。</p>}
         {savedItems.length ? (
           <div className="saved-list">
             {savedItems.map((item) => (

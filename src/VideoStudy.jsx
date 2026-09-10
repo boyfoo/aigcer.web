@@ -7,7 +7,8 @@ import { App as AntApp, Button, Tag } from "antd";
 import { ArrowLeftOutlined, BookFilled, BookOutlined, CopyOutlined, FolderAddOutlined, FolderOutlined, LeftOutlined, PlayCircleFilled, ReloadOutlined, RightOutlined } from "@ant-design/icons";
 import { useReferenceProjects } from "./ReferenceProjects.jsx";
 import { ShotAnnotations } from "./ShotAnnotations.jsx";
-import { annotationModes, getPromptSegments, groupPromptSegments } from "./lib/shotPresentation.js";
+import { displayTags } from "./lib/contentEntries.js";
+import { annotationModes, getPromptSegments, groupPromptSegments, getShotAnnotation } from "./lib/shotPresentation.js";
 import { clampSeekTime, formatVideoTime, getShotAtTime } from "./lib/videoTimeline.js";
 import "./video-study.css";
 
@@ -36,6 +37,7 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
   const [detailTab, setDetailTab] = useState("analysis");
   const selectedIndex = shots.findIndex(({ id }) => id === selectedId);
   const selectedShot = shots[selectedIndex];
+  const studyAnnotationModes = item.video.isMock && getShotAnnotation(selectedShot) ? annotationModes : [];
   const playingShot = getShotAtTime(shots, currentTime);
   const playingIndex = shots.findIndex(({ id }) => id === playingShot?.id);
   const projectCount = projects.filter((project) => project.references.some((entry) => entry.caseId === item.id && entry.shotId === selectedId)).length;
@@ -111,7 +113,7 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
     <header className="video-study-heading">
       <div className="video-study-name">
         <Link href="/collections/videos" className="video-study-back" aria-label="返回视频案例"><ArrowLeftOutlined /></Link>
-        <div><h1>{item.title}</h1><p>{item.type}<span>·</span>{formatVideoTime(duration)}<span>·</span>{shots.length} 个镜头</p></div>
+        <div><h1>{item.title}</h1><p>{displayTags(item.type)}<span>·</span>{formatVideoTime(duration)}<span>·</span>{shots.length} 个镜头</p></div>
       </div>
       <div className="video-study-actions"><Button icon={<FolderOutlined />} onClick={() => openLibrary()}>参考集</Button><Button icon={saved ? <BookFilled /> : <BookOutlined />} onClick={onToggleSaved} className={`case-save${saved ? " is-saved" : ""}`}>{saved ? "已收藏" : "收藏案例"}</Button></div>
     </header>
@@ -131,7 +133,7 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
           {mediaError && <div className="study-player-error" role="alert"><p>视频暂时无法加载</p><div><Button icon={<ReloadOutlined />} onClick={retryVideo}>重新加载</Button><a href={item.video.src} target="_blank" rel="noreferrer">打开视频原链接</a></div></div>}
         </div>
         <div className="study-playback-status"><p><span className={`playback-dot${playing ? " is-playing" : ""}`} />{playingShot ? `${playing ? "正在播放" : "播放位置"} · 镜头 ${String(playingIndex + 1).padStart(2, "0")}` : "完整视频"}</p><span className="study-time">{formatVideoTime(currentTime)} / {formatVideoTime(duration)}</span></div>
-        <div className="study-overlay-toolbar" aria-label="画面标注"><span>画面标注</span>{annotationModes.map((mode) => <button type="button" key={mode.id} aria-pressed={annotation === mode.id} onClick={() => toggleAnnotation(mode.id)}>{mode.label}</button>)}{annotation && <button type="button" onClick={() => setAnnotation(null)}>关闭</button>}</div>
+        {studyAnnotationModes.length > 0 && <div className="study-overlay-toolbar" aria-label="画面标注"><span>画面标注</span>{studyAnnotationModes.map((mode) => <button type="button" key={mode.id} aria-pressed={annotation === mode.id} onClick={() => toggleAnnotation(mode.id)}>{mode.label}</button>)}{annotation && <button type="button" onClick={() => setAnnotation(null)}>关闭</button>}</div>}
         {annotation && !annotationVisible && !mediaError && <div className="annotation-notice">标注属于镜头 {String(selectedIndex + 1).padStart(2, "0")}<button type="button" onClick={() => positionVideo(selectedShot)}>回看这个镜头</button></div>}
         <section className="shot-filmstrip" aria-labelledby="filmstrip-title">
           <div className="filmstrip-heading"><h2 id="filmstrip-title">镜头 <span>{String(selectedIndex + 1).padStart(2, "0")} / {String(shots.length).padStart(2, "0")}</span></h2><div><Button type="text" size="small" icon={<LeftOutlined />} aria-label="向前浏览镜头" onClick={() => scrollStrip(-1)} /><Button type="text" size="small" icon={<RightOutlined />} aria-label="向后浏览镜头" onClick={() => scrollStrip(1)} /></div></div>
@@ -156,15 +158,16 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
           if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) { event.preventDefault(); const next = event.key === "Home" ? "analysis" : event.key === "End" ? "prompts" : id === "analysis" ? "prompts" : "analysis"; setDetailTab(next); document.getElementById(`study-tab-${next}`).focus(); }
         }}>{label}</button>)}</div>
         <div id="study-analysis" role="tabpanel" aria-labelledby="study-tab-analysis" hidden={detailTab !== "analysis"} tabIndex={0}>
-          {shots.map((shot) => <section className="shot-panel" key={shot.id} hidden={selectedId !== shot.id} aria-label={`${shot.title}拉片分析`}><p className="shot-summary">{shot.summary}</p><dl className="shot-facts">{Object.entries(shot.facts).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><div className="analysis-annotation-options">{annotationModes.map((mode) => <button type="button" key={mode.id} aria-pressed={annotation === mode.id} onClick={() => toggleAnnotation(mode.id)}><span>{mode.label}标注</span><strong>{shot.facts[mode.fact]}</strong><small>{annotation === mode.id ? "关闭标注" : "在画面中查看"} <RightOutlined /></small></button>)}</div><div className="shot-analysis-notes">{shot.analysis.map((note) => <div key={note.label}><h3>{note.label}</h3><p>{note.text}</p></div>)}</div></section>)}
+          {shots.map((shot) => <section className="shot-panel" key={shot.id} hidden={selectedId !== shot.id} aria-label={`${shot.title}拉片分析`}><p className="shot-summary">{shot.summary}</p><dl className="shot-facts">{Object.entries(shot.facts).filter(([, value]) => value).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><div className="analysis-annotation-options">{studyAnnotationModes.map((mode) => <button type="button" key={mode.id} aria-pressed={annotation === mode.id} onClick={() => toggleAnnotation(mode.id)}><span>{mode.label}标注</span><strong>{shot.facts[mode.fact]}</strong><small>{annotation === mode.id ? "关闭标注" : "在画面中查看"} <RightOutlined /></small></button>)}</div><div className="shot-analysis-notes">{shot.analysis.map((note, noteIndex) => <div key={noteIndex}><h3>{note.label}</h3><p>{note.text}</p></div>)}</div></section>)}
         </div>
         <div id="study-prompts" role="tabpanel" aria-labelledby="study-tab-prompts" hidden={detailTab !== "prompts"} tabIndex={0}>
           {shots.map((shot, index) => <div className="shot-prompts" key={shot.id} hidden={selectedId !== shot.id}>{[["image", "首帧图片"], ["video", "视频动态"]].map(([kind, label]) => {
             const prompt = kind === "image" ? shot.imagePrompt : shot.videoPrompt;
+            if (!prompt) return <section className="structured-prompt" key={kind}><header><h3>{label}</h3></header><p>暂未录入这段提示词。</p></section>;
             return <section className="structured-prompt" key={kind}><header><h3>{label}</h3><Button type="text" size="small" icon={<CopyOutlined />} aria-label={`复制镜头 ${index + 1} ${label}完整提示词`} onClick={() => copyText(prompt)}>复制完整提示词</Button></header><dl>{groupPromptSegments(getPromptSegments(shot, kind)).map((group) => <div key={group.category}><dt>{group.category}</dt><dd>{group.text}</dd><Button type="text" size="small" icon={<CopyOutlined />} aria-label={`复制${label}${group.category}片段`} onClick={() => copyText(group.text)} /></div>)}</dl><details><summary>查看原文</summary><p>{prompt}</p></details></section>;
           })}</div>)}
         </div>
-        <details className="video-case-context"><summary>案例信息与整体提示词</summary><p>{item.description}</p><div className="tag-row">{item.tags.map((tag) => <Tag key={tag}>{tag}</Tag>)}</div><p>{item.prompt}</p><Button type="text" icon={<CopyOutlined />} onClick={() => copyText(item.prompt)}>复制整体提示词</Button></details>
+        <details className="video-case-context"><summary>案例信息与整体提示词</summary><p>{item.description}</p>{item.analysis && <section><h3>案例分析</h3><p>{item.analysis}</p></section>}<div className="tag-row">{item.tags.map((tag) => <Tag key={tag}>{tag}</Tag>)}</div><p>{item.prompt}</p><Button type="text" icon={<CopyOutlined />} onClick={() => copyText(item.prompt)}>复制整体提示词</Button></details>
       </div>
     </div>
   </article>;

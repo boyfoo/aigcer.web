@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { App } from "../../../App.jsx";
-import { collections, collectionPath, getCollection, getCollectionCases } from "../../../lib/content.js";
+import { collections, collectionPath, getCollection } from "../../../lib/content.js";
 import { pageMetadata } from "../../../lib/seo.js";
 
 export function generateStaticParams() {
@@ -16,5 +16,5 @@ export async function generateMetadata({ params }) {
 export default async function CollectionPage({ params }) {
   const collection = getCollection((await params).slug);
   if (!collection) notFound();
-  return <App key={collection.slug} items={getCollectionCases(collection.slug)} collection={collection} />;
+  return <App key={collection.slug} collection={collection} />;
 }
