@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Alert, App, Button, Collapse, Empty, Input, InputNumber, Popconfirm, Select, Tag } from "antd";
 import { ArrowLeftOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
-import { usePreferences } from "./Providers.jsx";
+import { ContentTagFields } from "./ContentTagFields.jsx";
 import { useManagedContent } from "./ContentProvider.jsx";
 import { casePath, draftPath } from "./lib/content.js";
 import { caseTagValues, CONTENT_STORAGE_KEY, decodeContentEntries, normalizeContentEntry } from "./lib/contentEntries.js";
@@ -12,6 +13,7 @@ import "./content-entry.css";
 
 const builtinGroups = ["type", "emotion", "lighting", "movement"];
 const labels = { draft: "草稿", published: "已发布", offline: "已下架" };
+const shotMotion = { motionEnter: false, motionLeave: false, motionAppear: false };
 const newDraft = () => ({ id: "", title: "", kind: "视频", image: "", duration: "00:00", type: [], emotion: [], lighting: [], movement: [], tags: [], tagValues: {}, description: "", analysis: "", prompt: "", video: { src: "", durationSeconds: 0, isMock: false, shots: [] } });
 const emptyShot = (start, end) => ({ id: `shot-${crypto.randomUUID()}`, start, end, title: "", image: "", summary: "", facts: { 景别: "", 运镜: "", 构图: "", 光影: "" }, analysis: [], imagePrompt: "", videoPrompt: "" });
 function Field({ label, children, hint, required }) {
@@ -20,7 +22,6 @@ function Field({ label, children, hint, required }) {
 
 export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
   const { message, modal } = App.useApp();
-  const { tagGroups } = usePreferences();
   const { records, ready, error, refresh, change } = useManagedContent();
   const [draft, setDraft] = useState(newDraft);
   const [current, setCurrent] = useState(null);
@@ -30,10 +31,12 @@ export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
   const [saveError, setSaveError] = useState("");
   const [busy, setBusy] = useState("");
   const [uploads, setUploads] = useState(0);
+  const [savingTags, setSavingTags] = useState(false);
   const [openShots, setOpenShots] = useState([]);
+  const shotListRef = useRef(null);
   const [legacy, setLegacy] = useState([]);
   const dirty = JSON.stringify(draft) !== baseline;
-  const blocked = Boolean(busy || uploads);
+  const blocked = Boolean(busy || uploads || savingTags);
   const filtered = records.filter((record) => (status === "all" || record.status === status) && record.draft.title.toLowerCase().includes(search.trim().toLowerCase()));
 
   useEffect(() => {
@@ -51,6 +54,33 @@ export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
 
   const update = (changes) => { setDraft((value) => ({ ...value, ...changes })); setSaveError(""); };
   const updateVideo = (changes) => update({ video: { ...draft.video, ...changes } });
+  const shotHeader = (id) => shotListRef.current?.querySelector(`[data-shot-id="${CSS.escape(id)}"] .ant-collapse-header`);
+  const keepShotPosition = (id, applyChange, anchor = shotHeader(id)) => {
+    const top = anchor?.getBoundingClientRect().top;
+    // Commit the full accordion switch before measuring, including Ant Design's panel visibility.
+    flushSync(applyChange);
+    const header = shotHeader(id);
+    if (header && top !== undefined) {
+      window.scrollBy({ top: header.getBoundingClientRect().top - top, behavior: "instant" });
+    }
+  };
+  const changeOpenShots = (keys) => keepShotPosition(keys[0] ?? openShots[0], () => setOpenShots(keys));
+  const addShot = (event) => {
+    const start = draft.video.shots.at(-1)?.end ?? 0;
+    const shot = emptyShot(start, draft.video.durationSeconds > start ? draft.video.durationSeconds : start);
+    keepShotPosition(shot.id, () => {
+      updateVideo({ shots: [...draft.video.shots, shot] });
+      setOpenShots([shot.id]);
+    }, event.currentTarget);
+    shotHeader(shot.id)?.focus({ preventScroll: true });
+  };
+  const selectTags = (groupId, values, append = false) => {
+    setDraft((value) => {
+      const selected = append ? [...new Set([...caseTagValues(value, groupId), ...values])] : values;
+      return { ...value, ...(builtinGroups.includes(groupId) && { [groupId]: selected }), tagValues: { ...value.tagValues, [groupId]: selected } };
+    });
+    setSaveError("");
+  };
   const loadDraft = (record) => { const next = record ? structuredClone(record.draft) : newDraft(); setCurrent(record); setDraft(next); setBaseline(JSON.stringify(next)); setSaveError(""); setOpenShots([]); };
   const choose = (record) => {
     if (blocked) return;
@@ -114,14 +144,21 @@ export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
           {draft.kind === "分镜" && <Field label="分镜时长（可选）"><Input aria-label="分镜时长" value={draft.duration} placeholder="00:08" maxLength={7} onChange={(event) => update({ duration: event.target.value })} /></Field>}
           <Field label="案例介绍（可选）"><Input.TextArea aria-label="案例介绍" value={draft.description} maxLength={2000} showCount autoSize={{ minRows: 3, maxRows: 8 }} placeholder="简要描述画面与学习重点" onChange={(event) => update({ description: event.target.value })} /></Field>
         </section>
-        <section className="entry-section" aria-labelledby="entry-tags"><h3 id="entry-tags">分类与标签</h3><p className="entry-hint">每组都可以多选，与标签设置中的选项同步。</p><div className="entry-two-columns">{tagGroups.map((group) => {
-          const selected = caseTagValues(draft, group.id);
-          const options = group.options.map((option) => ({ value: option.value ?? option.label, label: option.label }));
-          selected.forEach((value) => { if (!options.some((option) => option.value === value)) options.push({ value, label: `${value}（原标签）` }); });
-          return <Field key={group.id} label={group.label}><Select aria-label={`分类：${group.label}`} mode="multiple" disabled={blocked} value={selected} options={options} allowClear placeholder="选择标签，可多选" onChange={(value) => builtinGroups.includes(group.id) ? update({ [group.id]: value, tagValues: { ...draft.tagValues, [group.id]: value } }) : update({ tagValues: { ...draft.tagValues, [group.id]: value } })} /></Field>;
-        })}</div><Field label="补充标签"><Select aria-label="画面标签" mode="tags" disabled={blocked} value={draft.tags} tokenSeparators={[",", "，"]} placeholder="输入后按回车添加" onChange={(tags) => update({ tags })} /></Field></section>
+        <ContentTagFields draft={draft} disabled={blocked} onSelect={selectTags} onBusyChange={setSavingTags} onExtraTagsChange={(tags) => update({ tags })} />
         <section className="entry-section" aria-labelledby="entry-reference"><h3 id="entry-reference">提示词与分析</h3><p className="entry-hint">发布前至少完成其中一项，也可以填写在下方的具体镜头中。</p><Field label="整体提示词"><Input.TextArea aria-label="整体提示词" value={draft.prompt} maxLength={12000} showCount autoSize={{ minRows: 4, maxRows: 14 }} placeholder="记录对应素材的提示词" onChange={(event) => update({ prompt: event.target.value })} /></Field><Field label="案例分析"><Input.TextArea aria-label="案例分析" value={draft.analysis} maxLength={16000} showCount autoSize={{ minRows: 4, maxRows: 16 }} placeholder="记录镜头、构图、光影与叙事的观察和理解" onChange={(event) => update({ analysis: event.target.value })} /></Field></section>
-        {draft.kind === "视频" && <section className="entry-section" aria-labelledby="entry-shots"><h3 id="entry-shots">分镜拆解 <small>{draft.video.shots.length} 个镜头</small></h3><p className="entry-hint">按视频时间顺序整理，可逐步补充。</p><Collapse activeKey={openShots} onChange={setOpenShots} items={draft.video.shots.map((shot, index) => ({ key: shot.id, label: `${String(index + 1).padStart(2, "0")} · ${shot.title || "未命名镜头"}`, children: <ShotEditor shot={shot} index={index} duration={draft.video.durationSeconds} blocked={blocked} mediaBusy={mediaBusy} onChange={(changes) => updateVideo({ shots: draft.video.shots.map((entry) => entry.id === shot.id ? { ...entry, ...changes } : entry) })} onRemove={() => updateVideo({ shots: draft.video.shots.filter((entry) => entry.id !== shot.id) })} /> }))} /><Button className="entry-add-shot" block type="dashed" icon={<PlusOutlined />} disabled={blocked || draft.video.shots.length >= 100} onClick={() => { const start = draft.video.shots.at(-1)?.end ?? 0; const shot = emptyShot(start, draft.video.durationSeconds > start ? draft.video.durationSeconds : start); updateVideo({ shots: [...draft.video.shots, shot] }); setOpenShots([shot.id]); }}>添加镜头</Button></section>}
+        {draft.kind === "视频" && <section ref={shotListRef} className="entry-section entry-shots" aria-labelledby="entry-shots">
+          <h3 id="entry-shots">分镜拆解 <small>{draft.video.shots.length} 个镜头</small></h3>
+          <p className="entry-hint">按视频时间顺序整理，可逐步补充。</p>
+          <Collapse accordion activeKey={openShots} onChange={changeOpenShots} openMotion={shotMotion} items={draft.video.shots.map((shot, index) => ({
+            key: shot.id,
+            "data-shot-id": shot.id,
+            label: `${String(index + 1).padStart(2, "0")} · ${shot.title || "未命名镜头"}`,
+            children: <ShotEditor shot={shot} index={index} duration={draft.video.durationSeconds} blocked={blocked} mediaBusy={mediaBusy}
+              onChange={(changes) => updateVideo({ shots: draft.video.shots.map((entry) => entry.id === shot.id ? { ...entry, ...changes } : entry) })}
+              onRemove={() => updateVideo({ shots: draft.video.shots.filter((entry) => entry.id !== shot.id) })} />,
+          }))} />
+          <Button className="entry-add-shot" block type="dashed" icon={<PlusOutlined />} disabled={blocked || draft.video.shots.length >= 100} onClick={addShot}>添加镜头</Button>
+        </section>}
         </fieldset>
         {saveError && <Alert className="entry-error" type="error" title={saveError} showIcon />}
         <div className="entry-save-bar"><span role="status">{uploads ? "素材上传中…" : dirty ? "有未保存的修改" : current?.hasChanges ? "草稿已保存，待发布" : current ? labels[current.status] : "可先上传素材保存"}</span><div>

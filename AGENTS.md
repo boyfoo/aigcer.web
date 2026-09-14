@@ -101,6 +101,8 @@ When implementing from a selected generated mock, treat that image as the source
 - `/case-preview?id=…` 仅用于草稿预览，公开阅读使用 `/cases/[slug]`。录入页、设置页和草稿预览始终不参与搜索收录。Sites 仅导出已发布快照及其素材，不打包数据库、未发布素材或写入接口，管理功能在普通 Next.js 服务中运行。
 - 访客免登录浏览、收藏和整理项目参考集。收藏与参考集保存在当前浏览器，刷新可恢复，不提供账号或跨设备同步。
 - 个人中心的“设置”提供一级、二级标签管理，一级标签对应页面菜单分组，二级标签对应筛选项；配置保存在网站，保存后同步全站菜单。每组标签允许多选，同组满足任意一个，不同组需同时满足；未选标签的分组不限制结果。
+- 录入页“分类与标签”支持就地新增一级、二级标签，无需离开正在编辑的案例。新增一级标签时可一起添加首个二级标签；二级标签新增后自动选中并同步全站设置，保留当前案例的所有未保存输入及已有标签选择。
+- 录入页“分镜拆解”一次最多展开一个镜头，打开其他镜头或新增镜头时自动收起原镜头；收起不清空已填写的资料。切换时保留所点击标题的屏幕位置，新增时在原按钮位置展示新镜头标题，不播放长表单的高度伸缩动画，避免收起上方内容导致视口跳动。
 - 分类筛选只保留一套页面内菜单：桌面显示在左侧，窄屏直接排列在内容上方；不提供额外的“筛选”按钮或弹出筛选菜单。
 - 设置使用独立页面（`/settings`），不使用侧边抽屉；页面提供返回入口，保存后停留在设置页。
 - Keep the interface visually calm even when the filtering model is rich: one strong focal image, clear supporting imagery, generous whitespace, and no dashboard-style card clutter.
