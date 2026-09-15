@@ -29,6 +29,8 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
   const { projects, ready, addToProject, openLibrary } = useReferenceProjects();
   const { shots } = item.video;
   const videoRef = useRef(null);
+  const headingRef = useRef(null);
+  const headingSlotRef = useRef(null);
   const playbackAnchorRef = useRef(null);
   const playbackRef = useRef(null);
   const readingRef = useRef(null);
@@ -40,7 +42,6 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
   const [playing, setPlaying] = useState(false);
   const [buffering, setBuffering] = useState(false);
   const [headingMode, setHeadingMode] = useState("full");
-  const playbackPinned = headingMode === "compact";
   const [mediaError, setMediaError] = useState(false);
   const [selectedId, setSelectedId] = useState(shots[0].id);
   const [annotation, setAnnotation] = useState(null);
@@ -120,26 +121,104 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
     const playback = playbackRef.current;
     const navigation = readingRef.current.querySelector(".study-report-nav");
     const article = playback.closest(".video-study");
+    const heading = headingRef.current;
+    const slot = headingSlotRef.current;
+    const movingParts = [heading.querySelector(".video-study-back"), heading.querySelector("h1")];
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let frame = null;
-    let exitTimer = null;
+    let mode = article.dataset.headingMode;
+    let destinationKey = "";
+    let headingAtOrigin = true;
+    let animations = [];
+    let motionVersion = 0;
+    const cancelMotion = () => {
+      motionVersion += 1;
+      animations.forEach((animation) => animation.cancel());
+      animations = [];
+    };
+    const restoreFlow = () => {
+      mode = "full";
+      destinationKey = "";
+      flushSync(() => setHeadingMode("full"));
+      slot.style.removeProperty("height");
+    };
+    const moveHeading = (compact, instant = false) => {
+      if (!compact && mode === "full") return;
+      const slotBounds = slot.getBoundingClientRect();
+      const dockBounds = playback.getBoundingClientRect();
+      const dockStyle = getComputedStyle(playback);
+      const dockTop = (parseFloat(dockStyle.top) || 0) - parseFloat(dockStyle.getPropertyValue("--study-compact-heading-height"));
+      headingAtOrigin = slotBounds.top >= dockTop;
+      const target = compact ? {
+        left: dockBounds.left,
+        top: dockTop,
+        width: dockBounds.width,
+      } : { left: slotBounds.left, top: Math.max(slotBounds.top, dockTop), width: slotBounds.width };
+      const nextMode = compact ? "compact" : "restoring";
+      const nextKey = `${nextMode}:${target.left}:${target.top}:${target.width}`;
+      if (mode === "restoring" && !compact && !instant) {
+        // Follow the page directly; scrolling must not restart the size transition.
+        destinationKey = nextKey;
+        heading.style.setProperty("--study-title-left", `${target.left}px`);
+        heading.style.setProperty("--study-title-top", `${target.top}px`);
+        heading.style.setProperty("--study-title-width", `${target.width}px`);
+        slot.style.height = `${heading.getBoundingClientRect().height}px`;
+        if (!animations.length && headingAtOrigin) restoreFlow();
+        return;
+      }
+      if (mode === nextMode && destinationKey === nextKey && !instant) return;
+
+      // Measure the one live title before cancelling an interrupted movement.
+      const first = heading.getBoundingClientRect();
+      const firstParts = movingParts.map((element) => element.getBoundingClientRect());
+      if (mode === "full") slot.style.height = `${slotBounds.height}px`;
+      cancelMotion();
+      destinationKey = nextKey;
+      mode = nextMode;
+      heading.style.setProperty("--study-title-left", `${target.left}px`);
+      heading.style.setProperty("--study-title-top", `${target.top}px`);
+      heading.style.setProperty("--study-title-width", `${target.width}px`);
+      flushSync(() => setHeadingMode(nextMode));
+      if (!compact) slot.style.height = `${heading.getBoundingClientRect().height}px`;
+      if (instant) {
+        if (!compact && headingAtOrigin) restoreFlow();
+        return;
+      }
+
+      const last = heading.getBoundingClientRect();
+      const lastParts = movingParts.map((element) => element.getBoundingClientRect());
+      const dx = first.left - last.left;
+      const dy = first.top - last.top;
+      const options = { duration: compact ? 160 : 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)" };
+      // On restoration, only resize in place; the heading position follows scrolling.
+      animations = [...(compact ? [heading.animate([
+        { transform: `translate(${dx}px, ${dy}px)` },
+        { transform: "translate(0, 0)" },
+      ], options)] : []), ...movingParts.map((element, index) => {
+        const before = firstParts[index];
+        const after = lastParts[index];
+        // Use offsets within the heading so scrolling does not become another title animation.
+        const scale = after.height ? before.height / after.height : 1;
+        return element.animate([
+          { transform: `translate(${before.left - after.left - dx}px, ${before.top - after.top - dy}px) scale(${scale})` },
+          { transform: "translate(0, 0) scale(1)" },
+        ], options);
+      })];
+      const version = motionVersion;
+      Promise.all(animations.map((animation) => animation.finished)).then(() => {
+        if (version !== motionVersion) return;
+        animations = [];
+        if (mode === "restoring" && headingAtOrigin) restoreFlow();
+      }, () => {});
+    };
     const updatePinned = () => {
       frame = null;
       const inset = parseFloat(getComputedStyle(playback).top) || 0;
       const pinned = playbackAnchorRef.current.getBoundingClientRect().top <= inset;
-      if (pinned || article.dataset.instantHeading === "true" || reducedMotion.matches) {
-        setHeadingMode(pinned ? "compact" : "full");
-        return;
-      }
-      // Let upward scrolling settle before starting the heading's exit.
-      exitTimer = window.setTimeout(() => {
-        exitTimer = null;
-        setHeadingMode((mode) => mode === "compact" ? "exiting" : mode);
-      }, 180);
+      const instant = article.dataset.instantHeading === "true" || reducedMotion.matches;
+      moveHeading(pinned, instant);
     };
     const schedulePinned = () => {
-      window.clearTimeout(exitTimer);
-      exitTimer = null;
       if (frame === null) frame = window.requestAnimationFrame(updatePinned);
     };
     const updateHeadingMotion = (event) => {
@@ -150,10 +229,6 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
     const updateInsets = () => {
       const bounds = playback.getBoundingClientRect();
       article.style.setProperty("--study-dock-height", `${bounds.height}px`);
-      // Keep the heading anchored to the viewport while the player releases its sticky position.
-      article.style.setProperty("--study-dock-left", `${bounds.left}px`);
-      article.style.setProperty("--study-dock-width", `${bounds.width}px`);
-      article.style.setProperty("--study-dock-top", getComputedStyle(playback).top);
       article.style.setProperty("--study-nav-height", `${navigation.getBoundingClientRect().height}px`);
       schedulePinned();
     };
@@ -161,7 +236,7 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
     const observer = new ResizeObserver(updateInsets);
     observer.observe(playback);
     observer.observe(navigation);
-    observer.observe(article.querySelector(".video-study-heading"));
+    observer.observe(slot);
     window.addEventListener("scroll", schedulePinned, { passive: true });
     window.addEventListener("resize", updateInsets);
     reducedMotion.addEventListener("change", schedulePinned);
@@ -172,7 +247,7 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
       window.removeEventListener("resize", updateInsets);
       reducedMotion.removeEventListener("change", schedulePinned);
       headingInputEvents.forEach((type) => window.removeEventListener(type, updateHeadingMotion));
-      window.clearTimeout(exitTimer);
+      cancelMotion();
       if (frame !== null) window.cancelAnimationFrame(frame);
     };
   }, []);
@@ -216,27 +291,19 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
 
   return <article className="video-study" data-heading-mode={headingMode}>
     <Suspense fallback={null}><ReferenceLocation onSelect={selectReference} /></Suspense>
-    <header className="video-study-heading" aria-hidden={headingMode !== "full"} inert={headingMode !== "full"}>
-      <div className="video-study-name">
+    <header className="video-study-heading">
+      <div className="video-study-heading-slot" ref={headingSlotRef}>
+      <div className="video-study-name" ref={headingRef}>
         <Link href="/collections/videos" className="video-study-back" aria-label="返回视频案例"><ArrowLeftOutlined /></Link>
-        <div><h1>{item.title}</h1><p>{displayTags(item.type)}<span>·</span>{formatVideoTime(duration)}<span>·</span>{shots.length} 个镜头</p></div>
+        <div className="video-study-title-copy"><h1 title={item.title}>{item.title}</h1><p aria-hidden={headingMode !== "full"}>{displayTags(item.type)}<span>·</span>{formatVideoTime(duration)}<span>·</span>{shots.length} 个镜头</p></div>
       </div>
-      <div className="video-study-actions"><Button icon={saved ? <BookFilled /> : <BookOutlined />} onClick={onToggleSaved} className={`case-save${saved ? " is-saved" : ""}`}>{saved ? "已收藏" : "收藏案例"}</Button></div>
+      </div>
+      <div className="video-study-actions" aria-hidden={headingMode !== "full"} inert={headingMode !== "full"}><Button icon={saved ? <BookFilled /> : <BookOutlined />} onClick={onToggleSaved} className={`case-save${saved ? " is-saved" : ""}`}>{saved ? "已收藏" : "收藏案例"}</Button></div>
     </header>
     <div className="study-workspace">
       <div className="study-media-column">
         <div className="study-playback-anchor" ref={playbackAnchorRef} aria-hidden="true" />
-        <div className={`study-playback${playbackPinned ? " is-pinned" : ""}`} ref={playbackRef}>
-        <div className="study-playback-heading" aria-hidden={!playbackPinned} inert={!playbackPinned} onTransitionEnd={(event) => {
-          if (event.target === event.currentTarget && event.propertyName === "visibility") {
-            setHeadingMode((mode) => mode === "exiting" ? "full" : mode);
-          }
-        }}>
-          <div className="study-playback-heading-content">
-            <Link href="/collections/videos" className="video-study-back" aria-label="返回视频案例"><ArrowLeftOutlined /></Link>
-            <span role="heading" aria-level="1" title={item.title}>{item.title}</span>
-          </div>
-        </div>
+        <div className="study-playback" ref={playbackRef}>
         <div className="study-player" style={{ "--video-ratio": videoRatio }}>
             <video ref={videoRef} src={item.video.src} poster={item.image} controls playsInline preload="metadata" aria-label={`${item.title}视频播放器`}
               onLoadedMetadata={onMetadata} onTimeUpdate={syncPlayback} onSeeking={syncPlayback}
