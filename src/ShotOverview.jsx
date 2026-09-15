@@ -6,10 +6,18 @@ import { AppstoreOutlined, BarsOutlined, RightOutlined, SearchOutlined } from "@
 import { filterStudyShots, formatShotDuration, shotSegments, shotSizeTone } from "./lib/shotOverview.js";
 import { formatVideoTime } from "./lib/videoTimeline.js";
 
-export function ShotFrames({ shot, index, onPreview }) {
-  return <div className={`study-frame-pair${shot.endImage ? "" : " is-single"}`}>{[[shot.image, shot.imageIsFallback ? "案例封面" : "首帧 / 代表画面"], [shot.endImage, "尾帧"]].map(([src, label], frameIndex) => src &&
-    <div className="study-frame" key={frameIndex}><button type="button" aria-label={`放大镜头 ${index + 1}${label}`} onClick={() => onPreview({ shot, index, frameIndex })}><img src={src} alt={`镜头 ${index + 1}${label}`} loading="lazy" /><span>{label}</span></button></div>
-  )}</div>;
+export function ShotFrames({ shot, index, onPreview, single = false }) {
+  const [activeFrame, setActiveFrame] = useState(0);
+  const frames = [[shot.image, shot.imageIsFallback ? "案例封面" : "首帧 / 代表画面"], [shot.endImage, "尾帧"]]
+    .map(([src, label], frameIndex) => ({ src, label, frameIndex })).filter((frame) => frame.src);
+  if (!frames.length) return null;
+  const selectedFrame = frames.find((frame) => frame.frameIndex === activeFrame) || frames[0];
+  const renderFrame = ({ src, label, frameIndex }) => <div className="study-frame" key={frameIndex}><button type="button" aria-label={`放大镜头 ${index + 1}${label}`} onClick={() => onPreview({ shot, index, frameIndex })}><img src={src} alt={`镜头 ${index + 1}${label}`} loading="lazy" /><span>{label}</span></button></div>;
+  if (single) return <div className="study-reading-frame">
+    {frames.length > 1 && <div className="study-frame-switch" role="group" aria-label="镜头画面选择">{frames.map(({ label, frameIndex }) => <button type="button" key={frameIndex} aria-pressed={selectedFrame.frameIndex === frameIndex} onClick={() => setActiveFrame(frameIndex)}>{label}</button>)}</div>}
+    {renderFrame(selectedFrame)}
+  </div>;
+  return <div className={`study-frame-pair${frames.length === 1 ? " is-single" : ""}`}>{frames.map(renderFrame)}</div>;
 }
 
 export function ShotRhythm({ shots, duration, currentTime, playingId, selectedId, onSelect }) {

@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { App, Button, Empty } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 import { castIndex, qualityLabels, shotDistributions, shotStatistics, studyQuality, videoMetadataText } from "./lib/studyReport.js";
@@ -15,8 +15,49 @@ export function jumpToReport(id) {
   target.querySelector("summary")?.focus({ preventScroll: true });
 }
 
+const reportSections = [["selected-shot-content", "镜头拆解"], ["study-statistics", "整片统计"], ["study-cast", "出场人物"], ["study-quality", "质量检查"], ["study-export", "导出报告"]];
+
 export function ReportNavigation() {
-  return <nav className="study-report-nav" aria-label="拉片报告内容">{[["selected-shot-content", "镜头拆解"], ["study-statistics", "整片统计"], ["study-cast", "出场人物"], ["study-quality", "质量检查"], ["study-export", "导出报告"]].map(([id, label]) => <a key={id} href={`#${id}`} onClick={(event) => { event.preventDefault(); jumpToReport(id); }}>{label}</a>)}</nav>;
+  const navigationRef = useRef(null);
+  const [activeSection, setActiveSection] = useState(reportSections[0][0]);
+
+  useEffect(() => {
+    const navigation = navigationRef.current;
+    const sections = reportSections.map(([id]) => document.getElementById(id)).filter(Boolean);
+    let frame = null;
+    const updateActive = () => {
+      frame = null;
+      const readingLine = navigation.getBoundingClientRect().bottom + 21;
+      let current = sections[0].id;
+      for (const section of sections.slice(1)) {
+        if (section.getBoundingClientRect().top <= readingLine) current = section.id;
+        else break;
+      }
+      // 最后一节较短时，到达页底也应能选中它。
+      const last = sections[sections.length - 1];
+      if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2 && last.getBoundingClientRect().top < window.innerHeight) current = last.id;
+      setActiveSection(current);
+    };
+    const scheduleUpdate = () => {
+      if (frame === null) frame = window.requestAnimationFrame(updateActive);
+    };
+    const observer = new ResizeObserver(scheduleUpdate);
+    sections.forEach((section) => observer.observe(section));
+    observer.observe(navigation);
+    const playback = navigation.closest(".video-study")?.querySelector(".study-playback");
+    if (playback) observer.observe(playback);
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    scheduleUpdate();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  return <nav ref={navigationRef} className="study-report-nav" aria-label="拉片报告内容">{reportSections.map(([id, label]) => <a key={id} href={`#${id}`} aria-current={activeSection === id ? "location" : undefined} onClick={(event) => { event.preventDefault(); jumpToReport(id); setActiveSection(id); }}>{label}</a>)}</nav>;
 }
 
 export function QualityReport({ video, onSelect, prefix = "study" }) {
@@ -42,13 +83,13 @@ export function StudyReport({ item, onSelect, onPerson }) {
     finally { setExporting(false); }
   };
   return <div className="study-report-sections">
-    <details id="study-statistics" className="study-report-section"><summary>整片统计<span>{stats.count} 镜 · 已拆解 {stats.coverage}%</span></summary><div className="study-report-body">
+    <details id="study-statistics" className="study-report-section" open><summary>整片统计<span>{stats.count} 镜 · 已拆解 {stats.coverage}%</span></summary><div className="study-report-body">
       <dl className="study-statistics">{[["视频总时长", formatVideoTime(stats.total)], ["镜头数量", `${stats.count} 镜`], ["平均镜长", stats.average == null ? "—" : `${stats.average} 秒`], ["中位镜长", stats.median == null ? "—" : `${stats.median} 秒`], ["每分钟切换", stats.cutsPerMinute == null ? "—" : `${stats.cutsPerMinute} 次`]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}{[["最短镜头", stats.shortest], ["最长镜头", stats.longest]].map(([label, entry]) => <div key={label}><dt>{label}</dt><dd>{entry ? <button type="button" onClick={() => onSelect(entry.shot)}>{Number(entry.seconds.toFixed(2))} 秒 <small>镜头 {String(entry.index + 1).padStart(2, "0")} ↗</small></button> : "—"}</dd></div>)}</dl>
       <p className="study-report-note">镜长统计基于已录入的 {stats.measured} 个有效镜头；切换次数按相邻镜头边界计算。分布占比以视频总时长为分母，未填写资料与未拆解时段单独列出。</p>
       <div className="study-distributions">{distributions.map((group) => <section key={group.title}><h3>{group.title}</h3>{!group.rows.length ? <p className="study-report-note">暂无镜头资料</p> : group.rows.map((row) => <div className="study-distribution" key={row.label}><div><span>{row.label}</span><small>{row.count ? `${row.count} 镜 · ` : ""}{row.seconds} 秒 · {row.percent}%</small></div><div className="study-distribution-track"><span style={{ width: `${Math.min(100, row.percent)}%` }} /></div></div>)}</section>)}</div>
     </div></details>
-    <details id="study-cast" className="study-report-section"><summary>出场人物<span>{people.length ? `${people.length} 位人物` : "尚未录入"}</span></summary><div className="study-report-body">{people.length ? <div className="study-cast-grid">{people.map((person) => <article key={person.id}>{person.image ? <img src={person.image} alt={person.name} loading="lazy" /> : <div className="study-cast-placeholder">暂无人物图片</div>}<h3>{person.name}</h3>{person.note && <p>{person.note}</p>}<span>{person.shots.length} 个镜头 · {person.seconds} 秒</span><Button type="text" disabled={!person.shots.length} onClick={() => onPerson(person.id)}>查看相关镜头 →</Button></article>)}</div> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚未录入出场人物；可在录入页添加人物并关联镜头。" />}</div></details>
-    <details id="study-quality" className="study-report-section"><summary>质量检查<span>15 项检查</span></summary><div className="study-report-body"><QualityReport video={video} onSelect={onSelect} /></div></details>
-    <details id="study-export" className="study-report-section"><summary>视频信息与导出<span>JSON / 离线 HTML</span></summary><div className="study-report-body"><p className="study-video-metadata">{videoMetadataText(video.metadata)}</p><p className="study-report-note">JSON 包含当前案例的镜头、人物、统计和复核记录。离线 HTML 包含图片与拆解，双击即可阅读，也能选择本地原视频同步播放。视频文件需另行保留。</p><div className="study-export-actions"><Button icon={<DownloadOutlined />} onClick={() => downloadStudyJson(item)}>导出 JSON</Button><Button icon={<DownloadOutlined />} loading={exporting} disabled={exporting} onClick={exportHtml}>导出离线报告</Button></div></div></details>
+    <details id="study-cast" className="study-report-section" open><summary>出场人物<span>{people.length ? `${people.length} 位人物` : "尚未录入"}</span></summary><div className="study-report-body">{people.length ? <div className="study-cast-grid">{people.map((person) => <article key={person.id}>{person.image ? <img src={person.image} alt={person.name} loading="lazy" /> : <div className="study-cast-placeholder">暂无人物图片</div>}<h3>{person.name}</h3>{person.note && <p>{person.note}</p>}<span>{person.shots.length} 个镜头 · {person.seconds} 秒</span><Button type="text" disabled={!person.shots.length} onClick={() => onPerson(person.id)}>查看相关镜头 →</Button></article>)}</div> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚未录入出场人物；可在录入页添加人物并关联镜头。" />}</div></details>
+    <details id="study-quality" className="study-report-section" open><summary>质量检查<span>15 项检查</span></summary><div className="study-report-body"><QualityReport video={video} onSelect={onSelect} /></div></details>
+    <details id="study-export" className="study-report-section" open><summary>视频信息与导出<span>JSON / 离线 HTML</span></summary><div className="study-report-body"><p className="study-video-metadata">{videoMetadataText(video.metadata)}</p><p className="study-report-note">JSON 包含当前案例的镜头、人物、统计和复核记录。离线 HTML 包含图片与拆解，双击即可阅读，也能选择本地原视频同步播放。视频文件需另行保留。</p><div className="study-export-actions"><Button icon={<DownloadOutlined />} onClick={() => downloadStudyJson(item)}>导出 JSON</Button><Button icon={<DownloadOutlined />} loading={exporting} disabled={exporting} onClick={exportHtml}>导出离线报告</Button></div></div></details>
   </div>;
 }
