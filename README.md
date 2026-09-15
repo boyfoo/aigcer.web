@@ -4,7 +4,7 @@
 
 ## 本地运行
 
-需要 Node.js >=22.13，使用内置 SQLite。nvm 版本只在当前终端进程中选择，步骤见 `AGENTS.md`。
+需要满足 `package.json` 中 `engines` 要求的 Node.js，使用内置 SQLite。nvm 版本只在当前终端进程中选择，步骤见下文。
 
 ```bash
 npm install
@@ -17,6 +17,34 @@ npm run dev
 npm run build
 npm run start
 ```
+
+### PowerShell 临时选择 Node.js
+
+在 `web/` 目录中先检查当前环境、项目要求和已安装版本：
+
+```powershell
+Get-Command node.exe, npm.cmd -All -ErrorAction SilentlyContinue | Select-Object Name, Source
+node.exe --version
+(Get-Content -LiteralPath package.json -Raw | ConvertFrom-Json).engines
+Get-ChildItem -LiteralPath $env:NVM_HOME -Directory | Where-Object Name -Match '^v\d+\.\d+\.\d+$' | Select-Object -ExpandProperty Name
+```
+
+将下方的 `vX.Y.Z` 替换为已确认兼容且已安装的版本，再执行：
+
+```powershell
+$webNodeDir = Join-Path $env:NVM_HOME 'vX.Y.Z'
+$webNodeExe = Join-Path $webNodeDir 'node.exe'
+$webNpmCmd = Join-Path $webNodeDir 'npm.cmd'
+if (-not (Test-Path -LiteralPath $webNodeExe) -or -not (Test-Path -LiteralPath $webNpmCmd)) { throw '所选版本缺少 Node.js 或 npm' }
+$webPreviousPath = $env:PATH
+$env:PATH = "$webNodeDir;$webPreviousPath"
+Get-Command node.exe, npm.cmd | Select-Object Name, Source
+& $webNodeExe --version
+& $webNpmCmd --version
+& $webNpmCmd run build
+```
+
+同一终端继续使用 `$webNpmCmd` 执行其他 npm 命令；关闭终端或执行 `$env:PATH = $webPreviousPath` 即结束临时切换。每次独立命令调用都需重新设置并验证，避免 Node.js 与 npm 来自不同目录。不要使用 `nvm use` 或修改全局默认版本。
 
 ## 录入与发布
 

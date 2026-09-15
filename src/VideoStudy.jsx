@@ -39,7 +39,8 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
   const [videoRatio, setVideoRatio] = useState(1440 / 2550);
   const [playing, setPlaying] = useState(false);
   const [buffering, setBuffering] = useState(false);
-  const [playbackPinned, setPlaybackPinned] = useState(false);
+  const [headingMode, setHeadingMode] = useState("full");
+  const playbackPinned = headingMode === "compact";
   const [mediaError, setMediaError] = useState(false);
   const [selectedId, setSelectedId] = useState(shots[0].id);
   const [annotation, setAnnotation] = useState(null);
@@ -119,21 +120,40 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
     const playback = playbackRef.current;
     const navigation = readingRef.current.querySelector(".study-report-nav");
     const article = playback.closest(".video-study");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let frame = null;
+    let exitTimer = null;
     const updatePinned = () => {
       frame = null;
       const inset = parseFloat(getComputedStyle(playback).top) || 0;
-      setPlaybackPinned(playbackAnchorRef.current.getBoundingClientRect().top <= inset);
+      const pinned = playbackAnchorRef.current.getBoundingClientRect().top <= inset;
+      if (pinned || article.dataset.instantHeading === "true" || reducedMotion.matches) {
+        setHeadingMode(pinned ? "compact" : "full");
+        return;
+      }
+      // Let upward scrolling settle before starting the heading's exit.
+      exitTimer = window.setTimeout(() => {
+        exitTimer = null;
+        setHeadingMode((mode) => mode === "compact" ? "exiting" : mode);
+      }, 180);
     };
     const schedulePinned = () => {
+      window.clearTimeout(exitTimer);
+      exitTimer = null;
       if (frame === null) frame = window.requestAnimationFrame(updatePinned);
     };
     const updateHeadingMotion = (event) => {
-      playback.dataset.instantHeading = String(event.type === "keydown");
+      article.dataset.instantHeading = String(event.type === "keydown");
+      if (event.type === "keydown") schedulePinned();
     };
     const headingInputEvents = ["keydown", "pointerdown", "wheel", "touchstart"];
     const updateInsets = () => {
-      article.style.setProperty("--study-dock-height", `${playback.getBoundingClientRect().height}px`);
+      const bounds = playback.getBoundingClientRect();
+      article.style.setProperty("--study-dock-height", `${bounds.height}px`);
+      // Keep the heading anchored to the viewport while the player releases its sticky position.
+      article.style.setProperty("--study-dock-left", `${bounds.left}px`);
+      article.style.setProperty("--study-dock-width", `${bounds.width}px`);
+      article.style.setProperty("--study-dock-top", getComputedStyle(playback).top);
       article.style.setProperty("--study-nav-height", `${navigation.getBoundingClientRect().height}px`);
       schedulePinned();
     };
@@ -143,13 +163,16 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
     observer.observe(navigation);
     observer.observe(article.querySelector(".video-study-heading"));
     window.addEventListener("scroll", schedulePinned, { passive: true });
-    window.addEventListener("resize", schedulePinned);
+    window.addEventListener("resize", updateInsets);
+    reducedMotion.addEventListener("change", schedulePinned);
     headingInputEvents.forEach((type) => window.addEventListener(type, updateHeadingMotion, { passive: true }));
     return () => {
       observer.disconnect();
       window.removeEventListener("scroll", schedulePinned);
-      window.removeEventListener("resize", schedulePinned);
+      window.removeEventListener("resize", updateInsets);
+      reducedMotion.removeEventListener("change", schedulePinned);
       headingInputEvents.forEach((type) => window.removeEventListener(type, updateHeadingMotion));
+      window.clearTimeout(exitTimer);
       if (frame !== null) window.cancelAnimationFrame(frame);
     };
   }, []);
@@ -191,9 +214,9 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
     videoRef.current?.load();
   };
 
-  return <article className="video-study">
+  return <article className="video-study" data-heading-mode={headingMode}>
     <Suspense fallback={null}><ReferenceLocation onSelect={selectReference} /></Suspense>
-    <header className="video-study-heading">
+    <header className="video-study-heading" aria-hidden={headingMode !== "full"} inert={headingMode !== "full"}>
       <div className="video-study-name">
         <Link href="/collections/videos" className="video-study-back" aria-label="返回视频案例"><ArrowLeftOutlined /></Link>
         <div><h1>{item.title}</h1><p>{displayTags(item.type)}<span>·</span>{formatVideoTime(duration)}<span>·</span>{shots.length} 个镜头</p></div>
@@ -204,9 +227,15 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
       <div className="study-media-column">
         <div className="study-playback-anchor" ref={playbackAnchorRef} aria-hidden="true" />
         <div className={`study-playback${playbackPinned ? " is-pinned" : ""}`} ref={playbackRef}>
-        <div className="study-playback-heading" aria-hidden={!playbackPinned} inert={!playbackPinned}>
-          <Link href="/collections/videos" className="video-study-back" aria-label="返回视频案例"><ArrowLeftOutlined /></Link>
-          <span title={item.title}>{item.title}</span>
+        <div className="study-playback-heading" aria-hidden={!playbackPinned} inert={!playbackPinned} onTransitionEnd={(event) => {
+          if (event.target === event.currentTarget && event.propertyName === "visibility") {
+            setHeadingMode((mode) => mode === "exiting" ? "full" : mode);
+          }
+        }}>
+          <div className="study-playback-heading-content">
+            <Link href="/collections/videos" className="video-study-back" aria-label="返回视频案例"><ArrowLeftOutlined /></Link>
+            <span role="heading" aria-level="1" title={item.title}>{item.title}</span>
+          </div>
         </div>
         <div className="study-player" style={{ "--video-ratio": videoRatio }}>
             <video ref={videoRef} src={item.video.src} poster={item.image} controls playsInline preload="metadata" aria-label={`${item.title}视频播放器`}
