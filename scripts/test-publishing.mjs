@@ -100,9 +100,27 @@ try {
   await json("/api/tags", tags, 409);
   console.log("PASS unlist, relist previous version, explicit republish and shared tags");
 
+  const videoSample = (await json("/api/public")).items.find((item) => item.video?.src);
+  let study = (await json("/api/content", { action: "save", draft: { kind: "视频", title: "整片阅读验证", image: media.url, video: { src: videoSample.video.src, durationSeconds: 6, metadata: { width: 1920, height: 1080, fps: 24, hasAudio: true }, cast: [{ id: "keeper", name: "守门人", note: "带领观众进入故事", image: media.url }], shots: [{ id: "context-shot", start: 0, end: 6, title: "进入画面", endImage: media.url, narrative: "通过停顿引出下一段", sound: "远处钟声", dialogue: "继续向前", onscreenText: "入口", category: "定场", rhythm: "铺垫", transition: "淡入", subjects: ["keeper"], review: { boundary: { confirmed: true, note: "已对照片头的切点" } } }] } } })).record;
+  study = (await json("/api/content", { action: "publish", id: study.id, revision: study.revision, draft: study.draft })).record;
+  const studyHtml = (await (await request(`/cases/${study.id}`)).text()).replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
+  for (const text of ["整片总览", "单镜头细读", "跟随播放", "整片节奏", "通过停顿引出下一段", "远处钟声", "继续向前", "画面文字", "整片统计", "平均镜长", "出场人物", "守门人", "质量检查", "已对照片头的切点", "导出离线报告", "24 fps", "定场", "铺垫", media.url]) assert.ok(studyHtml.includes(text), text);
+  assert.doesNotMatch(studyHtml, /模拟拉片与标注|示例拆解/);
+  assert.equal((await json("/api/content")).records.find((record) => record.id === study.id).draft.video.shots[0].endImage, media.url);
+  study = (await json("/api/content", { action: "save", id: study.id, revision: study.revision, draft: { ...study.draft, video: { ...study.draft.video, cast: [{ ...study.draft.video.cast[0], name: "尚未发布的人物姓名" }] } } })).record;
+  assert.doesNotMatch(await (await request(`/cases/${study.id}`)).text(), /尚未发布的人物姓名/);
+  console.log("PASS shot tail upload, optional context and overview in initial HTML");
+
   const stopped = new Promise((resolve) => child.once("exit", resolve));
   stop(); await stopped;
   await start();
+  const restoredStudy = (await json("/api/public")).items.find((item) => item.id === study.id);
+  assert.equal(restoredStudy.video.shots[0].sound, "远处钟声");
+  assert.equal(restoredStudy.video.shots[0].endImage, media.url);
+  assert.equal(restoredStudy.video.metadata.fps, 24);
+  assert.equal(restoredStudy.video.cast[0].name, "守门人");
+  assert.deepEqual(restoredStudy.video.shots[0].subjects, ["keeper"]);
+  assert.equal(restoredStudy.video.shots[0].review.boundary.note, "已对照片头的切点");
   assert.match(await detail(), /未发布秘密内容/);
   assert.deepEqual(Buffer.from(await (await request(media.url)).arrayBuffer()), image); checks++;
   assert.equal((await json("/api/public")).tags.groups[0].label, "共享标签测试");

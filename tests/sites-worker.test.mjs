@@ -106,7 +106,7 @@ test("static handoff excludes the database and runtime API handlers", async () =
   assert.ok(!files.some((name) => /^client[\\/]api[\\/]/.test(name)));
   const published = withRepository((repository) => repository.listPublished());
   for (const item of published) {
-    for (const url of [item.image, item.video?.src, ...(item.video?.shots.map((shot) => shot.image) ?? [])]) {
+    for (const url of [item.image, item.video?.src, ...(item.video?.shots.flatMap((shot) => [shot.image, shot.endImage]) ?? []), ...(item.video?.cast?.map((person) => person.image) ?? [])]) {
       if (url?.startsWith("/media/")) await access(new URL(`../dist/client${url}`, import.meta.url));
     }
   }

@@ -78,6 +78,31 @@ test("multi-select tags are OR within a group and AND between groups; empty sele
   assert.deepEqual(reconcileTagFilters(trimmed, filters).lighting, []);
 });
 
+test("new shot context survives storage and follows the existing public snapshot lifecycle", (t) => {
+  const { repository, directory } = database(t);
+  let record = repository.change({ action: "save", draft: { ...input, kind: "视频", video: { src: "/media/video.mp4", durationSeconds: 6, shots: [{ id: "first-shot", start: 0, end: 6, endImage: "/media/published-tail.png", narrative: "公开的叙事分析", sound: "环境风声", dialogue: "向前走", onscreenText: "入口" }] } } });
+  record = act(repository, "publish", record);
+  const publicShot = structuredClone(repository.getPublished(record.id).video.shots[0]);
+  record.draft.video.shots[0].endImage = "/media/draft-tail.png";
+  record.draft.video.shots[0].narrative = "待发布叙事分析";
+  record.draft.video.shots[0].sound = "修改后的声音";
+  record = act(repository, "save", record);
+  assert.deepEqual(repository.getPublished(record.id).video.shots[0], publicShot);
+  const reopened = createRepository(directory, []);
+  try {
+    assert.equal(reopened.getRecord(record.id).draft.video.shots[0].endImage, "/media/draft-tail.png");
+    assert.deepEqual(reopened.getPublished(record.id).video.shots[0], publicShot);
+  } finally { reopened.close(); }
+  record = act(repository, "unlist", record);
+  record = act(repository, "relist", record);
+  assert.deepEqual(repository.getPublished(record.id).video.shots[0], publicShot);
+  record.draft.video.shots[0].dialogue = "";
+  record = act(repository, "publish", record);
+  assert.equal(repository.getPublished(record.id).video.shots[0].endImage, "/media/draft-tail.png");
+  assert.equal(repository.getPublished(record.id).video.shots[0].sound, "修改后的声音");
+  assert.equal(repository.getPublished(record.id).video.shots[0].dialogue, undefined);
+});
+
 test("site-wide tags persist and reject conflicting saves", (t) => {
   const { repository, directory } = database(t);
   const current = repository.readTags();

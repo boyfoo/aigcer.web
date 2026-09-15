@@ -23,13 +23,13 @@ export function uploadFile(file, kind, onProgress = () => {}, onRequest = () => 
   });
 }
 
-const videoDuration = (file) => new Promise((resolve) => {
+const videoMetadata = (file) => new Promise((resolve) => {
   const video = document.createElement("video"), url = URL.createObjectURL(file);
   let settled = false;
   const done = () => {
     if (settled) return; settled = true;
     clearTimeout(timer); URL.revokeObjectURL(url);
-    resolve(Number.isFinite(video.duration) ? Math.round(video.duration * 1000) / 1000 : 0);
+    resolve({ duration: Number.isFinite(video.duration) ? Math.round(video.duration * 1000) / 1000 : 0, metadata: { ...(video.videoWidth && { width: video.videoWidth }), ...(video.videoHeight && { height: video.videoHeight }) } });
     video.removeAttribute("src"); video.load();
   };
   const timer = setTimeout(done, 5000);
@@ -48,8 +48,8 @@ export function MediaUpload({ label, value, kind = "image", onChange, onBusyChan
     if (file.size > max * 1024 * 1024) { message.error(`文件不能超过 ${max} MB`); return Upload.LIST_IGNORE; }
     setProgress(0); onBusyChange(1);
     try {
-      const [uploaded, duration] = await Promise.all([uploadFile(file, kind, setProgress, (xhr) => { request.current = xhr; }), kind === "video" ? videoDuration(file) : Promise.resolve(0)]);
-      if (mounted.current) { onChange(uploaded.url, { name: file.name, duration }); message.success("素材已上传到网站"); }
+      const [uploaded, info] = await Promise.all([uploadFile(file, kind, setProgress, (xhr) => { request.current = xhr; }), kind === "video" ? videoMetadata(file) : Promise.resolve({})]);
+      if (mounted.current) { onChange(uploaded.url, { name: file.name, ...info }); message.success("素材已上传到网站"); }
     } catch (error) { if (mounted.current) message.error(error.message); }
     finally { request.current = null; onBusyChange(-1); if (mounted.current) setProgress(null); }
     return Upload.LIST_IGNORE;

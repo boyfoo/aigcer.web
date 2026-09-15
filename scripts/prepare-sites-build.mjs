@@ -20,7 +20,7 @@ export function prepareSitesBuild() {
   copyFileSync(hosting, path.join(dist, ".openai", "hosting.json"));
   // Export only assets used by a published snapshot, never draft files or the database.
   const published = withRepository((repository) => repository.listPublished());
-  const urls = new Set(published.flatMap((item) => [item.image, item.video?.src, ...(item.video?.shots.map((shot) => shot.image) ?? [])]));
+  const urls = new Set(published.flatMap((item) => [item.image, item.video?.src, ...(item.video?.shots.flatMap((shot) => [shot.image, shot.endImage]) ?? []), ...(item.video?.cast?.map((person) => person.image) ?? [])]));
   for (const url of urls) {
     if (!url?.startsWith("/media/")) continue;
     const name = url.slice(7);

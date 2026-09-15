@@ -36,7 +36,18 @@
 .entry-image-actions { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
 .entry-video-fields { display: grid; grid-template-columns: minmax(0, 1fr) 160px; gap: 20px; }
 .entry-shot { padding-top: 8px; }
+.entry-shot-context { margin: 4px 0 24px; }
+.entry-shot-context > summary { padding-block: 10px; color: var(--muted); cursor: pointer; font-size: 14px; }
+.entry-shot-context[open] > summary { margin-bottom: 12px; }
+.entry-shot-context > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .entry-shots { overflow-anchor: none; }
+.entry-cast > summary, .entry-quality > summary { padding: 0 0 20px; cursor: pointer; font-size: 16px; }
+.entry-cast small { margin-left: 10px; color: var(--muted); }
+.entry-person { margin-bottom: 24px; padding: 20px; border: 1px solid var(--line); border-radius: 8px; }
+.entry-inline-person { display: flex; gap: 10px; margin: 4px 0 20px; }
+.entry-inline-person > .ant-input { min-width: 0; }
+.entry-review-field { display: grid; gap: 10px; margin-bottom: 22px; }
+.entry-quality .study-quality-list { grid-template-columns: minmax(0, 1fr); }
 .entry-analysis { margin-bottom: 24px; }
 .entry-analysis-row { display: grid; grid-template-columns: 100px minmax(0, 1fr) 36px; gap: 10px; align-items: start; margin-bottom: 16px; }
 .entry-add-shot { margin-top: 16px; }
