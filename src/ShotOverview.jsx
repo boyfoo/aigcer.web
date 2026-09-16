@@ -23,19 +23,21 @@ export function ShotFrames({ shot, index, onPreview, single = false }) {
 export function ShotRhythm({ shots, duration, currentTime, playingId, selectedId, onSelect }) {
   const segments = useMemo(() => shotSegments(shots, duration), [shots, duration]);
   const sizes = [...new Set(shots.map((shot) => shot.facts?.景别).filter(Boolean))];
-  if (!segments.length) return <section className="study-rhythm"><div className="study-rhythm-heading"><h2>整片节奏</h2></div><p className="study-empty-note">补全镜头时间后展示节奏带。</p></section>;
-  return <section className="study-rhythm" aria-labelledby="rhythm-title">
-    <div className="study-rhythm-heading"><h2 id="rhythm-title">整片节奏</h2><span>宽度代表镜长</span></div>
+  if (!segments.length) return <section className="study-rhythm" aria-label="镜头时间轴"><p className="study-empty-note">补全镜头时间后展示时间轴。</p></section>;
+  return <section className="study-rhythm" aria-label="镜头时间轴">
     <div className="study-rhythm-strip" role="group" aria-label="按镜头时长排列的节奏带">{segments.map((segment) => {
       if (!segment.shot) return <span key={segment.key} className="rhythm-gap" style={{ flex: `${segment.fraction} 1 0` }} title={`${formatVideoTime(segment.start)}–${formatVideoTime(segment.end)} 暂无拆解`} />;
       const { shot, index } = segment;
+      const timeRange = `${formatVideoTime(segment.start)} – ${formatVideoTime(segment.end)}`;
       return <button key={segment.key} type="button" className={`rhythm-segment${selectedId === shot.id ? " is-selected" : ""}${playingId === shot.id ? " is-playing" : ""}`}
         style={{ flex: `${segment.fraction} 1 0`, "--shot-tone": shotSizeTone(shot.facts?.景别), "--shot-progress": `${Math.max(0, Math.min(1, (currentTime - shot.start) / (shot.end - shot.start))) * 100}%` }}
-        title={`${String(index + 1).padStart(2, "0")} · ${shot.title} · ${formatShotDuration(shot)} · ${shot.facts?.景别 || "景别未填写"}`}
-        aria-label={`定位镜头 ${index + 1}：${shot.title}，${formatShotDuration(shot)}`} aria-pressed={selectedId === shot.id} aria-current={playingId === shot.id ? "true" : undefined} onClick={() => onSelect(shot)} />;
+        title={`${String(index + 1).padStart(2, "0")} · ${shot.title} · ${timeRange} · ${shot.facts?.景别 || "景别未填写"}`}
+        aria-label={`定位镜头 ${index + 1}：${shot.title}，${timeRange}，${formatShotDuration(shot)}`} aria-pressed={selectedId === shot.id} aria-current={playingId === shot.id ? "true" : undefined} onClick={() => onSelect(shot)}>
+        <span className="rhythm-segment-bar" aria-hidden="true" />
+        <span className="rhythm-segment-time" aria-hidden="true"><span>{formatVideoTime(segment.start)}</span><span>–</span><span>{formatVideoTime(segment.end)}</span></span>
+      </button>;
     })}</div>
-    <div className="study-rhythm-scale"><span>00:00</span><span>{formatVideoTime(Math.max(duration, ...shots.map((shot) => shot.end)))}</span></div>
-    {!!sizes.length && <div className="study-rhythm-legend" aria-label="景别图例">{sizes.map((size) => <span key={size}><i style={{ "--shot-tone": shotSizeTone(size) }} />{size}</span>)}</div>}
+    {!!sizes.length && <div className="study-rhythm-legend" aria-label="景别图例">{sizes.map((size) => <span key={size}><i style={{ "--shot-tone": shotSizeTone(size) }} aria-hidden="true" />{size}</span>)}</div>}
   </section>;
 }
 

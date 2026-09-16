@@ -24,6 +24,16 @@ function ReferenceLocation({ onSelect }) {
   return null;
 }
 
+const researchToolLabels = { composition: "取景构图", lighting: "光影分析", movement: "运镜分析" };
+
+function ResearchToolIcon({ mode }) {
+  return <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {mode === "composition" && <path d="M10 4H4v6m14-6h6v6M4 18v6h6m14-6v6h-6" />}
+    {mode === "lighting" && <><circle cx="14" cy="14" r="5.5" /><path d="M14 2v3m0 18v3M2 14h3m18 0h3M5.5 5.5l2.1 2.1m12.8 12.8 2.1 2.1m0-17-2.1 2.1M7.6 20.4l-2.1 2.1" /></>}
+    {mode === "movement" && <><rect x="3" y="7" width="14" height="14" rx="2" /><path d="m17 11 7-4v14l-7-4M7 14h6m-3-3 3 3-3 3" /></>}
+  </svg>;
+}
+
 export function VideoStudy({ item, saved, onToggleSaved }) {
   const { message } = AntApp.useApp();
   const { projects, ready, addToProject, openLibrary } = useReferenceProjects();
@@ -317,10 +327,10 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
         </div>
         <div className="study-playback-controls">
         <div className="study-playback-status"><p><span className={`playback-dot${playing ? " is-playing" : ""}`} />{playingShot ? `${playing ? "正在播放" : "播放位置"} · 镜头 ${String(playingIndex + 1).padStart(2, "0")}` : "完整视频"}</p><span className="study-time">{formatVideoTime(currentTime)} / {formatVideoTime(duration)}</span></div>
-        <details className="study-tools" open><summary>播放与研究工具<span>节奏与画面标注</span></summary><div className="study-tools-body">
-        {playingShot && playingShot.id !== selectedId && <button className="follow-playback" type="button" onClick={() => changeMode("detail", playingShot)}>查看播放位置的镜头 {String(playingIndex + 1).padStart(2, "0")} <RightOutlined /></button>}
+        <details className="study-tools" open><summary>播放与研究工具</summary><div className="study-tools-body">
         <ShotRhythm shots={shots} duration={duration} currentTime={currentTime} playingId={playingShot?.id} selectedId={selectedId} onSelect={chooseShot} />
-        {studyAnnotationModes.length > 0 && <div className="study-overlay-toolbar" aria-label="画面标注"><span>画面标注</span>{studyAnnotationModes.map((mode) => <button type="button" key={mode.id} aria-pressed={annotation === mode.id} onClick={() => toggleAnnotation(mode.id)}>{mode.label}</button>)}{annotation && <button type="button" onClick={() => setAnnotation(null)}>关闭</button>}</div>}
+        {playingShot && playingShot.id !== selectedId && <button className="follow-playback" type="button" onClick={() => changeMode("detail", playingShot)}>查看播放位置的镜头 {String(playingIndex + 1).padStart(2, "0")} <RightOutlined /></button>}
+        {studyAnnotationModes.length > 0 && <div className="study-overlay-toolbar" role="group" aria-label="画面标注">{studyAnnotationModes.map((mode) => <button type="button" key={mode.id} aria-pressed={annotation === mode.id} onClick={() => toggleAnnotation(mode.id)}><ResearchToolIcon mode={mode.id} /><span>{researchToolLabels[mode.id]}</span></button>)}</div>}
         {annotation && !annotationVisible && !mediaError && <div className="annotation-notice">标注属于镜头 {String(selectedIndex + 1).padStart(2, "0")}<button type="button" onClick={() => positionVideo(selectedShot)}>回看这个镜头</button></div>}
         </div></details>
         </div>
