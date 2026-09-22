@@ -13,7 +13,7 @@ import { displayTags } from "./lib/contentEntries.js";
 import { annotationModes, getPromptSegments, groupPromptSegments, getShotAnnotation } from "./lib/shotPresentation.js";
 import { clampSeekTime, formatVideoTime, getShotAtTime } from "./lib/videoTimeline.js";
 import { caseLearningFocus, shotFactHelp } from "./lib/learningPresentation.js";
-import { ReportNavigation, StudyReport } from "./StudyReport.jsx";
+import { ReportNavigation, StudyReport, reportSections } from "./StudyReport.jsx";
 import { reviewFields } from "./lib/studyReport.js";
 import "./video-study.css";
 
@@ -60,7 +60,24 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
   const [followPlayback, setFollowPlayback] = useState(false);
   const [framePreview, setFramePreview] = useState(null);
   const [personFilter, setPersonFilter] = useState("");
-  const [personSelection, setPersonSelection] = useState(0);
+  const [readingSection, setReadingSection] = useState("shots");
+  const [reportSection, setReportSection] = useState("study-statistics");
+  const [reportOrigin, setReportOrigin] = useState(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const sectionScrollRef = useRef({});
+  const activeReadingKey = readingSection === "shots" ? "shots" : reportSection;
+  const navigateReading = (target) => {
+    if (target === activeReadingKey) return;
+    sectionScrollRef.current[activeReadingKey] = window.scrollY;
+    const initialTop = Math.max(0, window.scrollY + Math.min(0, readingRef.current.getBoundingClientRect().top - (parseFloat(getComputedStyle(readingRef.current).scrollMarginTop) || 20)));
+    flushSync(() => {
+      setReadingSection(target === "shots" ? "shots" : "report");
+      if (target !== "shots") setReportSection(target);
+      setReportOrigin(null);
+    });
+    window.scrollTo({ top: sectionScrollRef.current[target] ?? initialTop, behavior: "instant" });
+    window.history.replaceState(null, "", `#${target === "shots" ? "selected-shot-content" : target}`);
+  };
   const [observedMetadata, setObservedMetadata] = useState({});
   const reportItem = useMemo(() => ({ ...item, video: { ...item.video, metadata: { ...item.video.metadata, ...observedMetadata } } }), [item, observedMetadata]);
   const selectedIndex = shots.findIndex(({ id }) => id === selectedId);
@@ -83,8 +100,12 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
     });
   }, [duration, mediaError, message]);
   const changeMode = useCallback((mode, shot) => {
-    if (studyMode === "overview" && mode === "detail") overviewScrollRef.current = window.scrollY;
+    if (readingSection === "report") {
+      sectionScrollRef.current[reportSection] = window.scrollY;
+      setReportOrigin(reportSection);
+    } else if (studyMode === "overview" && mode === "detail") overviewScrollRef.current = window.scrollY;
     flushSync(() => {
+      setReadingSection("shots");
       setStudyMode(mode);
       if (shot) { setSelectedId(shot.id); setAnnotation(null); }
     });
@@ -96,7 +117,7 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
       if (top < inset || window.innerWidth <= 800) window.scrollBy({ top: top - inset, behavior: "instant" });
     }
     document.getElementById(`study-view-panel-${mode}`)?.focus({ preventScroll: true });
-  }, [studyMode]);
+  }, [studyMode, readingSection, reportSection]);
   const chooseShot = useCallback((shot) => {
     changeMode("detail", shot);
     positionVideo(shot);
@@ -105,6 +126,7 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
     const shot = shots.find((entry) => entry.id === id);
     if (!shot) return;
     setStudyMode("detail");
+    setReadingSection("shots");
     setFollowPlayback(false);
     setSelectedId(id);
     setAnnotation(null);
@@ -115,6 +137,30 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
     if (!video || video.readyState === 0) pendingSeekRef.current = target;
     else video.currentTime = target;
   }, [shots, item.video.durationSeconds]);
+
+  useEffect(() => {
+    let frame;
+    const openFragment = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const id = window.location.hash.slice(1);
+        if (id === "study-export") { setExportOpen(true); return; }
+        const section = reportSections.find(([key]) => key === id)?.[0] || (id.startsWith("study-check-") ? "study-quality" : null);
+        if (!section && !["selected-shot-content", "study-prompts"].includes(id)) return;
+        flushSync(() => {
+          setReadingSection(section ? "report" : "shots");
+          if (section) setReportSection(section);
+          if (id === "study-prompts") { setStudyMode("detail"); setDetailTab("prompts"); }
+        });
+        const target = document.getElementById(id);
+        if (target?.tagName === "DETAILS") target.open = true;
+        target?.scrollIntoView({ block: "start", behavior: "instant" });
+      });
+    };
+    openFragment();
+    window.addEventListener("hashchange", openFragment);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener("hashchange", openFragment); };
+  }, []);
 
   const syncPlayback = (event) => {
     const time = event.currentTarget.currentTime;
@@ -337,16 +383,19 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
         </div>
       </div>
       <div className="study-reading-column" id="selected-shot-content" ref={readingRef}>
-        <ReportNavigation />
-        <div className="study-follow-control"><label htmlFor="study-follow">拆解跟随播放 <Switch id="study-follow" size="small" checked={followPlayback} onChange={toggleFollow} aria-describedby="study-follow-description" aria-controls="study-view-panel-overview study-view-panel-detail" /></label><span id="study-follow-description">{followPlayback ? "已开启 · 随视频自动切换镜头" : "已关闭 · 停留在当前镜头"}</span></div>
+        <ReportNavigation section={readingSection} reportSection={reportSection} onNavigate={navigateReading} onExport={() => setExportOpen(true)}>
+          <div className="study-follow-control"><label htmlFor="study-follow">拆解跟随播放 <Switch id="study-follow" size="small" checked={followPlayback} onChange={toggleFollow} aria-describedby="study-follow-description" aria-controls="study-view-panel-overview study-view-panel-detail" /></label><span id="study-follow-description">{followPlayback ? "随视频自动切换" : "已关闭 · 自由阅读"}</span><Tooltip title="开启后，拆解随视频自动切换镜头；关闭后可停留阅读。"><button type="button" className="study-fact-help" aria-label="了解拆解跟随播放"><QuestionCircleOutlined /></button></Tooltip></div>
+        </ReportNavigation>
+        <div id="study-panel-shots" role="tabpanel" aria-labelledby="study-tab-shots" hidden={readingSection !== "shots"}>
+        {reportOrigin && <Button className="study-return-report" type="text" size="small" icon={<ArrowLeftOutlined />} onClick={() => { const origin = reportOrigin; navigateReading(origin); document.getElementById(origin)?.focus({ preventScroll: true }); }}>返回{reportSections.find(([id]) => id === reportOrigin)?.[1]}</Button>}
         <div id="study-view-panel-overview" aria-label="整片总览" hidden={studyMode !== "overview"} tabIndex={-1}>
-          <div className="study-learning-focus"><span>这条案例的看点</span><p>{caseLearningFocus(item)}</p></div>
+          <div className="study-learning-focus"><span>案例看点</span><p>{caseLearningFocus(item)}</p></div>
           {item.video.isMock && <p className="study-sample-notice">示例拆解 · 分镜资料与视频画面不对应</p>}
-          <ShotOverview key={personSelection} shots={shots} selectedId={selectedId} playingId={playingShot?.id} onSelect={chooseShot} onPreview={setFramePreview} people={item.video.cast} person={personFilter} onPersonChange={setPersonFilter} />
+          <ShotOverview shots={shots} selectedId={selectedId} playingId={playingShot?.id} onSelect={chooseShot} onPreview={setFramePreview} people={item.video.cast} person={personFilter} onPersonChange={setPersonFilter} />
         </div>
         <div id="study-view-panel-detail" aria-label="单镜头细读" hidden={studyMode !== "detail"} tabIndex={-1}>
           <div className="study-detail-navigation"><Button type="text" size="small" icon={<ArrowLeftOutlined />} onClick={() => changeMode("overview")}>全部镜头</Button><div><Button type="text" size="small" icon={<LeftOutlined />} disabled={selectedIndex === 0} onClick={() => chooseShot(shots[selectedIndex - 1])}>上一镜</Button><Button type="text" size="small" disabled={selectedIndex === shots.length - 1} onClick={() => chooseShot(shots[selectedIndex + 1])}>下一镜 <RightOutlined /></Button></div></div>
-          <header className="selected-shot-heading"><div><p>镜头 {String(selectedIndex + 1).padStart(2, "0")} / {String(shots.length).padStart(2, "0")}<span>{formatVideoTime(selectedShot.start)}–{formatVideoTime(selectedShot.end)}</span></p><h2>{selectedShot.title}</h2></div><div className="study-shot-actions"><Button type="text" className="study-mobile-watch" icon={<PlayCircleFilled />} onClick={() => { positionVideo(selectedShot); videoRef.current?.closest(".study-player")?.scrollIntoView({ block: "start", behavior: "instant" }); videoRef.current?.focus({ preventScroll: true }); }}>回看这镜</Button><Button type="text" icon={<FolderAddOutlined />} disabled={!ready} onClick={() => addToProject({ caseId: item.id, shotId: selectedId })}>收藏这镜</Button></div></header>
+          <header className="selected-shot-heading"><div><p>正在阅读 · 镜头 {String(selectedIndex + 1).padStart(2, "0")} / {String(shots.length).padStart(2, "0")}<span>{formatVideoTime(selectedShot.start)}–{formatVideoTime(selectedShot.end)}</span></p><h2>{selectedShot.title}</h2></div><div className="study-shot-actions"><Button type="text" className="study-watch-shot" icon={<PlayCircleFilled />} onClick={() => { positionVideo(selectedShot); if (window.innerWidth <= 800) videoRef.current?.closest(".study-player")?.scrollIntoView({ block: "start", behavior: "instant" }); videoRef.current?.focus({ preventScroll: true }); }}>回看这镜</Button><Button type="text" icon={<FolderAddOutlined />} disabled={!ready} onClick={() => addToProject({ caseId: item.id, shotId: selectedId })}>收藏这镜</Button></div></header>
           {item.video.isMock && <p className="study-sample-notice">示例拆解 · 分镜资料与视频画面不对应</p>}
           <ShotFrames key={selectedId} shot={selectedShot} index={selectedIndex} onPreview={setFramePreview} single />
           <div className="study-shot-classification">{[["类别", selectedShot.category], ["叙事节奏", selectedShot.rhythm], ["转场", selectedShot.transition], ["人物", selectedShot.subjects?.map((id) => item.video.cast?.find((entry) => entry.id === id)?.name || id).join("、")]].filter(([, value]) => value).map(([label, value]) => <span key={label}>{label} · {value}</span>)}</div>
@@ -372,7 +421,15 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
           </details>
         </div>
         <details className="video-case-context"><summary>案例信息与整体提示词</summary><p>{item.description}</p>{item.analysis && <section><h3>案例分析</h3><p>{item.analysis}</p></section>}<div className="tag-row">{item.tags.map((tag) => <Tag key={tag}>{tag}</Tag>)}</div><p>{item.prompt}</p><Button type="text" icon={<CopyOutlined />} onClick={() => copyText(item.prompt)}>复制整体提示词</Button></details>
-        <StudyReport item={reportItem} onSelect={chooseShot} onPerson={(id) => { flushSync(() => { setPersonFilter(id); setPersonSelection((value) => value + 1); setStudyMode("overview"); }); readingRef.current?.scrollIntoView({ block: "start", behavior: "instant" }); document.getElementById("study-view-panel-overview")?.focus({ preventScroll: true }); }} />
+        </div>
+        <div id="study-panel-report" role="tabpanel" aria-labelledby="study-tab-report" hidden={readingSection !== "report"}>
+        <StudyReport item={reportItem} activeSection={reportSection} exportOpen={exportOpen} onExportClose={() => setExportOpen(false)} onSelect={chooseShot} onPerson={(id) => {
+          sectionScrollRef.current[reportSection] = window.scrollY;
+          flushSync(() => { setReportOrigin(reportSection); setPersonFilter(id); setReadingSection("shots"); setStudyMode("overview"); });
+          readingRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
+          document.getElementById("study-view-panel-overview")?.focus({ preventScroll: true });
+        }} />
+        </div>
       </div>
     </div>
     <Modal open={Boolean(framePreview)} onCancel={() => setFramePreview(null)} footer={null} width={960} title={framePreview ? `镜头 ${String(framePreview.index + 1).padStart(2, "0")} · ${framePreview.shot.title}` : "镜头画面"} className="study-frame-modal">
