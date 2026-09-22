@@ -44,7 +44,9 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
   const playbackAnchorRef = useRef(null);
   const playbackRef = useRef(null);
   const readingRef = useRef(null);
+  const navigationSlotRef = useRef(null);
   const overviewScrollRef = useRef(null);
+  const scrollOriginRef = useRef(0);
   const pendingSeekRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(item.video.durationSeconds);
@@ -68,14 +70,14 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
   const activeReadingKey = readingSection === "shots" ? "shots" : reportSection;
   const navigateReading = (target) => {
     if (target === activeReadingKey) return;
-    sectionScrollRef.current[activeReadingKey] = window.scrollY;
-    const initialTop = Math.max(0, window.scrollY + Math.min(0, readingRef.current.getBoundingClientRect().top - (parseFloat(getComputedStyle(readingRef.current).scrollMarginTop) || 20)));
+    sectionScrollRef.current[activeReadingKey] = window.scrollY + scrollOriginRef.current;
+    const initialTop = scrollOriginRef.current + Math.max(0, window.scrollY + Math.min(0, readingRef.current.getBoundingClientRect().top - (parseFloat(getComputedStyle(readingRef.current).scrollMarginTop) || 0)));
     flushSync(() => {
       setReadingSection(target === "shots" ? "shots" : "report");
       if (target !== "shots") setReportSection(target);
       setReportOrigin(null);
     });
-    window.scrollTo({ top: sectionScrollRef.current[target] ?? initialTop, behavior: "instant" });
+    window.scrollTo({ top: Math.max(0, (sectionScrollRef.current[target] ?? initialTop) - scrollOriginRef.current), behavior: "instant" });
     window.history.replaceState(null, "", `#${target === "shots" ? "selected-shot-content" : target}`);
   };
   const [observedMetadata, setObservedMetadata] = useState({});
@@ -101,18 +103,18 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
   }, [duration, mediaError, message]);
   const changeMode = useCallback((mode, shot) => {
     if (readingSection === "report") {
-      sectionScrollRef.current[reportSection] = window.scrollY;
+      sectionScrollRef.current[reportSection] = window.scrollY + scrollOriginRef.current;
       setReportOrigin(reportSection);
-    } else if (studyMode === "overview" && mode === "detail") overviewScrollRef.current = window.scrollY;
+    } else if (studyMode === "overview" && mode === "detail") overviewScrollRef.current = window.scrollY + scrollOriginRef.current;
     flushSync(() => {
       setReadingSection("shots");
       setStudyMode(mode);
       if (shot) { setSelectedId(shot.id); setAnnotation(null); }
     });
     if (mode === "overview" && overviewScrollRef.current !== null) {
-      window.scrollTo({ top: overviewScrollRef.current, behavior: "instant" });
+      window.scrollTo({ top: Math.max(0, overviewScrollRef.current - scrollOriginRef.current), behavior: "instant" });
     } else {
-      const inset = parseFloat(getComputedStyle(readingRef.current).scrollMarginTop) || 20;
+      const inset = parseFloat(getComputedStyle(readingRef.current).scrollMarginTop) || 0;
       const top = readingRef.current?.getBoundingClientRect().top;
       if (top < inset || window.innerWidth <= 800) window.scrollBy({ top: top - inset, behavior: "instant" });
     }
@@ -176,7 +178,11 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
   useEffect(() => {
     const playback = playbackRef.current;
     const navigation = readingRef.current.querySelector(".study-report-nav");
+    const navigationSlot = navigationSlotRef.current;
     const article = playback.closest(".video-study");
+    const shell = article.closest(".app-shell");
+    const siteHeader = shell.querySelector(".topbar");
+    const headerWasInert = siteHeader?.inert;
     const heading = headingRef.current;
     const slot = headingSlotRef.current;
     const movingParts = [heading.querySelector(".video-study-back"), heading.querySelector("h1")];
@@ -184,7 +190,10 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
     let frame = null;
     let mode = article.dataset.headingMode;
     let destinationKey = "";
-    let headingAtOrigin = true;
+    let navigationPinned = false;
+    let playbackBoundary = 0;
+    let navigationBoundary = 0;
+    let sideBySide = false;
     let animations = [];
     let motionVersion = 0;
     const cancelMotion = () => {
@@ -192,37 +201,21 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
       animations.forEach((animation) => animation.cancel());
       animations = [];
     };
-    const restoreFlow = () => {
-      mode = "full";
-      destinationKey = "";
-      flushSync(() => setHeadingMode("full"));
-      slot.style.removeProperty("height");
-    };
-    const moveHeading = (compact, instant = false) => {
-      if (!compact && mode === "full") return;
+    const moveHeading = (instant = false) => {
       const slotBounds = slot.getBoundingClientRect();
       const dockBounds = playback.getBoundingClientRect();
       const dockStyle = getComputedStyle(playback);
       const dockTop = (parseFloat(dockStyle.top) || 0) - parseFloat(dockStyle.getPropertyValue("--study-compact-heading-height"));
-      headingAtOrigin = slotBounds.top >= dockTop;
-      const target = compact ? {
+      const target = {
         left: dockBounds.left,
         top: dockTop,
         width: dockBounds.width,
-      } : { left: slotBounds.left, top: Math.max(slotBounds.top, dockTop), width: slotBounds.width };
-      const nextMode = compact ? "compact" : "restoring";
-      const nextKey = `${nextMode}:${target.left}:${target.top}:${target.width}`;
-      if (mode === "restoring" && !compact && !instant) {
-        // Follow the page directly; scrolling must not restart the size transition.
-        destinationKey = nextKey;
-        heading.style.setProperty("--study-title-left", `${target.left}px`);
-        heading.style.setProperty("--study-title-top", `${target.top}px`);
-        heading.style.setProperty("--study-title-width", `${target.width}px`);
-        slot.style.height = `${heading.getBoundingClientRect().height}px`;
-        if (!animations.length && headingAtOrigin) restoreFlow();
+      };
+      const nextKey = `${target.left}:${target.top}:${target.width}`;
+      if (mode === "compact" && destinationKey === nextKey) {
+        if (instant) cancelMotion();
         return;
       }
-      if (mode === nextMode && destinationKey === nextKey && !instant) return;
 
       // Measure the one live title before cancelling an interrupted movement.
       const first = heading.getBoundingClientRect();
@@ -230,27 +223,23 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
       if (mode === "full") slot.style.height = `${slotBounds.height}px`;
       cancelMotion();
       destinationKey = nextKey;
-      mode = nextMode;
+      mode = "compact";
       heading.style.setProperty("--study-title-left", `${target.left}px`);
       heading.style.setProperty("--study-title-top", `${target.top}px`);
       heading.style.setProperty("--study-title-width", `${target.width}px`);
-      flushSync(() => setHeadingMode(nextMode));
-      if (!compact) slot.style.height = `${heading.getBoundingClientRect().height}px`;
-      if (instant) {
-        if (!compact && headingAtOrigin) restoreFlow();
-        return;
-      }
+      flushSync(() => setHeadingMode("compact"));
+      if (instant) return;
 
       const last = heading.getBoundingClientRect();
       const lastParts = movingParts.map((element) => element.getBoundingClientRect());
       const dx = first.left - last.left;
       const dy = first.top - last.top;
-      const options = { duration: compact ? 160 : 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)" };
-      // On restoration, only resize in place; the heading position follows scrolling.
-      animations = [...(compact ? [heading.animate([
+      // Settle directly at the dock without overshoot or rebound.
+      const options = { duration: 180, easing: "cubic-bezier(0.22, 1, 0.36, 1)" };
+      animations = [heading.animate([
         { transform: `translate(${dx}px, ${dy}px)` },
         { transform: "translate(0, 0)" },
-      ], options)] : []), ...movingParts.map((element, index) => {
+      ], options), ...movingParts.map((element, index) => {
         const before = firstParts[index];
         const after = lastParts[index];
         // Use offsets within the heading so scrolling does not become another title animation.
@@ -264,44 +253,91 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
       Promise.all(animations.map((animation) => animation.finished)).then(() => {
         if (version !== motionVersion) return;
         animations = [];
-        if (mode === "restoring" && headingAtOrigin) restoreFlow();
       }, () => {});
     };
     const updatePinned = () => {
       frame = null;
-      const inset = parseFloat(getComputedStyle(playback).top) || 0;
-      const pinned = playbackAnchorRef.current.getBoundingClientRect().top <= inset;
+      const pinned = window.scrollY >= playbackBoundary;
       const instant = article.dataset.instantHeading === "true" || reducedMotion.matches;
-      moveHeading(pinned, instant);
+      if (pinned || mode === "compact") {
+        moveHeading(instant);
+        advanceScrollOrigin();
+      }
+    };
+    const advanceScrollOrigin = (layoutChanged = false) => {
+      if (mode !== "compact") return;
+      if (sideBySide && !navigationPinned && window.scrollY >= navigationBoundary) {
+        navigationPinned = true;
+        navigationSlot.dataset.pinned = "true";
+      }
+      const boundary = Math.max(playbackBoundary, sideBySide && navigationPinned ? navigationBoundary : playbackBoundary);
+      const shift = Math.max(-scrollOriginRef.current, boundary);
+      if (Math.abs(shift) < 0.5 || (shift < 0 && !layoutChanged)) return;
+      // Remove the passed header region once, preserving the visible content position.
+      // The dock is now the native scroll origin (0), so upward scrolling never needs correction.
+      const currentTop = window.scrollY;
+      scrollOriginRef.current += shift;
+      shell.style.setProperty("--study-scroll-origin", `${scrollOriginRef.current}px`);
+      playbackBoundary -= shift;
+      navigationBoundary -= shift;
+      window.scrollTo({ top: Math.max(0, currentTop - shift), behavior: "instant" });
+      if (siteHeader) siteHeader.inert = headerWasInert || siteHeader.getBoundingClientRect().bottom <= 0;
     };
     const schedulePinned = () => {
-      if (frame === null) frame = window.requestAnimationFrame(updatePinned);
+      advanceScrollOrigin();
+      if (mode === "full" && frame === null) frame = window.requestAnimationFrame(updatePinned);
     };
     const updateHeadingMotion = (event) => {
       article.dataset.instantHeading = String(event.type === "keydown");
-      if (event.type === "keydown") schedulePinned();
+      if (event.type === "keydown") { cancelMotion(); schedulePinned(); }
     };
     const headingInputEvents = ["keydown", "pointerdown", "wheel", "touchstart"];
     const updateInsets = () => {
+      const playbackSlotBounds = playbackAnchorRef.current.getBoundingClientRect();
+      playback.style.setProperty("--study-playback-left", `${playbackSlotBounds.left}px`);
+      playback.style.setProperty("--study-playback-width", `${playbackSlotBounds.width}px`);
       const bounds = playback.getBoundingClientRect();
-      article.style.setProperty("--study-dock-height", `${bounds.height}px`);
-      article.style.setProperty("--study-nav-height", `${navigation.getBoundingClientRect().height}px`);
-      schedulePinned();
+      const navSlotBounds = navigationSlot.getBoundingClientRect();
+      // The fixed navigation keeps the column's width; its slot preserves document flow.
+      navigation.style.setProperty("--study-nav-left", `${navSlotBounds.left}px`);
+      navigation.style.setProperty("--study-nav-width", `${navSlotBounds.width}px`);
+      const navHeight = navigation.getBoundingClientRect().height;
+      if (navigationSlot.style.height !== `${navHeight}px`) navigationSlot.style.height = `${navHeight}px`;
+      if (article.style.getPropertyValue("--study-dock-height") !== `${bounds.height}px`) article.style.setProperty("--study-dock-height", `${bounds.height}px`);
+      if (article.style.getPropertyValue("--study-nav-height") !== `${navHeight}px`) article.style.setProperty("--study-nav-height", `${navHeight}px`);
+      // Cache geometry only on layout changes; wheel/scroll events do not force layout.
+      playbackBoundary = Math.ceil(window.scrollY + playbackAnchorRef.current.getBoundingClientRect().top - (parseFloat(getComputedStyle(playback).top) || 0));
+      navigationBoundary = Math.ceil(window.scrollY + readingRef.current.getBoundingClientRect().top - (parseFloat(getComputedStyle(navigationSlot).top) || 0));
+      sideBySide = window.matchMedia("(min-width: 801px)").matches;
+      navigationSlot.dataset.pinned = String(sideBySide && navigationPinned);
+      advanceScrollOrigin(true);
+      if (frame === null) frame = window.requestAnimationFrame(updatePinned);
     };
+    const updateMotionPreference = () => { if (reducedMotion.matches) cancelMotion(); updateInsets(); };
     updateInsets();
     const observer = new ResizeObserver(updateInsets);
     observer.observe(playback);
     observer.observe(navigation);
     observer.observe(slot);
+    observer.observe(readingRef.current);
     window.addEventListener("scroll", schedulePinned, { passive: true });
     window.addEventListener("resize", updateInsets);
-    reducedMotion.addEventListener("change", schedulePinned);
+    reducedMotion.addEventListener("change", updateMotionPreference);
     headingInputEvents.forEach((type) => window.addEventListener(type, updateHeadingMotion, { passive: true }));
     return () => {
       observer.disconnect();
+      shell.style.removeProperty("--study-scroll-origin");
+      scrollOriginRef.current = 0;
+      if (siteHeader) siteHeader.inert = headerWasInert;
+      delete navigationSlot.dataset.pinned;
+      navigationSlot.style.removeProperty("height");
+      navigation.style.removeProperty("--study-nav-left");
+      navigation.style.removeProperty("--study-nav-width");
+      playback.style.removeProperty("--study-playback-left");
+      playback.style.removeProperty("--study-playback-width");
       window.removeEventListener("scroll", schedulePinned);
       window.removeEventListener("resize", updateInsets);
-      reducedMotion.removeEventListener("change", schedulePinned);
+      reducedMotion.removeEventListener("change", updateMotionPreference);
       headingInputEvents.forEach((type) => window.removeEventListener(type, updateHeadingMotion));
       cancelMotion();
       if (frame !== null) window.cancelAnimationFrame(frame);
@@ -383,9 +419,11 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
         </div>
       </div>
       <div className="study-reading-column" id="selected-shot-content" ref={readingRef}>
+        <div className="study-navigation-slot" ref={navigationSlotRef}>
         <ReportNavigation section={readingSection} reportSection={reportSection} onNavigate={navigateReading} onExport={() => setExportOpen(true)}>
           <div className="study-follow-control"><label htmlFor="study-follow">拆解跟随播放 <Switch id="study-follow" size="small" checked={followPlayback} onChange={toggleFollow} aria-describedby="study-follow-description" aria-controls="study-view-panel-overview study-view-panel-detail" /></label><span id="study-follow-description">{followPlayback ? "随视频自动切换" : "已关闭 · 自由阅读"}</span><Tooltip title="开启后，拆解随视频自动切换镜头；关闭后可停留阅读。"><button type="button" className="study-fact-help" aria-label="了解拆解跟随播放"><QuestionCircleOutlined /></button></Tooltip></div>
         </ReportNavigation>
+        </div>
         <div id="study-panel-shots" role="tabpanel" aria-labelledby="study-tab-shots" hidden={readingSection !== "shots"}>
         {reportOrigin && <Button className="study-return-report" type="text" size="small" icon={<ArrowLeftOutlined />} onClick={() => { const origin = reportOrigin; navigateReading(origin); document.getElementById(origin)?.focus({ preventScroll: true }); }}>返回{reportSections.find(([id]) => id === reportOrigin)?.[1]}</Button>}
         <div id="study-view-panel-overview" aria-label="整片总览" hidden={studyMode !== "overview"} tabIndex={-1}>
@@ -424,7 +462,7 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
         </div>
         <div id="study-panel-report" role="tabpanel" aria-labelledby="study-tab-report" hidden={readingSection !== "report"}>
         <StudyReport item={reportItem} activeSection={reportSection} exportOpen={exportOpen} onExportClose={() => setExportOpen(false)} onSelect={chooseShot} onPerson={(id) => {
-          sectionScrollRef.current[reportSection] = window.scrollY;
+          sectionScrollRef.current[reportSection] = window.scrollY + scrollOriginRef.current;
           flushSync(() => { setReportOrigin(reportSection); setPersonFilter(id); setReadingSection("shots"); setStudyMode("overview"); });
           readingRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
           document.getElementById("study-view-panel-overview")?.focus({ preventScroll: true });
