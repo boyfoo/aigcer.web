@@ -8,6 +8,12 @@ import { publicContent } from "../server/published.js";
 export const metadata = {
   title: { default: `${siteName} · AI 视频灵感库`, template: `%s · ${siteName}` },
   description: siteDescription,
+  icons: {
+    icon: [
+      { url: "/favicon.ico?v=4", sizes: "16x16 32x32 48x48", type: "image/x-icon" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png?v=3", sizes: "180x180", type: "image/png" }],
+  },
 };
 
 export default async function RootLayout({ children }) {

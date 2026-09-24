@@ -1,18 +1,18 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { flushSync } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { App as AntApp, Button, Modal, Switch, Tag, Tooltip } from "antd";
-import { ArrowLeftOutlined, BookFilled, BookOutlined, CopyOutlined, FolderAddOutlined, LeftOutlined, PlayCircleFilled, QuestionCircleOutlined, ReloadOutlined, RightOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, BookFilled, BookOutlined, CloseOutlined, CopyOutlined, FolderAddOutlined, LeftOutlined, PlayCircleFilled, QuestionCircleOutlined, ReloadOutlined, RightOutlined } from "@ant-design/icons";
 import { useReferenceProjects } from "./ReferenceProjects.jsx";
 import { ShotAnnotations } from "./ShotAnnotations.jsx";
 import { ShotFrames, ShotOverview, ShotRhythm } from "./ShotOverview.jsx";
 import { displayTags } from "./lib/contentEntries.js";
 import { annotationModes, getPromptSegments, groupPromptSegments, getShotAnnotation } from "./lib/shotPresentation.js";
 import { clampSeekTime, formatVideoTime, getShotAtTime } from "./lib/videoTimeline.js";
-import { caseLearningFocus, shotFactHelp } from "./lib/learningPresentation.js";
+import { shotFactHelp } from "./lib/learningPresentation.js";
 import { ReportNavigation, StudyReport, reportSections } from "./StudyReport.jsx";
 import { reviewFields } from "./lib/studyReport.js";
 import "./video-study.css";
@@ -25,6 +25,7 @@ function ReferenceLocation({ onSelect }) {
 }
 
 const researchToolLabels = { composition: "取景构图", lighting: "光影分析", movement: "运镜分析" };
+const playbackHintDuration = 3000;
 
 function ResearchToolIcon({ mode }) {
   return <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -48,6 +49,9 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
   const overviewScrollRef = useRef(null);
   const scrollOriginRef = useRef(0);
   const pendingSeekRef = useRef(null);
+  const videoInteractionRef = useRef(null);
+  const playbackHintSequenceRef = useRef(0);
+  const [playbackHint, setPlaybackHint] = useState(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(item.video.durationSeconds);
   const [videoRatio, setVideoRatio] = useState(1440 / 2550);
@@ -69,6 +73,7 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
   const sectionScrollRef = useRef({});
   const activeReadingKey = readingSection === "shots" ? "shots" : reportSection;
   const navigateReading = (target) => {
+    setPlaybackHint(null);
     if (target === activeReadingKey) return;
     sectionScrollRef.current[activeReadingKey] = window.scrollY + scrollOriginRef.current;
     const initialTop = scrollOriginRef.current + Math.max(0, window.scrollY + Math.min(0, readingRef.current.getBoundingClientRect().top - (parseFloat(getComputedStyle(readingRef.current).scrollMarginTop) || 0)));
@@ -90,7 +95,62 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
   const projectCount = projects.filter((project) => project.references.some((entry) => entry.caseId === item.id && entry.shotId === selectedId)).length;
   const annotationVisible = annotation && playingShot?.id === selectedId && !mediaError;
 
+  useEffect(() => {
+    if (!playbackHint) return;
+    const dismiss = () => setPlaybackHint(null);
+    const onKeyDown = (event) => { if (event.key === "Escape") dismiss(); };
+    const timer = window.setTimeout(dismiss, playbackHintDuration);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("wheel", dismiss, { passive: true });
+    window.addEventListener("touchmove", dismiss, { passive: true });
+    window.addEventListener("resize", dismiss);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("wheel", dismiss);
+      window.removeEventListener("touchmove", dismiss);
+      window.removeEventListener("resize", dismiss);
+    };
+  }, [playbackHint]);
+
+  useEffect(() => {
+    if (!playingShot || playingShot.id === selectedId) setPlaybackHint(null);
+  }, [playingShot?.id, selectedId]);
+
+  const showPlaybackHint = (shot, point) => {
+    if (!point || !shot || shot.id === selectedId || followPlayback || (readingSection === "shots" && studyMode === "detail")) {
+      setPlaybackHint(null);
+      return;
+    }
+    const gap = 12;
+    const width = Math.min(260, window.innerWidth - gap * 2);
+    const height = 40;
+    const maxLeft = window.innerWidth - width - gap;
+    const maxTop = window.innerHeight - height - gap;
+    let left = Math.max(gap, Math.min(point.x + gap, maxLeft));
+    let top = Math.max(gap, Math.min(point.y + gap, maxTop));
+    const video = videoRef.current.getBoundingClientRect();
+    if (left < video.right && left + width > video.left && top < video.bottom && top + height > video.top) {
+      if (video.bottom + gap <= maxTop) top = video.bottom + gap;
+      else if (video.top - height - gap >= gap) top = video.top - height - gap;
+      else if (video.right + gap <= maxLeft) left = video.right + gap;
+      else if (video.left - width - gap >= gap) left = video.left - width - gap;
+      else { setPlaybackHint(null); return; }
+    }
+    setPlaybackHint({ style: { left, top, maxWidth: width }, sequence: ++playbackHintSequenceRef.current });
+  };
+  const captureVideoInteraction = (event) => {
+    if (event.type === "keydown" && !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    const bounds = videoRef.current.getBoundingClientRect();
+    videoInteractionRef.current = {
+      x: event.type === "keydown" ? bounds.left + bounds.width / 2 : event.clientX,
+      y: event.type === "keydown" ? bounds.bottom - 24 : event.clientY,
+    };
+    setPlaybackHint(null);
+  };
+
   const positionVideo = useCallback((shot) => {
+    videoInteractionRef.current = null;
     const video = videoRef.current;
     const target = clampSeekTime(shot.start, video?.duration || duration);
     setCurrentTime(target);
@@ -102,6 +162,7 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
     });
   }, [duration, mediaError, message]);
   const changeMode = useCallback((mode, shot) => {
+    setPlaybackHint(null);
     if (readingSection === "report") {
       sectionScrollRef.current[reportSection] = window.scrollY + scrollOriginRef.current;
       setReportOrigin(reportSection);
@@ -124,9 +185,19 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
     changeMode("detail", shot);
     positionVideo(shot);
   }, [changeMode, positionVideo]);
+  const seekShot = (shot, event) => {
+    if (readingSection === "shots" && studyMode === "detail") {
+      setSelectedId(shot.id);
+      setAnnotation(null);
+    }
+    positionVideo(shot);
+    const bounds = event.currentTarget.getBoundingClientRect();
+    showPlaybackHint(shot, event.detail ? { x: event.clientX, y: event.clientY } : { x: bounds.left + bounds.width / 2, y: bounds.top });
+  };
   const selectReference = useCallback((id) => {
     const shot = shots.find((entry) => entry.id === id);
     if (!shot) return;
+    videoInteractionRef.current = null;
     setStudyMode("detail");
     setReadingSection("shots");
     setFollowPlayback(false);
@@ -167,8 +238,13 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
   const syncPlayback = (event) => {
     const time = event.currentTarget.currentTime;
     setCurrentTime(time);
-    const shot = followPlayback && getShotAtTime(shots, time);
+    const syncDetail = event.type === "seeking" && readingSection === "shots" && studyMode === "detail";
+    const shot = (followPlayback || syncDetail) && getShotAtTime(shots, time);
     if (shot && shot.id !== selectedId) { setSelectedId(shot.id); setAnnotation(null); }
+    if (event.type === "seeking") {
+      const interaction = videoInteractionRef.current;
+      if (interaction) showPlaybackHint(getShotAtTime(shots, time), interaction);
+    }
   };
   const toggleFollow = (enabled) => {
     setFollowPlayback(enabled);
@@ -396,7 +472,8 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
       <div className="study-media-column">
         <div className="study-playback-anchor" ref={playbackAnchorRef} aria-hidden="true" />
         <div className="study-playback" ref={playbackRef}>
-        <div className="study-player" style={{ "--video-ratio": videoRatio }}>
+        <div className="study-player" style={{ "--video-ratio": videoRatio }} onPointerDownCapture={captureVideoInteraction} onKeyDownCapture={captureVideoInteraction}
+          onPointerMoveCapture={(event) => { videoInteractionRef.current = { x: event.clientX, y: event.clientY }; }} onPointerLeave={() => { videoInteractionRef.current = null; }}>
             <video ref={videoRef} src={item.video.src} poster={item.image} controls playsInline preload="metadata" aria-label={`${item.title}视频播放器`}
               onLoadedMetadata={onMetadata} onTimeUpdate={syncPlayback} onSeeking={syncPlayback}
               onPlay={() => setPlaying(true)} onPlaying={() => { setPlaying(true); setBuffering(false); }} onPause={() => { setPlaying(false); setBuffering(false); }}
@@ -410,8 +487,7 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
         <div className="study-playback-controls">
         <div className="study-playback-status"><p><span className={`playback-dot${playing ? " is-playing" : ""}`} />{playingShot ? `${playing ? "正在播放" : "播放位置"} · 镜头 ${String(playingIndex + 1).padStart(2, "0")}` : "完整视频"}</p><span className="study-time">{formatVideoTime(currentTime)} / {formatVideoTime(duration)}</span></div>
         <details className="study-tools" open><summary>播放与研究工具</summary><div className="study-tools-body">
-        <ShotRhythm shots={shots} duration={duration} currentTime={currentTime} playingId={playingShot?.id} selectedId={selectedId} onSelect={chooseShot} />
-        {playingShot && playingShot.id !== selectedId && <button className="follow-playback" type="button" onClick={() => changeMode("detail", playingShot)}>查看播放位置的镜头 {String(playingIndex + 1).padStart(2, "0")} <RightOutlined /></button>}
+        <ShotRhythm shots={shots} duration={duration} currentTime={currentTime} playingId={playingShot?.id} selectedId={selectedId} onSelect={seekShot} />
         {studyAnnotationModes.length > 0 && <div className="study-overlay-toolbar" role="group" aria-label="画面标注">{studyAnnotationModes.map((mode) => <button type="button" key={mode.id} aria-pressed={annotation === mode.id} onClick={() => toggleAnnotation(mode.id)}><ResearchToolIcon mode={mode.id} /><span>{researchToolLabels[mode.id]}</span></button>)}</div>}
         {annotation && !annotationVisible && !mediaError && <div className="annotation-notice">标注属于镜头 {String(selectedIndex + 1).padStart(2, "0")}<button type="button" onClick={() => positionVideo(selectedShot)}>回看这个镜头</button></div>}
         </div></details>
@@ -421,20 +497,17 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
       <div className="study-reading-column" id="selected-shot-content" ref={readingRef}>
         <div className="study-navigation-slot" ref={navigationSlotRef}>
         <ReportNavigation section={readingSection} reportSection={reportSection} onNavigate={navigateReading} onExport={() => setExportOpen(true)}>
-          <div className="study-follow-control"><label htmlFor="study-follow">拆解跟随播放 <Switch id="study-follow" size="small" checked={followPlayback} onChange={toggleFollow} aria-describedby="study-follow-description" aria-controls="study-view-panel-overview study-view-panel-detail" /></label><span id="study-follow-description">{followPlayback ? "随视频自动切换" : "已关闭 · 自由阅读"}</span><Tooltip title="开启后，拆解随视频自动切换镜头；关闭后可停留阅读。"><button type="button" className="study-fact-help" aria-label="了解拆解跟随播放"><QuestionCircleOutlined /></button></Tooltip></div>
+          <div className="study-follow-control"><label htmlFor="study-follow">拆解跟随播放 <Switch id="study-follow" size="small" checked={followPlayback} onChange={toggleFollow} aria-describedby="study-follow-description" aria-controls="study-view-panel-overview study-view-panel-detail" /></label><span id="study-follow-description">{followPlayback ? "随视频自动切换" : "已关闭 · 自由阅读"}</span><Tooltip title="开启后，拆解随视频自动切换镜头；关闭后可停留阅读。手动跳转进度时，列表仅更新播放标识，详情同步到对应镜头。"><button type="button" className="study-fact-help" aria-label="了解拆解跟随播放"><QuestionCircleOutlined /></button></Tooltip></div>
         </ReportNavigation>
         </div>
         <div id="study-panel-shots" role="tabpanel" aria-labelledby="study-tab-shots" hidden={readingSection !== "shots"}>
         {reportOrigin && <Button className="study-return-report" type="text" size="small" icon={<ArrowLeftOutlined />} onClick={() => { const origin = reportOrigin; navigateReading(origin); document.getElementById(origin)?.focus({ preventScroll: true }); }}>返回{reportSections.find(([id]) => id === reportOrigin)?.[1]}</Button>}
         <div id="study-view-panel-overview" aria-label="整片总览" hidden={studyMode !== "overview"} tabIndex={-1}>
-          <div className="study-learning-focus"><span>案例看点</span><p>{caseLearningFocus(item)}</p></div>
-          {item.video.isMock && <p className="study-sample-notice">示例拆解 · 分镜资料与视频画面不对应</p>}
-          <ShotOverview shots={shots} selectedId={selectedId} playingId={playingShot?.id} onSelect={chooseShot} onPreview={setFramePreview} people={item.video.cast} person={personFilter} onPersonChange={setPersonFilter} />
+          <ShotOverview shots={shots} playingId={playingShot?.id} playing={playing} onSelect={chooseShot} onPreview={setFramePreview} people={item.video.cast} person={personFilter} onPersonChange={setPersonFilter} />
         </div>
         <div id="study-view-panel-detail" aria-label="单镜头细读" hidden={studyMode !== "detail"} tabIndex={-1}>
           <div className="study-detail-navigation"><Button type="text" size="small" icon={<ArrowLeftOutlined />} onClick={() => changeMode("overview")}>全部镜头</Button><div><Button type="text" size="small" icon={<LeftOutlined />} disabled={selectedIndex === 0} onClick={() => chooseShot(shots[selectedIndex - 1])}>上一镜</Button><Button type="text" size="small" disabled={selectedIndex === shots.length - 1} onClick={() => chooseShot(shots[selectedIndex + 1])}>下一镜 <RightOutlined /></Button></div></div>
           <header className="selected-shot-heading"><div><p>正在阅读 · 镜头 {String(selectedIndex + 1).padStart(2, "0")} / {String(shots.length).padStart(2, "0")}<span>{formatVideoTime(selectedShot.start)}–{formatVideoTime(selectedShot.end)}</span></p><h2>{selectedShot.title}</h2></div><div className="study-shot-actions"><Button type="text" className="study-watch-shot" icon={<PlayCircleFilled />} onClick={() => { positionVideo(selectedShot); if (window.innerWidth <= 800) videoRef.current?.closest(".study-player")?.scrollIntoView({ block: "start", behavior: "instant" }); videoRef.current?.focus({ preventScroll: true }); }}>回看这镜</Button><Button type="text" icon={<FolderAddOutlined />} disabled={!ready} onClick={() => addToProject({ caseId: item.id, shotId: selectedId })}>收藏这镜</Button></div></header>
-          {item.video.isMock && <p className="study-sample-notice">示例拆解 · 分镜资料与视频画面不对应</p>}
           <ShotFrames key={selectedId} shot={selectedShot} index={selectedIndex} onPreview={setFramePreview} single />
           <div className="study-shot-classification">{[["类别", selectedShot.category], ["叙事节奏", selectedShot.rhythm], ["转场", selectedShot.transition], ["人物", selectedShot.subjects?.map((id) => item.video.cast?.find((entry) => entry.id === id)?.name || id).join("、")]].filter(([, value]) => value).map(([label, value]) => <span key={label}>{label} · {value}</span>)}</div>
           {projectCount > 0 && <div className="study-reading-status"><button type="button" onClick={() => openLibrary()}>已加入 {projectCount} 个镜头收藏夹</button></div>}
@@ -470,6 +543,11 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
         </div>
       </div>
     </div>
+    {playbackHint && playingShot && playingShot.id !== selectedId && createPortal(<div className="study-playback-hint" role="group" aria-label="播放位置提示" style={{ ...playbackHint.style, "--playback-hint-duration": `${playbackHintDuration}ms` }}>
+      <button type="button" className="study-playback-hint-open" onClick={() => changeMode("detail", playingShot)}>查看播放位置的镜头 <span>{String(playingIndex + 1).padStart(2, "0")}</span><RightOutlined /></button>
+      <button type="button" className="study-playback-hint-close" aria-label="关闭播放位置提示" onClick={() => setPlaybackHint(null)}><CloseOutlined /></button>
+      <span key={playbackHint.sequence} className="study-playback-hint-countdown" aria-hidden="true" />
+    </div>, document.body)}
     <Modal open={Boolean(framePreview)} onCancel={() => setFramePreview(null)} footer={null} width={960} title={framePreview ? `镜头 ${String(framePreview.index + 1).padStart(2, "0")} · ${framePreview.shot.title}` : "镜头画面"} className="study-frame-modal">
       {framePreview && <><div className="study-frame-preview-controls">{[["image", framePreview.shot.imageIsFallback ? "案例封面" : "首帧 / 代表画面"], ["endImage", "尾帧"]].map(([key, label], index) => <Button key={key} type={framePreview.frameIndex === index ? "primary" : "default"} disabled={!framePreview.shot[key]} onClick={() => setFramePreview({ ...framePreview, frameIndex: index })}>{label}</Button>)}</div><img src={framePreview.frameIndex === 0 ? framePreview.shot.image : framePreview.shot.endImage} alt={`镜头 ${framePreview.index + 1}${framePreview.frameIndex === 0 ? "首帧或代表画面" : "尾帧"}`} /></>}
     </Modal>

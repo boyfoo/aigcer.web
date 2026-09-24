@@ -35,7 +35,7 @@ export function ShotRhythm({ shots, duration, currentTime, playingId, selectedId
       return <button key={segment.key} type="button" className={`rhythm-segment${selectedId === shot.id ? " is-selected" : ""}${playingId === shot.id ? " is-playing" : ""}`}
         style={{ flex: `${segment.fraction} 1 0`, "--shot-tone": shotSizeTone(shot.facts?.景别), "--shot-progress": `${Math.max(0, Math.min(1, (currentTime - shot.start) / (shot.end - shot.start))) * 100}%` }}
         title={`${String(index + 1).padStart(2, "0")} · ${shot.title} · ${timeRange} · ${shot.facts?.景别 || "景别未填写"}`}
-        aria-label={`定位镜头 ${index + 1}：${shot.title}，${timeRange}，${formatShotDuration(shot)}`} aria-pressed={selectedId === shot.id} aria-current={playingId === shot.id ? "true" : undefined} onClick={() => onSelect(shot)}>
+        aria-label={`定位镜头 ${index + 1}：${shot.title}，${timeRange}，${formatShotDuration(shot)}`} aria-pressed={selectedId === shot.id} aria-current={playingId === shot.id ? "true" : undefined} onClick={(event) => onSelect(shot, event)}>
         <span className="rhythm-segment-bar" aria-hidden="true" />
         <span className="rhythm-segment-time" aria-hidden="true"><span>{formatVideoTime(segment.start)}</span><span>–</span><span>{formatVideoTime(segment.end)}</span></span>
       </button>;
@@ -44,7 +44,7 @@ export function ShotRhythm({ shots, duration, currentTime, playingId, selectedId
   </section>;
 }
 
-export const ShotOverview = memo(function ShotOverview({ shots, selectedId, playingId, onSelect, onPreview, people = [], person = "", onPersonChange }) {
+export const ShotOverview = memo(function ShotOverview({ shots, playingId, playing = false, onSelect, onPreview, people = [], person = "", onPersonChange }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [size, setSize] = useState("");
@@ -71,13 +71,13 @@ export const ShotOverview = memo(function ShotOverview({ shots, selectedId, play
       <details className="study-more-filters"><summary>更多条件与排序</summary><div className="study-overview-filters"><Select aria-label="筛选镜头类别" value={category} options={fieldOptions("category", "全部类别")} onChange={setCategory} /><Select aria-label="筛选叙事节奏" value={rhythm} options={fieldOptions("rhythm", "全部节奏")} onChange={setRhythm} /><Select aria-label="筛选出场人物" value={person} options={[{ value: "", label: "全部人物" }, ...people.map((entry) => ({ value: entry.id, label: entry.name || "未命名人物" }))]} onChange={onPersonChange} /><Select aria-label="镜头排序" value={sort} options={[{ value: "timeline", label: "时间顺序" }, { value: "longest", label: "镜长从长到短" }, { value: "shortest", label: "镜长从短到长" }]} onChange={setSort} /></div></details>
     </div></div>
     {activeFilters.length > 0 && <div className="study-active-filters"><div>{activeFilters.map(([label, value, clear]) => <Tag key={label} closable onClose={(event) => { event.preventDefault(); clear(); }}>{label}：{value}</Tag>)}</div><div className="study-overview-results"><span role="status">找到 {matches.length} / {shots.length} 个镜头</span><Button type="text" size="small" onClick={reset}>清除筛选与排序</Button></div></div>}
-    <ol className={`study-overview-shots is-${layout}`}>{matches.map(({ shot, index }) => <li key={shot.id} data-overview-shot={shot.id} className={selectedId === shot.id ? "is-selected" : ""}>
+    <ol className={`study-overview-shots is-${layout}`}>{matches.map(({ shot, index }) => <li key={shot.id} data-overview-shot={shot.id}>
       <ShotFrames shot={shot} index={index} onPreview={onPreview} onSelect={onSelect} />
       <button type="button" className="study-overview-open" aria-label={`研究镜头 ${index + 1}：${shot.title}`} aria-current={playingId === shot.id ? "true" : undefined} onClick={() => onSelect(shot)}>
-        <strong><span className="overview-shot-number">{String(index + 1).padStart(2, "0")}</span>{shot.title}</strong>
+        <strong><span className="overview-shot-number">{String(index + 1).padStart(2, "0")}</span>{shot.title}{playingId === shot.id && <span className="overview-shot-playback">{playing ? "正在播放" : "播放位置"}</span>}</strong>
         <span className="overview-shot-facts">{formatVideoTime(shot.start)}–{formatVideoTime(shot.end)} · {[shot.facts?.景别, shot.facts?.运镜].filter(Boolean).join(" · ") || "画面信息待补充"}</span>
         {shot.summary && <span className="overview-shot-summary">{shot.summary}</span>}
-        <span className="overview-shot-meta"><span>{formatShotDuration(shot)}{playingId === shot.id ? " · 播放位置" : ""}</span><RightOutlined /></span>
+        <span className="overview-shot-meta"><span>{formatShotDuration(shot)}</span><RightOutlined /></span>
       </button>
       {Boolean(shot.category || shot.rhythm || shot.transition || shot.subjects?.length || shot.sound || shot.dialogue || shot.onscreenText || shot.narrative) && <details className="overview-shot-extra"><summary>更多镜头资料</summary><div className="overview-shot-context">{[shot.category, shot.rhythm, shot.transition].filter(Boolean).length > 0 && <span>{[shot.category, shot.rhythm, shot.transition].filter(Boolean).join(" · ")}</span>}{shot.subjects?.length > 0 && <span>人物：{shot.subjects.map((id) => people.find((entry) => entry.id === id)?.name || id).join("、")}</span>}{[["sound", "声音"], ["dialogue", "台词"], ["onscreenText", "画面文字"], ["narrative", "叙事作用"]].filter(([key]) => shot[key]).map(([key, label]) => <span key={key}>{label}：{shot[key]}</span>)}</div></details>}
     </li>)}</ol>

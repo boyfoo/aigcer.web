@@ -120,16 +120,33 @@ a:focus-visible {
 
 .brand {
   justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--text);
   font-family: var(--font-sans);
-  font-size: 38px;
+  font-size: 26px;
   font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.025em;
   cursor: pointer;
+}
+
+.brand:hover,
+.brand:focus,
+.brand:active {
+  color: var(--text);
+}
+
+.brand-icon {
+  display: block;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 6px;
 }
 
 .primary-nav {
@@ -1065,10 +1082,6 @@ a:focus-visible {
     height: 66px;
     grid-template-columns: auto 1fr;
     padding: 0 20px;
-  }
-
-  .brand {
-    font-size: 30px;
   }
 
   .primary-nav {

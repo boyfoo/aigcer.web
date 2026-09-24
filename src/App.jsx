@@ -228,7 +228,8 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
 
       <header className="topbar">
         <Link className="brand" href="/" onClick={(event) => { guardNavigation(event); if (!event.defaultPrevented) resetFilters(); }} aria-label="返回案例首页">
-          镜界
+          <img className="brand-icon" src="/logo.png?v=4" width="32" height="32" alt="" />
+          <span>镜界</span>
         </Link>
         <nav className="primary-nav" aria-label="主要导航">
           <Link href="/" className={`nav-link${page === "home" || page === "case" ? " is-active" : ""}`} onClick={guardNavigation}>看案例</Link>
