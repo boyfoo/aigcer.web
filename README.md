@@ -4,6 +4,8 @@
 
 ## 本地运行
 
+界面开发与设计约定见 [镜界设计系统](DESIGN_SYSTEM.md)。
+
 需要满足 `package.json` 中 `engines` 要求的 Node.js，使用内置 SQLite。nvm 版本只在当前终端进程中选择，步骤见下文。
 
 ```bash

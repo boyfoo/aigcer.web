@@ -15,7 +15,7 @@ html:has(.video-study), body:has(.video-study) { overscroll-behavior-y: none; }
 .video-study[data-heading-mode="compact"] .video-study-name h1 { font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .video-study[data-heading-mode="compact"] .video-study-name p { display: none; }
 .video-study-actions[aria-hidden="true"] { visibility: hidden; }
-.video-study-back { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); }
+.video-study-back { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border: 2px solid var(--line); border-radius: 50%; color: var(--muted); }
 .video-study-back:hover { color: var(--accent); border-color: var(--accent); }
 .video-study-heading h1 { margin: 0; font-size: 24px; font-weight: 500; line-height: 1.3; }
 .video-study-heading p { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 0; color: var(--muted); font-size: 13px; }
@@ -97,7 +97,7 @@ html:has(.video-study), body:has(.video-study) { overscroll-behavior-y: none; }
 .shot-facts dt { margin-bottom: 6px; color: var(--muted); font-size: 12px; }
 .shot-facts dd { margin: 0; font-size: 14px; line-height: 1.6; }
 .analysis-annotation-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 26px; }
-.analysis-annotation-options button { padding: 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--text); text-align: left; font: inherit; cursor: pointer; }
+.analysis-annotation-options button { padding: 11px; border: 2px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--text); text-align: left; font: inherit; cursor: pointer; }
 .analysis-annotation-options button:hover, .analysis-annotation-options button[aria-pressed="true"] { border-color: var(--accent); }
 .analysis-annotation-options span, .analysis-annotation-options strong, .analysis-annotation-options small { display: block; }
 .analysis-annotation-options span { font-size: 12px; color: var(--muted); }
@@ -136,7 +136,7 @@ html:has(.video-study), body:has(.video-study) { overscroll-behavior-y: none; }
 .rhythm-segment:hover { color: var(--text); }
 .rhythm-segment:hover .rhythm-segment-bar { background: #858781; }
 .rhythm-segment.is-selected { color: var(--text); }
-.rhythm-segment.is-selected .rhythm-segment-bar { outline: 1px solid var(--accent); outline-offset: 2px; }
+.rhythm-segment.is-selected .rhythm-segment-bar { outline: 2px solid var(--accent); outline-offset: 2px; }
 .rhythm-segment.is-playing { color: var(--text); }
 .rhythm-segment.is-playing .rhythm-segment-bar { background: var(--accent); }
 .rhythm-segment.is-playing .rhythm-segment-bar::after { content: ""; position: absolute; top: -2px; bottom: -2px; left: clamp(1px, var(--shot-progress), calc(100% - 1px)); width: 2px; border-radius: 1px; background: #fff; box-shadow: 0 0 3px #0008; transform: translateX(-1px); pointer-events: none; }
@@ -181,7 +181,7 @@ html:has(.video-study), body:has(.video-study) { overscroll-behavior-y: none; }
 .study-reading-frame { margin-bottom: 24px; }
 .study-reading-frame > .study-frame { aspect-ratio: 16 / 9; }
 .study-frame-switch { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-.study-frame-switch button { min-height: 36px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
+.study-frame-switch button { min-height: 36px; padding: 5px 11px; border: 2px solid var(--line); border-radius: 6px; color: var(--muted); background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
 .study-frame-switch button:hover { color: var(--text); }
 .study-frame-switch button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
 .shot-facts:empty, .analysis-annotation-options:empty, .study-reading-status:empty { display: none; }
@@ -197,7 +197,7 @@ html:has(.video-study), body:has(.video-study) { overscroll-behavior-y: none; }
   .study-workspace { gap: 24px; }
   .study-reading-column { padding-left: 20px; }
   .analysis-annotation-options { grid-template-columns: minmax(0, 1fr); gap: 7px; }
-  .analysis-annotation-options button { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
+  .analysis-annotation-options button { display: flex; align-items: center; gap: 12px; padding: 9px 11px; }
   .analysis-annotation-options strong { flex: 1; margin: 0; }
   .selected-shot-heading h2 { font-size: 20px; }
   .study-overview-shots.is-list > li { grid-template-columns: minmax(0, 1fr); gap: 14px; }

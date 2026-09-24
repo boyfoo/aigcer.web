@@ -5,7 +5,7 @@
 .entry-list-heading h2, .entry-editor-heading h2 { margin: 0; font-size: 18px; }
 .entry-list-heading span, .entry-editor-heading small { color: var(--muted); font-size: 13px; font-weight: 400; }
 .entry-case-list { display: grid; gap: 8px; }
-.entry-case { display: flex; gap: 10px; align-items: center; width: 100%; padding: 8px; text-align: left; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--text); cursor: pointer; }
+.entry-case { display: flex; gap: 10px; align-items: center; width: 100%; padding: 7px; text-align: left; border: 2px solid transparent; border-radius: 8px; background: transparent; color: var(--text); cursor: pointer; }
 .entry-case:hover { background: var(--surface-soft); }
 .entry-case.is-active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .entry-case img { flex: 0 0 56px; width: 56px; height: 46px; object-fit: cover; border-radius: 4px; }
