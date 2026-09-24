@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Alert, App, Button, Empty, Input, Popconfirm, Tooltip } from "antd";
+import { App, Button, Empty, Input, Popconfirm, Tooltip } from "antd";
 import { ArrowDownOutlined, ArrowLeftOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
-import { moveTagEntry, validateTagGroups, normalizeTagGroups, TAG_SETTINGS_KEY } from "./tagSettings.js";
+import { moveTagEntry, validateTagGroups } from "./tagSettings.js";
+import { useUnsavedChanges } from "./hooks/useUnsavedChanges.js";
 import { contentReadOnly } from "./lib/contentClient.js";
 
 export function TagSettings({ groups, revision, onBack, onSave, onDirtyChange }) {
@@ -10,7 +11,6 @@ export function TagSettings({ groups, revision, onBack, onSave, onDirtyChange })
   const [selectedId, setSelectedId] = useState(groups[0]?.id);
   const [saving, setSaving] = useState(false);
   const [baseline, setBaseline] = useState({ groups, revision });
-  const [legacy, setLegacy] = useState(null);
   const selected = draft.find((group) => group.id === selectedId);
   const selectedIndex = draft.findIndex((group) => group.id === selectedId);
   const dirty = JSON.stringify(draft) !== JSON.stringify(baseline.groups);
@@ -19,25 +19,7 @@ export function TagSettings({ groups, revision, onBack, onSave, onDirtyChange })
       setDraft(structuredClone(groups)); setBaseline({ groups, revision });
     }
   }, [groups, revision, dirty, saving, baseline.revision]);
-  useEffect(() => {
-    try {
-      const old = JSON.parse(localStorage.getItem(TAG_SETTINGS_KEY));
-      if (old?.version === 1) setLegacy(normalizeTagGroups(old.groups));
-    } catch { /* Keep the original browser backup if it cannot be read. */ }
-  }, []);
-
-  useEffect(() => {
-    onDirtyChange(dirty || saving);
-    const beforeUnload = (event) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    if (dirty || saving) window.addEventListener("beforeunload", beforeUnload);
-    return () => {
-      onDirtyChange(false);
-      window.removeEventListener("beforeunload", beforeUnload);
-    };
-  }, [dirty, saving, onDirtyChange]);
+  useUnsavedChanges(dirty || saving, onDirtyChange);
 
   const updateGroup = (changes) => {
     setDraft((current) => current.map((group) => group.id === selectedId ? { ...group, ...changes } : group));
@@ -74,7 +56,6 @@ export function TagSettings({ groups, revision, onBack, onSave, onDirtyChange })
         <p>一级标签是左侧菜单分组，二级标签是分组下的筛选项。</p>
         <span>{contentReadOnly ? "当前是静态浏览版本，标签设置需在网站服务中保存。" : "保存后更新全站菜单；同类标签满足任意一个，不同类别需同时满足。"}</span>
       </div>
-      {legacy && JSON.stringify(legacy) !== JSON.stringify(groups) && !contentReadOnly && <Alert type="info" title="发现旧版浏览器标签" description="可载入编辑区检查，点击保存设置后才会更新全站；原记录仍保留。" action={<Button disabled={dirty || saving} onClick={() => { setDraft(structuredClone(legacy)); setSelectedId(legacy[0]?.id); setLegacy(null); }}>载入旧版标签</Button>} />}
       <fieldset className="tag-settings-layout" style={{ margin: 0, padding: 0, border: 0, minInlineSize: 0 }} disabled={saving || contentReadOnly}>
         <section className="tag-group-list" aria-label="一级标签">
           <div className="tag-section-heading"><h3>一级标签</h3><span>{draft.length}</span></div>

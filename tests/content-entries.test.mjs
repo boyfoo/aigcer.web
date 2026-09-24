@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { getCases, casePath, shotPath, draftPath } from "../src/lib/content.js";
-import { decodeContentEntries, encodeContentEntries, isMediaUrl, mergeContentEntries, normalizeContentEntry, normalizeDraft, presentCase } from "../src/lib/contentEntries.js";
+import { isMediaUrl, normalizeContentEntry, normalizeDraft, presentCase } from "../src/lib/contentEntries.js";
 import { createDefaultTagGroups, matchesTagFilters } from "../src/tagSettings.js";
 import { getShotAnnotation } from "../src/lib/shotPresentation.js";
 import { filterStudyShots, formatShotDuration, shotSegments } from "../src/lib/shotOverview.js";
@@ -17,17 +17,14 @@ test("case learning focus uses authored material and never presents mock shot an
   assert.equal(Array.from(caseLearningFocus({ analysis: "画".repeat(2000) })).length, 101);
 });
 
-test("saved entries round trip and replace originals without losing video reference content", () => {
-  const originals = getCases();
-  const edited = structuredClone(originals[0]);
-  edited.title = "新的标题";
-  const entries = decodeContentEntries(encodeContentEntries([entry(), edited]));
-  const merged = mergeContentEntries(originals, entries);
-  assert.equal(merged.length, originals.length + 1);
-  assert.equal(merged[0].title, "新录入案例");
-  assert.deepEqual(merged.find(({ id }) => id === edited.id).video, originals[0].video);
-  assert.equal(originals[0].title, "雨夜老电影院");
-  assert.equal(mergeContentEntries(originals, entries.filter(({ id }) => id !== edited.id))[1], originals[0]);
+test("normalizing drafts trims text and preserves video references without mutating input", () => {
+  const source = entry();
+  assert.equal(normalizeDraft(source).title, "新录入案例");
+  assert.equal(source.title, "  新录入案例  ");
+  const video = structuredClone(getCases()[0]);
+  const before = structuredClone(video);
+  assert.deepEqual(normalizeDraft(video).video, before.video);
+  assert.deepEqual(video, before);
 });
 
 test("local case and shot links use the actual preview route and preserve query parameters", () => {
@@ -40,16 +37,14 @@ test("local case and shot links use the actual preview route and preserve query 
 });
 
 test("media sources reject scripts, temporary blobs and invalid image data", () => {
-  for (const source of ["javascript:alert(1)", "blob:https://example.com/x", "file:///C:/video.mp4", "//elsewhere.com/x", "/\\elsewhere.com/x", "https://user:password@example.com/x", "data:image/svg+xml,<svg></svg>"]) assert.equal(isMediaUrl(source, true), false, source);
-  for (const source of ["https://example.com/video.mp4", "/images/night-lounge.png"]) assert.equal(isMediaUrl(source, true), true, source);
-  assert.equal(isMediaUrl("data:image/png;base64,aGVsbG8=", true), false);
-  assert.equal(isMediaUrl("data:image/png;base64,aGVsbG8=", true, true), true);
+  for (const source of ["javascript:alert(1)", "blob:https://example.com/x", "file:///C:/video.mp4", "//elsewhere.com/x", "/\\elsewhere.com/x", "https://user:password@example.com/x", "data:image/svg+xml,<svg></svg>"]) assert.equal(isMediaUrl(source), false, source);
+  for (const source of ["https://example.com/video.mp4", "/images/night-lounge.png"]) assert.equal(isMediaUrl(source), true, source);
+  assert.equal(isMediaUrl("data:image/png;base64,aGVsbG8="), false);
+  assert.throws(() => normalizeDraft({ ...entry(), image: "data:image/png;base64,aGVsbG8=" }), /封面/);
   assert.throws(() => normalizeContentEntry({ ...entry(), image: "blob:expired" }), /封面/);
 });
 
-test("invalid storage cannot silently replace existing entries with an empty list", () => {
-  assert.deepEqual(decodeContentEntries(null), []);
-  for (const raw of ["broken", '{"version":2,"entries":[]}', JSON.stringify({ version: 1, entries: [entry(), entry()] })]) assert.throws(() => decodeContentEntries(raw));
+test("publishing validates required fields while drafts allow incomplete content", () => {
   for (const changes of [{ title: "" }, { prompt: " " }, { duration: "00:99" }]) assert.throws(() => normalizeContentEntry({ ...entry(), ...changes }));
   assert.equal(normalizeContentEntry({ ...entry(), description: "" }).description, "");
   assert.equal(normalizeContentEntry({ ...entry(), prompt: "", analysis: "观察光线方向" }).analysis, "观察光线方向");
@@ -86,7 +81,7 @@ test("entered cases remain filterable when displayed labels are renamed", () => 
 test("optional shot frames and context round trip without adding invented content to old cases", () => {
   const item = structuredClone(getCases()[0]);
   Object.assign(item.video.shots[0], { endImage: "/media/tail.png", sound: "  雨声与低音  ", dialogue: "快进来。", onscreenText: "电影院", narrative: "交代人物的目的" });
-  const restored = decodeContentEntries(encodeContentEntries([item]))[0];
+  const restored = normalizeDraft(JSON.parse(JSON.stringify(normalizeDraft(item))));
   assert.equal(restored.video.shots[0].endImage, "/media/tail.png");
   assert.equal(restored.video.shots[0].sound, "雨声与低音");
   assert.equal(restored.video.shots[0].dialogue, "快进来。");

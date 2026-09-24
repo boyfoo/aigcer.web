@@ -1,17 +1,13 @@
 import { formatVideoTime } from "./videoTimeline.js";
 import { reviewFields, shotCategories, rhythmRoles, shotTransitions } from "./studyReport.js";
 
-// Old browser data is retained for migration into server drafts.
-export const CONTENT_STORAGE_KEY = "jingjie-content-v1";
-export const isLocalCase = (id) => id.startsWith("local-");
 export const validCaseId = (id) => typeof id === "string" && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) && id.length <= 150;
 export const tagValues = (value) => Array.isArray(value) ? value : typeof value === "string" && value ? [value] : [];
 export const displayTags = (value) => tagValues(value).join("、");
 export const caseTagValues = (item, groupId) => item.tagValues?.[groupId] ?? (["type", "emotion", "lighting", "movement"].includes(groupId) ? tagValues(item[groupId]) : item.tags ?? []);
 
-export function isMediaUrl(value, image = false, legacy = false) {
+export function isMediaUrl(value) {
   if (typeof value !== "string" || !value.trim()) return false;
-  if (image && legacy && /^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(value)) return value.length <= 2800000;
   if (/^\/(?!\/)/.test(value) && !/[\\\s]/.test(value)) return true;
   try { const url = new URL(value); return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password; }
   catch { return false; }
@@ -28,11 +24,11 @@ const values = (value) => {
   return [...new Set(list.map((tag) => text(tag, "标签", 60)).filter(Boolean))];
 };
 
-export function normalizeContentEntry(draft, { publish = true, legacy = false } = {}) {
+export function normalizeContentEntry(draft, { publish = true } = {}) {
   if (!draft || !validCaseId(draft.id)) throw new Error("案例标识无效");
   if (!["分镜", "视频"].includes(draft.kind)) throw new Error("请选择分镜或视频");
-  const item = { id: draft.id, kind: draft.kind, title: text(draft.title, "案例名称", 80), description: text(draft.description, "案例介绍", 2000), analysis: text(draft.analysis, "案例分析", 16000), prompt: text(draft.prompt, "整体提示词", 12000), image: text(draft.image, "封面地址", legacy ? 2800000 : 2048), duration: text(draft.duration, "分镜时长", 7), tags: values(draft.tags), tagValues: {} };
-  if (item.image && !isMediaUrl(item.image, true, legacy)) throw new Error("封面地址无效，请重新上传图片");
+  const item = { id: draft.id, kind: draft.kind, title: text(draft.title, "案例名称", 80), description: text(draft.description, "案例介绍", 2000), analysis: text(draft.analysis, "案例分析", 16000), prompt: text(draft.prompt, "整体提示词", 12000), image: text(draft.image, "封面地址", 2048), duration: text(draft.duration, "分镜时长", 7), tags: values(draft.tags), tagValues: {} };
+  if (item.image && !isMediaUrl(item.image)) throw new Error("封面地址无效，请重新上传图片");
   for (const key of ["type", "emotion", "lighting", "movement"]) item[key] = values(draft[key]);
   if (draft.tagValues != null) {
     if (typeof draft.tagValues !== "object" || Array.isArray(draft.tagValues) || Object.keys(draft.tagValues).length > 50) throw new Error("标签分组格式无效");
@@ -64,8 +60,8 @@ export function normalizeContentEntry(draft, { publish = true, legacy = false } 
     for (const person of video.cast || []) {
       if (!person || !validCaseId(person.id) || castIds.has(person.id)) throw new Error("人物标识重复或无效");
       castIds.add(person.id);
-      const name = text(person.name, "人物名称", 80), note = text(person.note, "人物介绍", 2000), image = text(person.image, "人物图片", legacy ? 2800000 : 2048);
-      if (image && !isMediaUrl(image, true, legacy)) throw new Error("人物图片地址无效");
+      const name = text(person.name, "人物名称", 80), note = text(person.note, "人物介绍", 2000), image = text(person.image, "人物图片", 2048);
+      if (image && !isMediaUrl(image)) throw new Error("人物图片地址无效");
       if (publish && !name) throw new Error("发布前请填写人物名称，或移除空白人物");
       cast.push({ id: person.id, name, note, image });
     }
@@ -81,10 +77,10 @@ export function normalizeContentEntry(draft, { publish = true, legacy = false } 
       if (![start, end].every((value) => Number.isFinite(value) && value >= 0 && value <= 86400)) throw new Error(`${label}的时间格式无效`);
       if (publish && (start < previousEnd || end <= start || end > duration)) throw new Error(`${label}的时间需按顺序排列，不能重叠或超出视频时长`);
       previousEnd = end;
-      const image = text(shot.image, `${label}画面地址`, legacy ? 2800000 : 2048);
-      if (image && !isMediaUrl(image, true, legacy)) throw new Error(`${label}画面地址无效`);
-      const endImage = text(shot.endImage, `${label}尾帧地址`, legacy ? 2800000 : 2048);
-      if (endImage && !isMediaUrl(endImage, true, legacy)) throw new Error(`${label}尾帧地址无效`);
+      const image = text(shot.image, `${label}画面地址`, 2048);
+      if (image && !isMediaUrl(image)) throw new Error(`${label}画面地址无效`);
+      const endImage = text(shot.endImage, `${label}尾帧地址`, 2048);
+      if (endImage && !isMediaUrl(endImage)) throw new Error(`${label}尾帧地址无效`);
       const details = {};
       for (const [key, name, choices] of [["category", "类别", shotCategories], ["rhythm", "叙事节奏", rhythmRoles], ["transition", "转场", shotTransitions]]) {
         const value = text(shot[key], `${label}${name}`, 40);
@@ -132,18 +128,4 @@ export const normalizeDraft = (draft) => normalizeContentEntry(draft, { publish:
 export function presentCase(item) {
   const image = item.image || "/images/media-placeholder.svg";
   return { ...item, title: item.title || "未命名案例", image, ...(item.video && { video: { ...item.video, shots: item.video.shots.map((shot, index) => ({ ...shot, title: shot.title || `镜头 ${index + 1}`, image: shot.image || image, ...(!shot.image && { imageIsFallback: true }) })) } }) };
-}
-export function decodeContentEntries(raw) {
-  if (!raw) return [];
-  const data = JSON.parse(raw);
-  if (data?.version !== 1 || !Array.isArray(data.entries)) throw new Error("无法识别旧版内容");
-  const entries = data.entries.map((item) => normalizeContentEntry(item, { publish: false, legacy: true }));
-  if (new Set(entries.map(({ id }) => id)).size !== entries.length) throw new Error("案例标识重复");
-  return entries;
-}
-export const encodeContentEntries = (entries) => JSON.stringify({ version: 1, entries: entries.map(normalizeDraft) });
-export function mergeContentEntries(originals, entries) {
-  const overrides = new Map(entries.map((item) => [item.id, item]));
-  const ids = new Set(originals.map(({ id }) => id));
-  return [...entries.filter(({ id }) => !ids.has(id)), ...originals.map((item) => overrides.get(item.id) ?? item)];
 }

@@ -4,8 +4,7 @@ import { Button, Checkbox, Input, InputNumber, Popconfirm, Select } from "antd";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { MediaUpload } from "./MediaUpload.jsx";
 import { reviewFields, rhythmRoles, shotCategories, shotTransitions } from "./lib/studyReport.js";
-
-function Field({ label, children }) { return <div className="entry-field"><div className="entry-field-label">{label}</div>{children}</div>; }
+import { EntryField as Field } from "./EntryField.jsx";
 
 export function VideoDetailsEditor({ video, onChange, blocked }) {
   const metadata = video.metadata || {};

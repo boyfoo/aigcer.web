@@ -1,8 +1,6 @@
 import { filterGroups } from "./data.js";
 import { caseTagValues, tagValues } from "./lib/contentEntries.js";
 
-export const TAG_SETTINGS_KEY = "jingjie-tag-settings-v1";
-
 export function createDefaultTagGroups() {
   return filterGroups.map((group) => ({
     id: group.key,
@@ -63,22 +61,6 @@ export function normalizeTagGroups(groups) {
       value: option.value ?? option.label.trim(),
     })),
   }));
-}
-
-export function loadTagGroups() {
-  try {
-    const saved = JSON.parse(window.localStorage.getItem(TAG_SETTINGS_KEY));
-    if (saved?.version === 1) return normalizeTagGroups(saved.groups);
-  } catch {
-    // Invalid or unavailable local storage should never prevent the page opening.
-  }
-  return createDefaultTagGroups();
-}
-
-export function saveTagGroups(groups) {
-  const normalized = normalizeTagGroups(groups);
-  window.localStorage.setItem(TAG_SETTINGS_KEY, JSON.stringify({ version: 1, groups: normalized }));
-  return normalized;
 }
 
 export function createInitialTagFilters(groups) {

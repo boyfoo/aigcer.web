@@ -1,16 +1,19 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Alert, App, Button, Collapse, Empty, Input, InputNumber, Popconfirm, Select, Tag } from "antd";
-import { ArrowLeftOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, EyeOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import { ContentTagFields } from "./ContentTagFields.jsx";
 import { useManagedContent } from "./ContentProvider.jsx";
 import { casePath, draftPath } from "./lib/content.js";
-import { caseTagValues, CONTENT_STORAGE_KEY, decodeContentEntries, normalizeContentEntry } from "./lib/contentEntries.js";
-import { MediaUpload, uploadFile } from "./MediaUpload.jsx";
+import { caseTagValues, normalizeContentEntry } from "./lib/contentEntries.js";
+import { MediaUpload } from "./MediaUpload.jsx";
 import { contentReadOnly } from "./lib/contentClient.js";
-import { CastEditor, ShotClassification, ShotReview, VideoDetailsEditor } from "./StudyEntryFields.jsx";
+import { CastEditor, VideoDetailsEditor } from "./StudyEntryFields.jsx";
 import { QualityReport } from "./StudyReport.jsx";
+import { EntryField as Field } from "./EntryField.jsx";
+import { ShotEditor } from "./ShotEditor.jsx";
+import { useUnsavedChanges } from "./hooks/useUnsavedChanges.js";
 import "./content-entry.css";
 
 const builtinGroups = ["type", "emotion", "lighting", "movement"];
@@ -18,9 +21,6 @@ const labels = { draft: "草稿", published: "已发布", offline: "已下架" }
 const shotMotion = { motionEnter: false, motionLeave: false, motionAppear: false };
 const newDraft = () => ({ id: "", title: "", kind: "视频", image: "", duration: "00:00", type: [], emotion: [], lighting: [], movement: [], tags: [], tagValues: {}, description: "", analysis: "", prompt: "", video: { src: "", durationSeconds: 0, isMock: false, shots: [] } });
 const emptyShot = (start, end) => ({ id: `shot-${crypto.randomUUID()}`, start, end, title: "", image: "", summary: "", facts: { 景别: "", 运镜: "", 构图: "", 光影: "" }, analysis: [], imagePrompt: "", videoPrompt: "" });
-function Field({ label, children, hint, required }) {
-  return <div className="entry-field"><div className="entry-field-label">{label}{required && <span aria-hidden="true"> *</span>}</div>{children}{hint && <small>{hint}</small>}</div>;
-}
 
 export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
   const { message, modal } = App.useApp();
@@ -36,23 +36,11 @@ export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
   const [savingTags, setSavingTags] = useState(false);
   const [openShots, setOpenShots] = useState([]);
   const shotListRef = useRef(null);
-  const [legacy, setLegacy] = useState([]);
   const dirty = JSON.stringify(draft) !== baseline;
   const blocked = Boolean(busy || uploads || savingTags);
   const filtered = records.filter((record) => (status === "all" || record.status === status) && record.draft.title.toLowerCase().includes(search.trim().toLowerCase()));
 
-  useEffect(() => {
-    try {
-      const done = JSON.parse(localStorage.getItem("jingjie-legacy-migrated-v1") || "[]");
-      setLegacy(decodeContentEntries(localStorage.getItem(CONTENT_STORAGE_KEY)).filter((item) => !done.includes(item.id)));
-    } catch { /* Existing legacy data is never removed or overwritten on a failed read. */ }
-  }, []);
-  useEffect(() => {
-    onDirtyChange(dirty || blocked);
-    const unload = (event) => { event.preventDefault(); event.returnValue = ""; };
-    if (dirty || blocked) window.addEventListener("beforeunload", unload);
-    return () => { onDirtyChange(false); window.removeEventListener("beforeunload", unload); };
-  }, [dirty, blocked, onDirtyChange]);
+  useUnsavedChanges(dirty || blocked, onDirtyChange);
 
   const update = (changes) => { setDraft((value) => ({ ...value, ...changes })); setSaveError(""); };
   const updateVideo = (changes) => update({ video: { ...draft.video, ...changes } });
@@ -107,31 +95,9 @@ export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
   };
   const mediaBusy = (delta) => setUploads((count) => Math.max(0, count + delta));
   const imageInput = (label, value, onChange) => <MediaUpload label={label} value={value} onChange={onChange} onBusyChange={mediaBusy} disabled={blocked} />;
-  const migrate = async () => {
-    setBusy("migrate");
-    try {
-      const completed = JSON.parse(localStorage.getItem("jingjie-legacy-migrated-v1") || "[]");
-      for (const source of legacy) {
-        const item = structuredClone(source);
-        const convert = async (url) => url?.startsWith("data:") ? (await uploadFile(new File([await (await fetch(url)).blob()], "legacy.png", { type: "image/png" }), "image")).url : url;
-        item.image = await convert(item.image);
-        for (const shot of item.video?.shots ?? []) { shot.image = await convert(shot.image); if (shot.endImage) shot.endImage = await convert(shot.endImage); }
-        const previous = records.find(({ id }) => id === item.id);
-        // Keep an already edited server copy intact when importing the browser backup.
-        await change("save", item, previous ? { id: `case-${crypto.randomUUID()}` } : { id: item.id });
-        completed.push(item.id);
-        localStorage.setItem("jingjie-legacy-migrated-v1", JSON.stringify(completed));
-        setLegacy((all) => all.filter(({ id }) => id !== item.id));
-      }
-      message.success("旧版内容已转存为网站草稿，原浏览器记录仍保留");
-    } catch (failure) { setSaveError(failure.message); message.error(failure.message); }
-    finally { setBusy(""); }
-  };
-
   return <main className="tag-settings-page content-entry-page" aria-labelledby="content-title">
     <div className="tag-settings-page-nav"><Button type="text" icon={<ArrowLeftOutlined />} onClick={onBack}>返回镜头参考</Button><span>内容管理 / 录入</span></div>
     <div className="tag-settings-intro"><h1 id="content-title">内容录入</h1><p>先积累素材，再补充提示词与分析，整理好后发布。</p><span>草稿保存在网站；只有已发布内容会出现在访客列表中。</span></div>
-    {!!legacy.length && !contentReadOnly && <Alert className="entry-error" type="info" title={`发现 ${legacy.length} 条旧版浏览器内容`} description="可转存到网站草稿，不会自动发布；同名网站内容会保留。" action={<Button disabled={blocked || !ready || dirty} loading={busy === "migrate"} onClick={migrate}>转存为草稿</Button>} />}
     {error ? <Alert type="error" title="内容读取失败" description={error} action={!contentReadOnly && <Button onClick={refresh}>重新读取</Button>} /> : !ready ? <p role="status">正在读取内容…</p> : <div className="entry-layout">
       <aside className="entry-library" aria-label="案例列表">
         <Button type="primary" block icon={<PlusOutlined />} disabled={blocked} onClick={() => choose(null)}>新增案例</Button>
@@ -180,23 +146,4 @@ export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
       </form>
     </div>}
   </main>;
-}
-
-function ShotEditor({ shot, index, duration, blocked, mediaBusy, onChange, onRemove, people, onAddPerson }) {
-  const prefix = `镜头 ${index + 1}`;
-  const input = (key, label, multiline = false, max = 2000) => <Field label={label}><Input.TextArea aria-label={`${prefix}${label}`} value={shot[key] ?? ""} onChange={(event) => onChange({ [key]: event.target.value })} maxLength={max} autoSize={{ minRows: multiline ? 3 : 1, maxRows: 8 }} /></Field>;
-  return <div className="entry-shot">
-    <div className="entry-two-columns"><Field label="镜头名称" required><Input aria-label={`${prefix}名称`} value={shot.title} onChange={(event) => onChange({ title: event.target.value })} maxLength={80} /></Field><div className="entry-two-columns"><Field label="开始（秒）" required><InputNumber aria-label={`${prefix}开始秒数`} min={0} max={duration} precision={3} value={shot.start} onChange={(start) => onChange({ start })} /></Field><Field label="结束（秒）" required><InputNumber aria-label={`${prefix}结束秒数`} min={0} max={duration} precision={3} value={shot.end} onChange={(end) => onChange({ end })} /></Field></div></div>
-    <div className="entry-two-columns"><MediaUpload label={`${prefix}首帧 / 代表画面`} value={shot.image} disabled={blocked} onBusyChange={mediaBusy} onChange={(image) => onChange({ image })} /><MediaUpload label={`${prefix}尾帧（可选）`} value={shot.endImage || ""} disabled={blocked} onBusyChange={mediaBusy} onChange={(endImage) => onChange({ endImage })} /></div>
-    <small className="entry-hint">首帧留空时会标明使用案例封面；尾帧可后补。按视频顺序填写时间段，不能重叠。</small>
-    {input("summary", "镜头概述", true)}
-    <ShotClassification shot={shot} prefix={prefix} people={people} onChange={onChange} onAddPerson={onAddPerson} blocked={blocked} />
-    <details className="entry-shot-context"><summary>声音与叙事（可选）</summary><div className="entry-two-columns">{input("sound", "声音与音乐", true)}{input("dialogue", "台词", true)}{input("onscreenText", "画面文字", true)}{input("narrative", "叙事作用", true)}</div></details>
-    <div className="entry-two-columns">{Object.entries(shot.facts).map(([label, value]) => <Field key={label} label={label}><Input aria-label={`${prefix}${label}`} value={value} maxLength={120} onChange={(event) => onChange({ facts: { ...shot.facts, [label]: event.target.value } })} /></Field>)}</div>
-    <div className="entry-analysis"><h3>拉片拆解</h3>{shot.analysis.map((note, noteIndex) => <div key={noteIndex} className="entry-analysis-row"><Input aria-label={`${prefix}拆解 ${noteIndex + 1} 标题`} placeholder="例如：构图" value={note.label} maxLength={30} onChange={(event) => onChange({ analysis: shot.analysis.map((entry, i) => i === noteIndex ? { ...entry, label: event.target.value } : entry) })} /><Input.TextArea aria-label={`${prefix}拆解 ${noteIndex + 1} 内容`} placeholder="解释这个镜头的视觉效果与作用" value={note.text} maxLength={4000} autoSize={{ minRows: 2, maxRows: 8 }} onChange={(event) => onChange({ analysis: shot.analysis.map((entry, i) => i === noteIndex ? { ...entry, text: event.target.value } : entry) })} /><Button type="text" danger icon={<DeleteOutlined />} aria-label={`删除${prefix}拆解 ${noteIndex + 1}`} onClick={() => onChange({ analysis: shot.analysis.filter((_, i) => i !== noteIndex) })} /></div>)}<Button type="dashed" icon={<PlusOutlined />} disabled={shot.analysis.length >= 20} onClick={() => onChange({ analysis: [...shot.analysis, { label: "", text: "" }] })}>添加拆解</Button></div>
-    {input("imagePrompt", "首帧图片提示词", true, 12000)}
-    {input("videoPrompt", "视频动态提示词", true, 12000)}
-    <ShotReview shot={shot} prefix={prefix} onChange={onChange} />
-    <Popconfirm title={`删除${prefix}？`} description="保存案例后生效。" onConfirm={onRemove} okText="删除" cancelText="取消"><Button danger type="text" icon={<DeleteOutlined />}>删除这个镜头</Button></Popconfirm>
-  </div>;
 }

@@ -4,13 +4,10 @@ import { storyboardItems } from "../src/data.js";
 import {
   createDefaultTagGroups,
   createInitialTagFilters,
-  loadTagGroups,
   matchesTagFilters,
   moveTagEntry,
   normalizeTagGroups,
   reconcileTagFilters,
-  saveTagGroups,
-  TAG_SETTINGS_KEY,
   validateTagGroups,
 } from "../src/tagSettings.js";
 
@@ -70,32 +67,4 @@ test("validation prevents empty, duplicate, reserved and malformed labels", () =
     assert.throws(() => normalizeTagGroups(groups));
   }
   assert.equal(validateTagGroups([]), "");
-});
-
-test("local save restores edits, handles empty settings and falls back on corrupt data", () => {
-  const originalWindow = globalThis.window;
-  const values = new Map();
-  globalThis.window = { localStorage: {
-    getItem: (key) => values.get(key) ?? null,
-    setItem: (key, value) => values.set(key, value),
-  } };
-  try {
-    assert.deepEqual(loadTagGroups(), createDefaultTagGroups());
-    const edited = createDefaultTagGroups();
-    edited[0].label = "影片类型";
-    assert.deepEqual(loadTagGroups(), createDefaultTagGroups());
-    const saved = saveTagGroups(edited);
-    assert.deepEqual(loadTagGroups(), saved);
-    saveTagGroups([]);
-    assert.deepEqual(loadTagGroups(), []);
-    values.set(TAG_SETTINGS_KEY, "invalid json");
-    assert.deepEqual(loadTagGroups(), createDefaultTagGroups());
-    values.set(TAG_SETTINGS_KEY, JSON.stringify({ version: 1, groups: [{}] }));
-    assert.deepEqual(loadTagGroups(), createDefaultTagGroups());
-    globalThis.window.localStorage.setItem = () => { throw new Error("Storage unavailable"); };
-    assert.throws(() => saveTagGroups(edited), /Storage unavailable/);
-  } finally {
-    if (originalWindow === undefined) delete globalThis.window;
-    else globalThis.window = originalWindow;
-  }
 });
