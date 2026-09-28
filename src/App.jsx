@@ -13,8 +13,10 @@ import {
   Tag,
 } from "antd";
 import {
+  ArrowRightOutlined,
   BookOutlined,
   BookFilled,
+  CheckOutlined,
   CopyOutlined,
   DownOutlined,
   FileTextOutlined,
@@ -181,7 +183,20 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
         const activeValues = tagValues(filters[group.id]);
         return (
           <section className="filter-group" key={group.id}>
-            <h2 className="filter-heading"><button type="button" aria-expanded={Boolean(expandedFilters[group.id])} aria-controls={`filter-${group.id}`} onClick={() => setExpandedFilters((current) => ({ ...current, [group.id]: !current[group.id] }))}>{group.label}<span>{activeValues.length ? `已选 ${activeValues.length}` : "不限"}<DownOutlined /></span></button></h2>
+            <h2 className="filter-heading">
+              <button
+                type="button"
+                aria-expanded={Boolean(expandedFilters[group.id])}
+                aria-controls={`filter-${group.id}`}
+                onClick={() => setExpandedFilters((current) => ({ ...current, [group.id]: !current[group.id] }))}
+              >
+                {group.label}
+                <span className={`filter-summary${activeValues.length ? " is-active" : ""}`}>
+                  {activeValues.length ? `已选 ${activeValues.length}` : "不限"}
+                  <DownOutlined aria-hidden="true" />
+                </span>
+              </button>
+            </h2>
             <div className="filter-options" id={`filter-${group.id}`} hidden={!expandedFilters[group.id]}>
               {[{ id: "", label: "全部" }, ...group.options].map((option) => {
                 const active = option.id ? activeValues.includes(option.id) : !activeValues.length;
@@ -196,7 +211,7 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
                     <span className="option-dot" aria-hidden="true" />
                     <span>{option.label}</span>
                     {active && option.id ? (
-                      <PlayCircleFilled className="option-arrow" aria-hidden="true" />
+                      <CheckOutlined className="option-check" aria-hidden="true" />
                     ) : null}
                   </button>
                 );
@@ -294,7 +309,7 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
                 placeholder="搜索案例、画面或风格，例如：雨夜"
                 onChange={(event) => setDraftQuery(event.target.value)}
               />
-              <Button className="hero-search-button" type="primary" htmlType="submit">
+              <Button className="hero-search-button" type="primary" htmlType="submit" autoInsertSpace={false}>
                 搜索
               </Button>
             </form>
@@ -323,11 +338,11 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
                   <p className="case-learning-focus"><span>看点</span>{caseLearningFocus(selectedItem)}</p>
                   <p className="description">{selectedItem.description}</p>
                   <div className="featured-actions">
-                    <Link className="case-read-link" href={casePath(selectedItem.id)}>{selectedItem.video?.shots.length ? "看视频与拆解" : "查看案例"} <span aria-hidden="true">→</span></Link>
+                    <Link className="case-read-link" href={casePath(selectedItem.id)}>{selectedItem.video?.shots.length ? "看视频与拆解" : "查看案例"}<ArrowRightOutlined aria-hidden="true" /></Link>
                     <Button
                       type="text"
                       className={savedIds.has(selectedItem.id) ? "is-saved" : ""}
-                      icon={savedIds.has(selectedItem.id) ? <BookFilled /> : <BookOutlined />}
+                      icon={savedIds.has(selectedItem.id) ? <BookFilled aria-hidden="true" /> : <BookOutlined aria-hidden="true" />}
                       onClick={() => toggleSaved(selectedItem.id)}
                     >
                       {savedIds.has(selectedItem.id) ? "已收藏" : "收藏案例"}
@@ -354,7 +369,7 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
               </div>
             </section>
           ) : filteredItems.length ? (
-            <section className="case-results-grid" aria-label="镜头参考结果">{filteredItems.map((item) => <Link href={casePath(item.id)} className="browse-case" key={item.id} aria-label={`查看案例：${item.title}`}><div className="browse-case-image"><img src={item.image} alt="" /><span className="duration-badge">{item.kind} · {item.duration}</span></div><h2>{item.title}</h2><p>{caseLearningFocus(item)}</p>{collection?.slug === "prompts" && <p className="browse-prompt-excerpt">{item.prompt || "进入案例查看逐镜头提示词"}</p>}<span className="browse-case-action">{collection?.slug === "prompts" ? "查看案例与提示词" : item.video?.shots.length ? "看视频与拆解" : "查看案例"} <span aria-hidden="true">→</span></span></Link>)}</section>
+            <section className="case-results-grid" aria-label="镜头参考结果">{filteredItems.map((item) => <Link href={casePath(item.id)} className="browse-case" key={item.id} aria-label={`查看案例：${item.title}`}><div className="browse-case-image"><img src={item.image} alt="" /><span className="duration-badge">{item.kind} · {item.duration}</span></div><h2>{item.title}</h2><p>{caseLearningFocus(item)}</p>{collection?.slug === "prompts" && <p className="browse-prompt-excerpt">{item.prompt || "进入案例查看逐镜头提示词"}</p>}<span className="browse-case-action">{collection?.slug === "prompts" ? "查看案例与提示词" : item.video?.shots.length ? "看视频与拆解" : "查看案例"}<ArrowRightOutlined aria-hidden="true" /></span></Link>)}</section>
           ) : (
             <section className="empty-state">
               <Empty description="暂时没有匹配的镜头参考">
