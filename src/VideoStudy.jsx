@@ -5,7 +5,8 @@ import { createPortal, flushSync } from "react-dom";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { App as AntApp, Button, Modal, Switch, Tag, Tooltip } from "antd";
-import { ArrowLeftOutlined, BookFilled, BookOutlined, CloseOutlined, CopyOutlined, FolderAddOutlined, LeftOutlined, PlayCircleFilled, QuestionCircleOutlined, ReloadOutlined, RightOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, CloseOutlined, CopyOutlined, FolderAddOutlined, LeftOutlined, PlayCircleFilled, QuestionCircleOutlined, ReloadOutlined, RightOutlined } from "@ant-design/icons";
+import { CaseSaveButton } from "./CaseSaveButton.jsx";
 import { useReferenceProjects } from "./ReferenceProjects.jsx";
 import { ShotAnnotations } from "./ShotAnnotations.jsx";
 import { ShotFrames, ShotOverview, ShotRhythm } from "./ShotOverview.jsx";
@@ -466,7 +467,7 @@ export function VideoStudy({ item, saved, onToggleSaved }) {
         <div className="video-study-title-copy"><h1 title={item.title}>{item.title}</h1><p aria-hidden={headingMode !== "full"}>{displayTags(item.type)}<span>·</span>{formatVideoTime(duration)}<span>·</span>{shots.length} 个镜头</p></div>
       </div>
       </div>
-      <div className="video-study-actions" aria-hidden={headingMode !== "full"} inert={headingMode !== "full"}><Button icon={saved ? <BookFilled /> : <BookOutlined />} onClick={onToggleSaved} className={`case-save${saved ? " is-saved" : ""}`}>{saved ? "已收藏" : "收藏案例"}</Button></div>
+      <div className="video-study-actions" aria-hidden={headingMode !== "full"} inert={headingMode !== "full"}><CaseSaveButton saved={saved} onClick={onToggleSaved} /></div>
     </header>
     <div className="study-workspace">
       <div className="study-media-column">

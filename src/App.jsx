@@ -14,8 +14,6 @@ import {
 } from "antd";
 import {
   ArrowRightOutlined,
-  BookOutlined,
-  BookFilled,
   CheckOutlined,
   CopyOutlined,
   DownOutlined,
@@ -27,6 +25,7 @@ import {
   StarFilled,
 } from "@ant-design/icons";
 import { TagSettings } from "./TagSettings.jsx";
+import { CaseSaveButton } from "./CaseSaveButton.jsx";
 import { ContentEntry } from "./ContentEntry.jsx";
 import { useContentCases } from "./ContentProvider.jsx";
 import { VideoStudy } from "./VideoStudy.jsx";
@@ -280,7 +279,7 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
               <section><h2>看懂这个画面</h2><p className="case-prompt">{selectedItem.analysis || selectedItem.description || caseLearningFocus(selectedItem)}</p></section>
               <details><summary>查看画面信息</summary><dl className="case-facts">{[["类型", selectedItem.type], ["情绪", selectedItem.emotion], ["光影", selectedItem.lighting], ["运镜", selectedItem.movement]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{displayTags(value) || "—"}</dd></div>)}</dl><div className="tag-row">{selectedItem.tags.map((tag) => <Tag key={tag}>{tag}</Tag>)}</div></details>
               <details><summary>查看提示词参考</summary><p className="case-prompt">{selectedItem.prompt || "暂未提供提示词"}</p><Button disabled={!selectedItem.prompt} icon={<CopyOutlined />} onClick={copyPrompt}>复制提示词</Button></details>
-              <div className="case-actions"><Button icon={savedIds.has(selectedItem.id) ? <BookFilled /> : <BookOutlined />} onClick={() => toggleSaved(selectedItem.id)}>{savedIds.has(selectedItem.id) ? "已收藏" : "收藏案例"}</Button></div>
+              <div className="case-actions"><CaseSaveButton saved={savedIds.has(selectedItem.id)} onClick={() => toggleSaved(selectedItem.id)} /></div>
             </div>
           </article>
           </>
@@ -339,14 +338,11 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
                   <p className="description">{selectedItem.description}</p>
                   <div className="featured-actions">
                     <Link className="case-read-link" href={casePath(selectedItem.id)}>{selectedItem.video?.shots.length ? "看视频与拆解" : "查看案例"}<ArrowRightOutlined aria-hidden="true" /></Link>
-                    <Button
+                    <CaseSaveButton
                       type="text"
-                      className={savedIds.has(selectedItem.id) ? "is-saved" : ""}
-                      icon={savedIds.has(selectedItem.id) ? <BookFilled aria-hidden="true" /> : <BookOutlined aria-hidden="true" />}
+                      saved={savedIds.has(selectedItem.id)}
                       onClick={() => toggleSaved(selectedItem.id)}
-                    >
-                      {savedIds.has(selectedItem.id) ? "已收藏" : "收藏案例"}
-                    </Button>
+                    />
                   </div>
                 </div>
               </article>

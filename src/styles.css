@@ -595,7 +595,8 @@ a:focus-visible {
   letter-spacing: 0;
 }
 
-.featured-actions .ant-btn .anticon {
+.featured-actions .ant-btn .anticon,
+.featured-actions .case-save-symbol {
   font-size: 16px;
 }
 
@@ -608,6 +609,36 @@ a:focus-visible {
 .featured-actions .ant-btn.is-saved {
   color: var(--accent) !important;
   background: color-mix(in srgb, var(--accent) 7%, transparent) !important;
+}
+
+.case-save-symbol,
+.case-save-label {
+  display: inline-grid;
+  place-items: center;
+}
+
+.case-save-symbol {
+  width: 1em;
+  height: 1em;
+}
+
+.case-save-label {
+  white-space: nowrap;
+}
+
+.case-save-symbol > .anticon,
+.case-save-label > span {
+  grid-area: 1 / 1;
+}
+
+.case-save .case-save-selected,
+.case-save.is-saved .case-save-idle {
+  opacity: 0;
+}
+
+.case-save .case-save-idle,
+.case-save.is-saved .case-save-selected {
+  opacity: 1;
 }
 
 .supporting-grid {
@@ -1271,6 +1302,35 @@ a:focus-visible {
 
   .gallery-title {
     display: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-search .hero-search-button,
+  .case-save.ant-btn {
+    transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1), color 120ms ease, background-color 120ms ease, border-color 120ms ease;
+  }
+
+  .hero-search .hero-search-button:active:not(:focus-visible):not(:disabled),
+  .case-save.ant-btn:active:not(:focus-visible):not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .case-save .case-save-idle,
+  .case-save .case-save-selected {
+    transition: opacity 120ms ease;
+  }
+
+  .filter-heading .anticon {
+    transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .hero-search .hero-search-button:focus-visible,
+  .case-save.ant-btn:focus-visible,
+  .case-save:focus-visible .case-save-idle,
+  .case-save:focus-visible .case-save-selected,
+  .filter-heading > button:focus-visible .anticon {
+    transition: none;
   }
 }
 
