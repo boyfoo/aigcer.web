@@ -1,9 +1,6 @@
-import { mkdir, open, rename, unlink, stat } from "node:fs/promises";
-import { createReadStream } from "node:fs";
-import { Readable } from "node:stream";
-import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { storageRoot, withRepository, ContentError } from "./repository.js";
+import { withRepository, ContentError } from "./repository.js";
+import { validMediaName } from "./storage/document.js";
 import { sameOrigin } from "./http.js";
 
 export const MEDIA_LIMITS = { image: 20 * 1024 * 1024, video: 512 * 1024 * 1024 };
@@ -28,33 +25,38 @@ export async function uploadMedia(request) {
   if (!Object.hasOwn(MEDIA_LIMITS, kind)) throw new ContentError("上传类型无效");
   const limit = MEDIA_LIMITS[kind];
   if (Number(request.headers.get("content-length")) > limit) throw new ContentError("文件超过上传大小限制", 413);
-  const directory = path.join(storageRoot(), "uploads");
-  await mkdir(directory, { recursive: true });
-  const id = randomUUID(), temporary = path.join(directory, `${id}.part`);
-  let target, file, size = 0, header = Buffer.alloc(0);
+  if (!request.body) throw new ContentError("上传中断或文件为空，请重新上传");
+  const iterator = request.body[Symbol.asyncIterator]();
+  const prefix = [];
+  let size = 0, header = Buffer.alloc(0);
   try {
-    file = await open(temporary, "wx");
-    for await (const chunk of request.body ?? []) {
-      size += chunk.byteLength;
-      if (size > limit) throw new ContentError("文件超过上传大小限制", 413);
-      if (header.length < 1024) header = Buffer.concat([header, Buffer.from(chunk).subarray(0, 1024 - header.length)]);
-      let offset = 0;
-      while (offset < chunk.byteLength) offset += (await file.write(chunk, offset, chunk.byteLength - offset)).bytesWritten;
+    // Detect the actual format before choosing a filename; retain only the stream prefix.
+    while (header.length < 1024) {
+      const { done, value } = await iterator.next();
+      if (done) break;
+      prefix.push(value);
+      header = Buffer.concat([header, Buffer.from(value).subarray(0, 1024 - header.length)]);
     }
-    if (request.signal.aborted || !size) throw new ContentError("上传中断或文件为空，请重新上传");
-    const type = identifyMedia(header, kind), name = `${id}.${type.extension}`;
-    await file.close(); file = null;
-    target = path.join(directory, name);
-    await rename(temporary, target);
+    if (request.signal.aborted || !header.length) throw new ContentError("上传中断或文件为空，请重新上传");
+    const type = identifyMedia(header, kind), name = `${randomUUID()}.${type.extension}`;
     const originalName = (url.searchParams.get("name") || name).slice(0, 200);
-    withRepository((repository) => repository.addMedia({ name, mime: type.mime, size, originalName }));
-    return { url: `/media/${name}`, name: originalName, size, kind };
-  } catch (error) {
-    await file?.close();
-    await unlink(temporary).catch(() => {});
-    if (target) await unlink(target).catch(() => {});
-    throw error;
-  }
+    async function* checkedChunks() {
+      async function* chunks() { yield* prefix; yield* { [Symbol.asyncIterator]: () => iterator }; }
+      for await (const chunk of chunks()) {
+        if (request.signal.aborted) throw new ContentError("上传中断，请重新上传");
+        size += chunk.byteLength;
+        if (size > limit) throw new ContentError("文件超过上传大小限制", 413);
+        yield chunk;
+      }
+      if (request.signal.aborted) throw new ContentError("上传中断，请重新上传");
+    }
+    return await withRepository(async (repository) => {
+      await repository.writeMedia(name, checkedChunks());
+      try { await repository.addMedia({ name, mime: type.mime, size, originalName }); }
+      catch (error) { await repository.removeMedia(name); throw error; }
+      return { url: `/media/${name}`, name: originalName, size, kind };
+    });
+  } finally { await iterator.return?.(); }
 }
 
 export function byteRange(value, size) {
@@ -69,19 +71,19 @@ export function byteRange(value, size) {
 }
 
 export async function serveMedia(request, name) {
-  if (!/^[a-f0-9-]+\.(png|jpg|gif|webp|mp4|webm)$/.test(name)) return new Response(null, { status: 404 });
-  const media = withRepository((repository) => repository.getMedia(name));
-  if (!media) return new Response(null, { status: 404 });
-  const file = path.join(storageRoot(), "uploads", name);
-  const info = await stat(file).catch(() => null);
-  if (!info?.isFile()) return new Response(null, { status: 404 });
-  const headers = { "Content-Type": media.mime, "Accept-Ranges": "bytes", "Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff" };
-  let range;
-  try { range = byteRange(request.headers.get("range"), info.size); }
-  catch { return new Response(null, { status: 416, headers: { ...headers, "Content-Range": `bytes */${info.size}` } }); }
-  headers["Content-Length"] = String(range ? range.end - range.start + 1 : info.size);
-  if (range) headers["Content-Range"] = `bytes ${range.start}-${range.end}/${info.size}`;
-  if (request.method === "HEAD") return new Response(null, { status: range ? 206 : 200, headers });
-  const stream = createReadStream(file, range ?? {});
-  return new Response(Readable.toWeb(stream), { status: range ? 206 : 200, headers });
+  if (!validMediaName(name)) return new Response(null, { status: 404 });
+  return withRepository(async (repository) => {
+    const media = await repository.getMedia(name);
+    if (!media) return new Response(null, { status: 404 });
+    const info = await repository.statMedia(name);
+    if (!info) return new Response(null, { status: 404 });
+    const headers = { "Content-Type": media.mime, "Accept-Ranges": "bytes", "Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff" };
+    let range;
+    try { range = byteRange(request.headers.get("range"), info.size); }
+    catch { return new Response(null, { status: 416, headers: { ...headers, "Content-Range": `bytes */${info.size}` } }); }
+    headers["Content-Length"] = String(range ? range.end - range.start + 1 : info.size);
+    if (range) headers["Content-Range"] = `bytes ${range.start}-${range.end}/${info.size}`;
+    if (request.method === "HEAD") return new Response(null, { status: range ? 206 : 200, headers });
+    return new Response(await repository.openMedia(name, range ?? undefined), { status: range ? 206 : 200, headers });
+  });
 }

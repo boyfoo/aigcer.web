@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "id": "night-lounge",
+  "draft": {
+    "id": "night-lounge",
+    "kind": "分镜",
+    "title": "雨窗旧厅",
+    "description": "无人坐下的旧客厅只亮着台灯，雨后的城市在窗外化成柔软光点。",
+    "analysis": "",
+    "prompt": "夜晚旧式客厅，雨水落在大窗上，窗外城市灯火虚化，一盏暖色台灯照亮桌椅，空间安静无人，固定镜头，低调光。",
+    "image": "/images/night-lounge.png",
+    "duration": "00:08",
+    "tags": [
+      "旧公寓",
+      "台灯",
+      "雨窗",
+      "暖光"
+    ],
+    "tagValues": {},
+    "type": [
+      "故事片"
+    ],
+    "emotion": [
+      "温暖"
+    ],
+    "lighting": [
+      "室内暖光"
+    ],
+    "movement": [
+      "固定镜头"
+    ]
+  },
+  "published": {
+    "id": "night-lounge",
+    "kind": "分镜",
+    "title": "雨窗旧厅",
+    "description": "无人坐下的旧客厅只亮着台灯，雨后的城市在窗外化成柔软光点。",
+    "analysis": "",
+    "prompt": "夜晚旧式客厅，雨水落在大窗上，窗外城市灯火虚化，一盏暖色台灯照亮桌椅，空间安静无人，固定镜头，低调光。",
+    "image": "/images/night-lounge.png",
+    "duration": "00:08",
+    "tags": [
+      "旧公寓",
+      "台灯",
+      "雨窗",
+      "暖光"
+    ],
+    "tagValues": {},
+    "type": [
+      "故事片"
+    ],
+    "emotion": [
+      "温暖"
+    ],
+    "lighting": [
+      "室内暖光"
+    ],
+    "movement": [
+      "固定镜头"
+    ]
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "version": 1,
+  "groups": [
+    {
+      "id": "type",
+      "label": "类型",
+      "options": [
+        {
+          "id": "type-0",
+          "label": "故事片",
+          "value": "故事片"
+        },
+        {
+          "id": "type-1",
+          "label": "广告",
+          "value": "广告"
+        },
+        {
+          "id": "type-2",
+          "label": "纪录片",
+          "value": "纪录片"
+        },
+        {
+          "id": "type-3",
+          "label": "短片",
+          "value": "短片"
+        },
+        {
+          "id": "type-4",
+          "label": "动画",
+          "value": "动画"
+        },
+        {
+          "id": "type-5",
+          "label": "实验影像",
+          "value": "实验影像"
+        }
+      ]
+    },
+    {
+      "id": "emotion",
+      "label": "情绪",
+      "options": [
+        {
+          "id": "emotion-0",
+          "label": "温暖",
+          "value": "温暖"
+        },
+        {
+          "id": "emotion-1",
+          "label": "宁静",
+          "value": "宁静"
+        },
+        {
+          "id": "emotion-2",
+          "label": "怀旧",
+          "value": "怀旧"
+        },
+        {
+          "id": "emotion-3",
+          "label": "孤独",
+          "value": "孤独"
+        },
+        {
+          "id": "emotion-4",
+          "label": "希望",
+          "value": "希望"
+        },
+        {
+          "id": "emotion-5",
+          "label": "紧张",
+          "value": "紧张"
+        },
+        {
+          "id": "emotion-6",
+          "label": "治愈",
+          "value": "治愈"
+        }
+      ]
+    },
+    {
+      "id": "lighting",
+      "label": "光影",
+      "options": [
+        {
+          "id": "lighting-0",
+          "label": "自然光",
+          "value": "自然光"
+        },
+        {
+          "id": "lighting-1",
+          "label": "黄金时刻",
+          "value": "黄金时刻"
+        },
+        {
+          "id": "lighting-2",
+          "label": "蓝调时刻",
+          "value": "蓝调时刻"
+        },
+        {
+          "id": "lighting-3",
+          "label": "室内暖光",
+          "value": "室内暖光"
+        },
+        {
+          "id": "lighting-4",
+          "label": "逆光",
+          "value": "逆光"
+        },
+        {
+          "id": "lighting-5",
+          "label": "柔光",
+          "value": "柔光"
+        },
+        {
+          "id": "lighting-6",
+          "label": "硬光",
+          "value": "硬光"
+        }
+      ]
+    },
+    {
+      "id": "movement",
+      "label": "运镜",
+      "options": [
+        {
+          "id": "movement-0",
+          "label": "固定镜头",
+          "value": "固定镜头"
+        },
+        {
+          "id": "movement-1",
+          "label": "推镜头",
+          "value": "推镜头"
+        },
+        {
+          "id": "movement-2",
+          "label": "拉镜头",
+          "value": "拉镜头"
+        },
+        {
+          "id": "movement-3",
+          "label": "摇镜头",
+          "value": "摇镜头"
+        },
+        {
+          "id": "movement-4",
+          "label": "跟镜头",
+          "value": "跟镜头"
+        },
+        {
+          "id": "movement-5",
+          "label": "升降镜头",
+          "value": "升降镜头"
+        },
+        {
+          "id": "movement-6",
+          "label": "航拍",
+          "value": "航拍"
+        }
+      ]
+    }
+  ],
+  "revision": 1
+}

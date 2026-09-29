@@ -6,7 +6,7 @@
 
 组件职责、状态管理与历史代码清理约定见 [Web 项目协作约定](AGENTS.md#前端开发规范)；视觉与交互细节见 [镜界设计系统](DESIGN_SYSTEM.md)。
 
-需要满足 `package.json` 中 `engines` 要求的 Node.js，使用内置 SQLite。nvm 版本只在当前终端进程中选择，步骤见下文。
+需要满足 `package.json` 中 `engines` 要求的 Node.js。默认使用 JSON 文件保存数据，无需数据库服务。nvm 版本只在当前终端进程中选择，步骤见下文。
 
 ```bash
 npm install
@@ -62,11 +62,55 @@ Get-Command node.exe, npm.cmd | Select-Object Name, Source
 
 `/settings` 提供全站一级、二级标签设置。录入页的“分类与标签”也可以直接新增一级、二级标签；新增一级标签时可一起创建首个二级标签，二级标签新增后自动选中，保留正在编辑的案例内容。新增标签立即同步全站设置，案例仍需按原流程保存或发布。录入和筛选均支持每组多选：同组满足任意一个，不同组需同时满足。保存有版本冲突时保留输入并提示重新载入，避免覆盖另一页面的更新。
 
-## 数据保存与备份
+## 数据保存
 
-默认数据目录是 `web/storage/`，可使用环境变量 `JINGJIE_DATA_DIR` 指向持久磁盘中的绝对路径。目录包含 `content.sqlite`、SQLite 的 WAL/SHM 辅助文件及 `uploads/`。案例编辑稿、公开快照、发布状态、全站标签和媒体元数据保存在 SQLite；图片和视频原文件保存在 `uploads/`。数据库首次启动导入 `src/data.js` 的示例，后续读取数据库，重启不会再次覆盖。
+默认数据提供者为 `json`，数据目录是 `web/data/`，可使用环境变量 `JINGJIE_DATA_DIR` 指向持久磁盘中的绝对路径。每种数据独立存文件，每个案例的完整资料独立存于子目录：
 
-部署普通 Next.js 服务时必须保留该目录，并让运行进程有读写权限。备份时先停止写入，再整体复制数据目录；恢复时保持数据库和素材成套。当前使用单个持久磁盘实例，不支持不同机器各自使用独立数据目录形成的多实例写入。上传但尚未引用的文件保留在磁盘，不自动回收。
+```text
+data/
+├── content.json          # 案例列表：ID、名称、类型、状态、版本、时间、排序
+├── tags.json             # 全站标签与标签版本
+├── media.json            # 素材文件名、原名、类型与大小
+├── content/
+│   ├── night-cinema.json # 单个案例的编辑稿与独立公开快照
+│   └── <案例ID>.json     # 视频参数、人物、镜头、提示词和分析均在所属案例中
+└── uploads/              # 上传的图片与视频原文件
+```
+
+JSON 使用 UTF-8、两空格缩进。`content.json` 的文件格式版本为 2，`items` 只放列表摘要；`content/<id>.json` 包含 `id`、`draft` 和 `published`，详情文件不再与其他案例混存。标签、素材索引和详情文件的格式版本为 1。只更新发生变化的文件，修改单个案例不会重写其他案例，修改标签不会重写案例。提供者对业务层返回的 `DataDocument` 契约保持不变，拆分是 JSON 提供者内部实现。
+
+全新数据目录首次读取时导入 `src/data.js` 的示例，已有文件不会重新初始化；索引、详情或标签等文件损坏、缺失、版本不支持时明确报错。旧版合并 `content.json` 在首次读取时直接拆分成上述结构，不生成备份文件。草稿、公开快照、版本和素材路径均保留，无需手工拆文件。
+
+部署普通 Next.js 服务时必须保留该目录，并让运行进程有读写权限。JSON 提供者通过 `.content.lock` 目录锁协调同一磁盘上的跨进程读写，在锁内检查版本；每个文件用临时文件原子替换，多文件保存通过临时 `.content-transaction.json` 记录原值，失败则回滚，避免列表与详情只更新一半。锁等待最多 5 秒；异常退出遗留锁时，停止所有使用此数据目录的服务，确认无读写后删除 `.content.lock` 再启动，保留事务文件，由下次读取自动恢复。不要在服务运行时手工修改 JSON。此实现面向单机持久磁盘，不支持不同机器各自使用独立目录形成的多实例写入。上传但尚未引用的文件保留在磁盘，不自动回收。
+
+### 提供者接口与切换
+
+调用关系为页面/HTTP API → `src/server/repository.js`（校验、发布规则、版本冲突）→ `DataProvider`（实际持久化）。浏览器继续通过 `src/lib/contentClient.js` 使用 `/api/content`、`/api/public`、`/api/tags` 和 `/api/uploads`，请求与返回格式保持不变。
+
+接口定义和集中工厂位于 `src/server/storage/provider.js`，默认实现位于 `src/server/storage/json.js`。所有方法均为异步：
+
+| 方法 | 职责 |
+| --- | --- |
+| `read()` | 返回独立的数据快照，不允许返回共享可变引用 |
+| `update(work)` | 在事务中读取最新快照，执行回调并原子提交；失败不提交，跨实例写入必须串行化 |
+| `writeMedia(name, chunks)` | 流式写入素材；中断或失败时清理未完成文件 |
+| `statMedia(name)` / `openMedia(name, range)` | 查询大小、读取完整或指定范围的素材流；返回的流在 `close()` 后仍可使用 |
+| `removeMedia(name)` / `exportMedia(name, destination)` | 清理失败上传、将公开素材导出为静态文件 |
+| `close()` | 释放提供者资源 |
+
+以后新增数据库或远程存储时，实现这组接口，在工厂的 `providers` 中注册名称，再设置 `JINGJIE_DATA_PROVIDER=提供者名称` 并重启。页面、客户端、API、发布规则和 Sites 导出无需修改。当前只注册 `json`；未知名称会报错，不会静默回退。更换提供者前需迁移原数据，新实现也必须遵循 `storage/document.js` 的版本化数据契约及事务语义。测试可通过 `createRepository({ provider })` 注入独立实现。
+
+### 从现有 SQLite 迁移
+
+先停止原服务，再在 `web/` 执行一次：
+
+```bash
+npm run data:migrate
+# 指定原数据目录和新的目标目录：
+npm run data:migrate -- /absolute/old-storage /absolute/new-data
+```
+
+默认从 `web/storage/content.sqlite` 和 `web/storage/uploads/` 迁移至 `web/data/`，直接生成按类型与案例拆分的文件，完整保留编辑稿、公开快照、状态、时间、版本、标签和素材。目标目录必须尚不存在，脚本先在临时目录准备并校验后再一次性放置，拒绝覆盖已有数据。原 SQLite 与素材只读保留。若配置了 `JINGJIE_DATA_DIR`，迁移后将其改为新目录再启动；运行时不再读取或双写 SQLite。仅迁移脚本使用 Node.js 内置 SQLite。
 
 “收藏案例”保存整条案例，“镜头收藏夹”（原项目参考集）整理具体镜头，两者属于访客个人数据，保存在当前浏览器的 localStorage，免登录且刷新恢复，不跨设备同步。参考集保留镜头备注与排序；原案例下架时标为暂不可用，重新上架后可继续查看。
 
@@ -94,6 +138,6 @@ npm run build:sites
 npm run test:sites
 ```
 
-`test:publishing` 运行已构建的 Next.js 服务，使用临时独立数据库与端口，检查上传、范围请求、发布状态、公开 HTML 和重启持久化；完成后清理自己的服务与测试数据。
+`test:publishing` 运行已构建的 Next.js 服务，使用临时独立 JSON 数据目录与端口，检查上传、范围请求、发布状态、公开 HTML 和重启持久化；完成后清理自己的服务与测试数据。
 
-Sites 构建从当前数据目录导出已发布内容的静态快照，复制这些快照引用的上传素材，保留 `dist/client/`、`dist/server/index.js` 与 `dist/.openai/hosting.json` 的既有打包方式。静态包不包含数据库、未发布内容和运行时写入接口。Sites 页面可以阅读、收藏和整理参考集；录入与标签保存需要普通 Next.js 服务。静态快照要更新内容需重新构建和部署。
+Sites 构建通过当前提供者导出已发布内容的静态快照，复制这些快照引用的上传素材，保留 `dist/client/`、`dist/server/index.js` 与 `dist/.openai/hosting.json` 的既有打包方式。静态包不包含原始 JSON 数据文件、数据库、未发布内容和运行时写入接口。Sites 页面可以阅读、收藏和整理参考集；录入与标签保存需要普通 Next.js 服务。静态快照要更新内容需重新构建和部署。

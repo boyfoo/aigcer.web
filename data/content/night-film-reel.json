@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "id": "night-film-reel",
+  "draft": {
+    "id": "night-film-reel",
+    "kind": "分镜",
+    "title": "胶片余温",
+    "description": "旧胶片盘在钨丝灯下泛着暖光，齿孔与划痕清晰可见。",
+    "analysis": "",
+    "prompt": "老式金属胶片盘与散开的35mm胶片，微距特写，钨丝灯暖色轮廓光，深色背景，金属磨损纹理清晰，固定镜头，浅景深。",
+    "image": "/images/night-film-reel.png",
+    "duration": "00:06",
+    "tags": [
+      "胶片盘",
+      "微距",
+      "金属",
+      "钨丝灯"
+    ],
+    "tagValues": {},
+    "type": [
+      "广告"
+    ],
+    "emotion": [
+      "怀旧"
+    ],
+    "lighting": [
+      "室内暖光"
+    ],
+    "movement": [
+      "固定镜头"
+    ]
+  },
+  "published": {
+    "id": "night-film-reel",
+    "kind": "分镜",
+    "title": "胶片余温",
+    "description": "旧胶片盘在钨丝灯下泛着暖光，齿孔与划痕清晰可见。",
+    "analysis": "",
+    "prompt": "老式金属胶片盘与散开的35mm胶片，微距特写，钨丝灯暖色轮廓光，深色背景，金属磨损纹理清晰，固定镜头，浅景深。",
+    "image": "/images/night-film-reel.png",
+    "duration": "00:06",
+    "tags": [
+      "胶片盘",
+      "微距",
+      "金属",
+      "钨丝灯"
+    ],
+    "tagValues": {},
+    "type": [
+      "广告"
+    ],
+    "emotion": [
+      "怀旧"
+    ],
+    "lighting": [
+      "室内暖光"
+    ],
+    "movement": [
+      "固定镜头"
+    ]
+  }
+}

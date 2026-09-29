@@ -12,57 +12,57 @@ import { createDefaultTagGroups, matchesTagFilters, reconcileTagFilters } from "
 function database(t) {
   const prefix = path.join(tmpdir(), "jingjie-publishing-");
   const directory = mkdtempSync(prefix);
-  const repository = createRepository(directory, []);
-  t.after(() => { repository.close(); assert.ok(path.resolve(directory).startsWith(path.resolve(prefix))); rmSync(directory, { recursive: true, force: true }); });
+  const repository = createRepository({ directory, seeds: [] });
+  t.after(async () => { await repository.close(); assert.ok(path.resolve(directory).startsWith(path.resolve(prefix))); rmSync(directory, { recursive: true, force: true }); });
   return { repository, directory };
 }
 const input = { kind: "分镜", title: "本地上传案例", image: "/images/night-lounge.png", duration: "00:08", prompt: "", analysis: "", tags: [] };
 const act = (repository, action, record, draft = record.draft) => repository.change({ action, id: record.id, revision: record.revision, draft });
 
-test("draft persistence, manual publication, pending edits, unlisting and relisting form an isolated lifecycle", (t) => {
+test("draft persistence, manual publication, pending edits, unlisting and relisting form an isolated lifecycle", async (t) => {
   const { repository, directory } = database(t);
-  let record = repository.change({ action: "save", draft: input });
+  let record = await repository.change({ action: "save", draft: input });
   assert.equal(record.status, "draft");
-  assert.deepEqual(repository.listPublished(), []);
-  assert.throws(() => act(repository, "publish", record), /至少填写/);
-  assert.equal(repository.getRecord(record.id).revision, record.revision);
-  const secondProcess = createRepository(directory, []);
-  assert.equal(secondProcess.getRecord(record.id).draft.title, input.title);
-  secondProcess.close();
-  record = act(repository, "publish", record, { ...record.draft, analysis: "正式分析" });
-  assert.equal(repository.getPublished(record.id).analysis, "正式分析");
-  record = act(repository, "save", record, { ...record.draft, title: "未发布的新标题", analysis: "未公开的分析" });
+  assert.deepEqual(await repository.listPublished(), []);
+  await assert.rejects(() => act(repository, "publish", record), /至少填写/);
+  assert.equal((await repository.getRecord(record.id)).revision, record.revision);
+  const secondProcess = createRepository({ directory, seeds: [] });
+  assert.equal((await secondProcess.getRecord(record.id)).draft.title, input.title);
+  await secondProcess.close();
+  record = await act(repository, "publish", record, { ...record.draft, analysis: "正式分析" });
+  assert.equal((await repository.getPublished(record.id)).analysis, "正式分析");
+  record = await act(repository, "save", record, { ...record.draft, title: "未发布的新标题", analysis: "未公开的分析" });
   assert.equal(record.hasChanges, true);
-  assert.equal(repository.getPublished(record.id).title, input.title);
-  record = act(repository, "unlist", record);
+  assert.equal((await repository.getPublished(record.id)).title, input.title);
+  record = await act(repository, "unlist", record);
   assert.equal(record.status, "offline");
-  assert.equal(repository.getPublished(record.id), null);
-  record = act(repository, "relist", record);
-  assert.equal(repository.getPublished(record.id).analysis, "正式分析");
-  record = act(repository, "publish", record);
-  assert.equal(repository.getPublished(record.id).analysis, "未公开的分析");
+  assert.equal((await repository.getPublished(record.id)), null);
+  record = await act(repository, "relist", record);
+  assert.equal((await repository.getPublished(record.id)).analysis, "正式分析");
+  record = await act(repository, "publish", record);
+  assert.equal((await repository.getPublished(record.id)).analysis, "未公开的分析");
   assert.equal(record.hasChanges, false);
-  assert.throws(() => act(repository, "delete", record), /下架/);
+  await assert.rejects(() => act(repository, "delete", record), /下架/);
 });
 
-test("concurrent edits cannot overwrite a newer saved draft or publication", (t) => {
+test("concurrent edits cannot overwrite a newer saved draft or publication", async (t) => {
   const { repository } = database(t);
-  const original = repository.change({ action: "save", draft: input });
-  const newer = act(repository, "save", original, { ...original.draft, title: "最新修改" });
-  assert.throws(() => act(repository, "publish", original, { ...original.draft, prompt: "旧编辑器的提示词" }), (error) => error.status === 409);
-  assert.equal(repository.getRecord(newer.id).draft.title, "最新修改");
-  assert.deepEqual(repository.listPublished(), []);
-  act(repository, "delete", newer);
-  assert.equal(repository.getRecord(newer.id), null);
+  const original = await repository.change({ action: "save", draft: input });
+  const newer = await act(repository, "save", original, { ...original.draft, title: "最新修改" });
+  await assert.rejects(() => act(repository, "publish", original, { ...original.draft, prompt: "旧编辑器的提示词" }), (error) => error.status === 409);
+  assert.equal((await repository.getRecord(newer.id)).draft.title, "最新修改");
+  assert.deepEqual(await repository.listPublished(), []);
+  await act(repository, "delete", newer);
+  assert.equal((await repository.getRecord(newer.id)), null);
 });
 
-test("publication accepts reference material on a shot, and incomplete timing can be saved but not published", (t) => {
+test("publication accepts reference material on a shot, and incomplete timing can be saved but not published", async (t) => {
   const { repository } = database(t);
-  let record = repository.change({ action: "save", draft: { ...input, kind: "视频", video: { src: "/media/video.mp4", durationSeconds: 6, shots: [{ id: "first-shot", start: 0, end: 0, imagePrompt: "首帧提示词" }] } } });
-  assert.throws(() => act(repository, "publish", record), /时间/);
+  let record = await repository.change({ action: "save", draft: { ...input, kind: "视频", video: { src: "/media/video.mp4", durationSeconds: 6, shots: [{ id: "first-shot", start: 0, end: 0, imagePrompt: "首帧提示词" }] } } });
+  await assert.rejects(() => act(repository, "publish", record), /时间/);
   record.draft.video.shots[0].end = 6;
-  record = act(repository, "publish", record);
-  assert.equal(repository.getPublished(record.id).video.shots[0].imagePrompt, "首帧提示词");
+  record = await act(repository, "publish", record);
+  assert.equal((await repository.getPublished(record.id)).video.shots[0].imagePrompt, "首帧提示词");
 });
 
 test("multi-select tags are OR within a group and AND between groups; empty selections impose no restriction", () => {
@@ -78,40 +78,40 @@ test("multi-select tags are OR within a group and AND between groups; empty sele
   assert.deepEqual(reconcileTagFilters(trimmed, filters).lighting, []);
 });
 
-test("new shot context survives storage and follows the existing public snapshot lifecycle", (t) => {
+test("new shot context survives storage and follows the existing public snapshot lifecycle", async (t) => {
   const { repository, directory } = database(t);
-  let record = repository.change({ action: "save", draft: { ...input, kind: "视频", video: { src: "/media/video.mp4", durationSeconds: 6, shots: [{ id: "first-shot", start: 0, end: 6, endImage: "/media/published-tail.png", narrative: "公开的叙事分析", sound: "环境风声", dialogue: "向前走", onscreenText: "入口" }] } } });
-  record = act(repository, "publish", record);
-  const publicShot = structuredClone(repository.getPublished(record.id).video.shots[0]);
+  let record = await repository.change({ action: "save", draft: { ...input, kind: "视频", video: { src: "/media/video.mp4", durationSeconds: 6, shots: [{ id: "first-shot", start: 0, end: 6, endImage: "/media/published-tail.png", narrative: "公开的叙事分析", sound: "环境风声", dialogue: "向前走", onscreenText: "入口" }] } } });
+  record = await act(repository, "publish", record);
+  const publicShot = structuredClone((await repository.getPublished(record.id)).video.shots[0]);
   record.draft.video.shots[0].endImage = "/media/draft-tail.png";
   record.draft.video.shots[0].narrative = "待发布叙事分析";
   record.draft.video.shots[0].sound = "修改后的声音";
-  record = act(repository, "save", record);
-  assert.deepEqual(repository.getPublished(record.id).video.shots[0], publicShot);
-  const reopened = createRepository(directory, []);
+  record = await act(repository, "save", record);
+  assert.deepEqual((await repository.getPublished(record.id)).video.shots[0], publicShot);
+  const reopened = createRepository({ directory, seeds: [] });
   try {
-    assert.equal(reopened.getRecord(record.id).draft.video.shots[0].endImage, "/media/draft-tail.png");
-    assert.deepEqual(reopened.getPublished(record.id).video.shots[0], publicShot);
-  } finally { reopened.close(); }
-  record = act(repository, "unlist", record);
-  record = act(repository, "relist", record);
-  assert.deepEqual(repository.getPublished(record.id).video.shots[0], publicShot);
+    assert.equal((await reopened.getRecord(record.id)).draft.video.shots[0].endImage, "/media/draft-tail.png");
+    assert.deepEqual((await reopened.getPublished(record.id)).video.shots[0], publicShot);
+  } finally { await reopened.close(); }
+  record = await act(repository, "unlist", record);
+  record = await act(repository, "relist", record);
+  assert.deepEqual((await repository.getPublished(record.id)).video.shots[0], publicShot);
   record.draft.video.shots[0].dialogue = "";
-  record = act(repository, "publish", record);
-  assert.equal(repository.getPublished(record.id).video.shots[0].endImage, "/media/draft-tail.png");
-  assert.equal(repository.getPublished(record.id).video.shots[0].sound, "修改后的声音");
-  assert.equal(repository.getPublished(record.id).video.shots[0].dialogue, undefined);
+  record = await act(repository, "publish", record);
+  assert.equal((await repository.getPublished(record.id)).video.shots[0].endImage, "/media/draft-tail.png");
+  assert.equal((await repository.getPublished(record.id)).video.shots[0].sound, "修改后的声音");
+  assert.equal((await repository.getPublished(record.id)).video.shots[0].dialogue, undefined);
 });
 
-test("site-wide tags persist and reject conflicting saves", (t) => {
+test("site-wide tags persist and reject conflicting saves", async (t) => {
   const { repository, directory } = database(t);
-  const current = repository.readTags();
+  const current = await repository.readTags();
   current.groups[0].label = "影片类型";
-  repository.saveTags(current.groups, current.revision);
-  const another = createRepository(directory, []);
-  assert.equal(another.readTags().groups[0].label, "影片类型");
-  another.close();
-  assert.throws(() => repository.saveTags([], current.revision), (error) => error.status === 409);
+  await repository.saveTags(current.groups, current.revision);
+  const another = createRepository({ directory, seeds: [] });
+  assert.equal((await another.readTags()).groups[0].label, "影片类型");
+  await another.close();
+  await assert.rejects(() => repository.saveTags([], current.revision), (error) => error.status === 409);
 });
 
 test("media content detection, byte ranges and cross-site write rejection", () => {

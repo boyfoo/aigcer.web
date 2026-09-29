@@ -6,7 +6,7 @@ import { withRepository } from "../../../server/repository.js";
 import { pageMetadata } from "../../../lib/seo.js";
 
 export function generateStaticParams() {
-  return withRepository((repository) => repository.listPublished().map((item) => ({ slug: item.id })));
+  return withRepository(async (repository) => (await repository.listPublished()).map((item) => ({ slug: item.id })));
 }
 
 export async function generateMetadata({ params }) {

@@ -1,0 +1,65 @@
+{
+  "version": 2,
+  "items": [
+    {
+      "id": "night-cinema",
+      "status": "published",
+      "revision": 2,
+      "updatedAt": "2026-09-29T08:06:20.583Z",
+      "publishedAt": "2026-09-29T08:06:20.583Z",
+      "position": 0,
+      "kind": "视频",
+      "title": "雨夜老电影院测试"
+    },
+    {
+      "id": "night-projector",
+      "status": "published",
+      "revision": 1,
+      "updatedAt": "2026-09-07T00:00:00.000Z",
+      "publishedAt": "2026-09-07T00:00:00.000Z",
+      "position": 1,
+      "kind": "视频",
+      "title": "放映室的光"
+    },
+    {
+      "id": "night-lounge",
+      "status": "published",
+      "revision": 1,
+      "updatedAt": "2026-09-07T00:00:00.000Z",
+      "publishedAt": "2026-09-07T00:00:00.000Z",
+      "position": 2,
+      "kind": "分镜",
+      "title": "雨窗旧厅"
+    },
+    {
+      "id": "night-passenger",
+      "status": "published",
+      "revision": 1,
+      "updatedAt": "2026-09-07T00:00:00.000Z",
+      "publishedAt": "2026-09-07T00:00:00.000Z",
+      "position": 3,
+      "kind": "分镜",
+      "title": "夜车窗边"
+    },
+    {
+      "id": "night-rain-street",
+      "status": "published",
+      "revision": 1,
+      "updatedAt": "2026-09-07T00:00:00.000Z",
+      "publishedAt": "2026-09-07T00:00:00.000Z",
+      "position": 4,
+      "kind": "视频",
+      "title": "雨巷独行"
+    },
+    {
+      "id": "night-film-reel",
+      "status": "published",
+      "revision": 1,
+      "updatedAt": "2026-09-07T00:00:00.000Z",
+      "publishedAt": "2026-09-07T00:00:00.000Z",
+      "position": 5,
+      "kind": "分镜",
+      "title": "胶片余温"
+    }
+  ]
+}

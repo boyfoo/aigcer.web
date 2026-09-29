@@ -89,7 +89,7 @@ test("exported case pages contain full text without executing JavaScript", async
   const withoutScripts = (html) => html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
   const home = withoutScripts(await readFile(new URL("../dist/client/index.html", import.meta.url), "utf8"));
   const escape = (text) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#x27;");
-  for (const item of withRepository((repository) => repository.listPublished())) {
+  for (const item of await withRepository((repository) => repository.listPublished())) {
     assert.ok(home.includes(`href="/cases/${item.id}"`), `Missing home link: ${item.id}`);
     const html = withoutScripts(await readFile(new URL(`../dist/client/cases/${item.id}.html`, import.meta.url), "utf8"));
     assert.ok(html.includes(`<title>${escape(item.title)} · 镜界</title>`));
@@ -102,9 +102,10 @@ test("exported case pages contain full text without executing JavaScript", async
 
 test("static handoff excludes the database and runtime API handlers", async () => {
   const files = await readdir(new URL("../dist/", import.meta.url), { recursive: true });
-  assert.ok(!files.some((name) => /(?:sqlite|\.runtime\.js$)/.test(name)));
+  assert.ok(!files.some((name) => /(?:sqlite|(?:^|[\\/])(?:content|tags|media)\.json$|\.runtime\.js$)/.test(name)));
+  assert.ok(!files.some((name) => /(?:^|[\\/])content[\\/].*\.json$/.test(name)));
   assert.ok(!files.some((name) => /^client[\\/]api[\\/]/.test(name)));
-  const published = withRepository((repository) => repository.listPublished());
+  const published = await withRepository((repository) => repository.listPublished());
   for (const item of published) {
     for (const url of [item.image, item.video?.src, ...(item.video?.shots.flatMap((shot) => [shot.image, shot.endImage]) ?? []), ...(item.video?.cast?.map((person) => person.image) ?? [])]) {
       if (url?.startsWith("/media/")) await access(new URL(`../dist/client${url}`, import.meta.url));

@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "id": "night-passenger",
+  "draft": {
+    "id": "night-passenger",
+    "kind": "分镜",
+    "title": "夜车窗边",
+    "description": "夜车穿过城市，窗边的人看着雨滴与灯光向后滑去。",
+    "analysis": "",
+    "prompt": "夜间列车内，年轻东亚女性侧脸望向雨湿车窗，玻璃中有轻微倒影，城市红黄散景从窗外掠过，克制表情，浅景深，电影肖像。",
+    "image": "/images/night-passenger.png",
+    "duration": "00:10",
+    "tags": [
+      "人物侧脸",
+      "车窗",
+      "城市散景",
+      "倒影"
+    ],
+    "tagValues": {},
+    "type": [
+      "短片"
+    ],
+    "emotion": [
+      "孤独"
+    ],
+    "lighting": [
+      "蓝调时刻"
+    ],
+    "movement": [
+      "固定镜头"
+    ]
+  },
+  "published": {
+    "id": "night-passenger",
+    "kind": "分镜",
+    "title": "夜车窗边",
+    "description": "夜车穿过城市，窗边的人看着雨滴与灯光向后滑去。",
+    "analysis": "",
+    "prompt": "夜间列车内，年轻东亚女性侧脸望向雨湿车窗，玻璃中有轻微倒影，城市红黄散景从窗外掠过，克制表情，浅景深，电影肖像。",
+    "image": "/images/night-passenger.png",
+    "duration": "00:10",
+    "tags": [
+      "人物侧脸",
+      "车窗",
+      "城市散景",
+      "倒影"
+    ],
+    "tagValues": {},
+    "type": [
+      "短片"
+    ],
+    "emotion": [
+      "孤独"
+    ],
+    "lighting": [
+      "蓝调时刻"
+    ],
+    "movement": [
+      "固定镜头"
+    ]
+  }
+}

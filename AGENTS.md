@@ -8,7 +8,7 @@
 ## 数据与构建
 
 - 服务端内容由 `src/server/repository.js` 读取，`src/data.js` 仅用于首次初始化。
-- 内容、发布快照、标签与上传素材由网站服务持久化，默认使用 `storage/` 下的 SQLite 和 uploads，可通过 `JINGJIE_DATA_DIR` 指向持久磁盘。
+- 内容、发布快照、标签与上传素材统一通过 `src/server/storage/provider.js` 的异步 `DataProvider` 接口持久化；业务与 API 不直接访问文件或数据库。默认 `JINGJIE_DATA_PROVIDER=json`，`data/content.json` 保存案例索引，`data/content/<id>.json` 保存每个案例的编辑稿与公开快照，`data/tags.json`、`data/media.json` 分别保存标签和素材索引，原素材在 `data/uploads/`。可通过 `JINGJIE_DATA_DIR` 指向持久磁盘。新提供者只需实现接口并在工厂注册。
 - 保持 `.openai/hosting.json`、`worker/index.js`、`scripts/prepare-sites-build.mjs` 与 `tests/sites-worker.test.mjs` 的既有职责及兼容性，不因界面调整替换项目结构。
 
 ## 前端开发规范

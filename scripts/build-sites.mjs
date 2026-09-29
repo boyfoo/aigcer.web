@@ -10,7 +10,8 @@ const child = spawn(process.execPath, [nextCli, "build"], {
   env: { ...process.env, JINGJIE_BUILD_TARGET: "sites" },
 });
 child.on("error", (error) => { console.error(error.message); process.exitCode = 1; });
-child.on("exit", (code) => {
+child.on("exit", async (code) => {
   if (code !== 0) { process.exitCode = code ?? 1; return; }
-  prepareSitesBuild();
+  try { await prepareSitesBuild(); }
+  catch (error) { console.error(error); process.exitCode = 1; }
 });
