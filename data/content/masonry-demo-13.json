@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "id": "masonry-demo-13",
+  "draft": {
+    "id": "masonry-demo-13",
+    "kind": "分镜",
+    "title": "布局演示 13",
+    "description": "随机尺寸占位图：640 × 560，用于预览瀑布流布局。",
+    "analysis": "布局演示：此占位图尺寸为 640 × 560，用于查看不同画幅的瀑布流排布。",
+    "prompt": "",
+    "image": "/media/d34e194a8b031b3b461da53f2cd0c7db.png",
+    "duration": "",
+    "tags": [],
+    "tagValues": {},
+    "type": [],
+    "emotion": [],
+    "lighting": [],
+    "movement": []
+  },
+  "published": {
+    "id": "masonry-demo-13",
+    "kind": "分镜",
+    "title": "布局演示 13",
+    "description": "随机尺寸占位图：640 × 560，用于预览瀑布流布局。",
+    "analysis": "布局演示：此占位图尺寸为 640 × 560，用于查看不同画幅的瀑布流排布。",
+    "prompt": "",
+    "image": "/media/d34e194a8b031b3b461da53f2cd0c7db.png",
+    "duration": "",
+    "tags": [],
+    "tagValues": {},
+    "type": [],
+    "emotion": [],
+    "lighting": [],
+    "movement": []
+  }
+}

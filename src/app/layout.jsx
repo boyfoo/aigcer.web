@@ -10,9 +10,9 @@ export const metadata = {
   description: siteDescription,
   icons: {
     icon: [
-      { url: "/favicon.ico?v=6", sizes: "16x16 32x32 48x48", type: "image/x-icon" },
+      { url: "/favicon.ico?v=11", sizes: "16x16 32x32 48x48", type: "image/x-icon" },
     ],
-    apple: [{ url: "/apple-touch-icon.png?v=5", sizes: "180x180", type: "image/png" }],
+    apple: [{ url: "/apple-touch-icon.png?v=7", sizes: "180x180", type: "image/png" }],
   },
 };
 
