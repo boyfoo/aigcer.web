@@ -437,16 +437,6 @@ a:focus-visible {
   object-fit: cover;
 }
 
-.browse-case-image img {
-  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), filter 220ms ease;
-}
-
-@media (hover: hover) {
-  .browse-case:hover .browse-case-image img {
-    transform: scale(1.014);
-  }
-}
-
 .filter-option:focus-visible,
 .nav-link:focus-visible,
 .brand:focus-visible,
