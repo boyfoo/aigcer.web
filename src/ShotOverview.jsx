@@ -1,8 +1,9 @@
 "use client";
 
+import { DisclosureSummary } from "./DisclosureSummary.jsx";
 import { memo, useMemo, useState } from "react";
 import { Button, Empty, Input, Select, Segmented, Tag } from "antd";
-import { AppstoreOutlined, BarsOutlined, FilterOutlined, RightOutlined, SearchOutlined, ZoomInOutlined } from "@ant-design/icons";
+import { ChevronRight, LayoutGrid, List, ListFilter, Search, X, ZoomIn } from "lucide-react";
 import { filterStudyShots, formatShotDuration, shotSegments, shotSizeTone } from "./lib/shotOverview.js";
 import { formatVideoTime } from "./lib/videoTimeline.js";
 
@@ -14,7 +15,7 @@ export function ShotFrames({ shot, index, onPreview, onSelect, single = false })
   const selectedFrame = frames.find((frame) => frame.frameIndex === activeFrame) || frames[0];
   const renderFrame = ({ src, label, frameIndex }) => <div className="study-frame" key={frameIndex}>
     <button type="button" aria-label={onSelect ? `查看镜头 ${index + 1}拆解` : `放大镜头 ${index + 1}${label}`} onClick={() => onSelect ? onSelect(shot) : onPreview({ shot, index, frameIndex })}><img src={src} alt={`镜头 ${index + 1}${label}`} loading="lazy" /><span>{label}</span></button>
-    {onSelect && <button type="button" className="study-frame-zoom" aria-label={`放大镜头 ${index + 1}${label}`} onClick={() => onPreview({ shot, index, frameIndex })}><ZoomInOutlined /></button>}
+    {onSelect && <button type="button" className="study-frame-zoom" aria-label={`放大镜头 ${index + 1}${label}`} onClick={() => onPreview({ shot, index, frameIndex })}><ZoomIn aria-hidden="true" /></button>}
   </div>;
   if (single) return <div className="study-reading-frame">
     {frames.length > 1 && <div className="study-frame-switch" role="group" aria-label="镜头画面选择">{frames.map(({ label, frameIndex }) => <button type="button" key={frameIndex} aria-pressed={selectedFrame.frameIndex === frameIndex} onClick={() => setActiveFrame(frameIndex)}>{label}</button>)}</div>}
@@ -64,23 +65,27 @@ export const ShotOverview = memo(function ShotOverview({ shots, playingId, playi
     ["排序", sort === "timeline" ? "" : sort === "longest" ? "镜长从长到短" : "镜长从短到长", () => setSort("timeline")],
   ].filter(([, value]) => value);
   return <section className="study-overview" aria-labelledby="overview-title">
-    <div className="study-overview-heading"><h2 id="overview-title">全部镜头 <span>{shots.length}</span></h2><div><Button type="text" size="small" onClick={() => onSelect(shots[0])}>从第 1 镜开始 <RightOutlined /></Button><Button type="text" size="small" icon={<FilterOutlined />} aria-expanded={filtersOpen} aria-controls="study-overview-search" onClick={() => setFiltersOpen((value) => !value)}>筛选</Button></div></div>
+    <div className="study-overview-heading"><h2 id="overview-title">全部镜头 <span>{shots.length}</span></h2><div><Button type="text" size="small" onClick={() => onSelect(shots[0])}>从第 1 镜开始 <ChevronRight aria-hidden="true" /></Button><Button type="text" size="small" icon={<ListFilter aria-hidden="true" />} aria-expanded={filtersOpen} aria-controls="study-overview-search" onClick={() => setFiltersOpen((value) => !value)}>筛选</Button></div></div>
     <div className="study-overview-search" id="study-overview-search" hidden={!filtersOpen}><div className="study-overview-search-body">
-      <div className="study-overview-search-row"><Input aria-label="搜索片内镜头" placeholder="搜索镜号、画面、台词…" prefix={<SearchOutlined />} value={query} onChange={(event) => setQuery(event.target.value)} allowClear /><Segmented aria-label="总览排列方式" value={layout} onChange={setLayout} options={[{ value: "list", icon: <BarsOutlined />, label: "列表" }, { value: "grid", icon: <AppstoreOutlined />, label: "网格" }]} /></div>
+      <div className="study-overview-search-row"><Input aria-label="搜索片内镜头" placeholder="搜索镜号、画面、台词…" prefix={<Search aria-hidden="true" />} value={query} onChange={(event) => setQuery(event.target.value)} allowClear={{ clearIcon: <X /> }} /><Segmented aria-label="总览排列方式" value={layout} onChange={setLayout} options={[{ value: "list", icon: <List aria-hidden="true" />, label: "列表" }, { value: "grid", icon: <LayoutGrid aria-hidden="true" />, label: "网格" }]} /></div>
       <div className="study-overview-filters"><Select aria-label="筛选镜头景别" value={size} options={options("景别", "全部景别")} onChange={setSize} /><Select aria-label="筛选镜头运镜" value={movement} options={options("运镜", "全部运镜")} onChange={setMovement} /></div>
-      <details className="study-more-filters"><summary>更多条件与排序</summary><div className="study-overview-filters"><Select aria-label="筛选镜头类别" value={category} options={fieldOptions("category", "全部类别")} onChange={setCategory} /><Select aria-label="筛选叙事节奏" value={rhythm} options={fieldOptions("rhythm", "全部节奏")} onChange={setRhythm} /><Select aria-label="筛选出场人物" value={person} options={[{ value: "", label: "全部人物" }, ...people.map((entry) => ({ value: entry.id, label: entry.name || "未命名人物" }))]} onChange={onPersonChange} /><Select aria-label="镜头排序" value={sort} options={[{ value: "timeline", label: "时间顺序" }, { value: "longest", label: "镜长从长到短" }, { value: "shortest", label: "镜长从短到长" }]} onChange={setSort} /></div></details>
+      <details className="study-more-filters"><DisclosureSummary>更多条件与排序</DisclosureSummary><div className="study-overview-filters"><Select aria-label="筛选镜头类别" value={category} options={fieldOptions("category", "全部类别")} onChange={setCategory} /><Select aria-label="筛选叙事节奏" value={rhythm} options={fieldOptions("rhythm", "全部节奏")} onChange={setRhythm} /><Select aria-label="筛选出场人物" value={person} options={[{ value: "", label: "全部人物" }, ...people.map((entry) => ({ value: entry.id, label: entry.name || "未命名人物" }))]} onChange={onPersonChange} /><Select aria-label="镜头排序" value={sort} options={[{ value: "timeline", label: "时间顺序" }, { value: "longest", label: "镜长从长到短" }, { value: "shortest", label: "镜长从短到长" }]} onChange={setSort} /></div></details>
     </div></div>
-    {activeFilters.length > 0 && <div className="study-active-filters"><div>{activeFilters.map(([label, value, clear]) => <Tag key={label} closable onClose={(event) => { event.preventDefault(); clear(); }}>{label}：{value}</Tag>)}</div><div className="study-overview-results"><span role="status">找到 {matches.length} / {shots.length} 个镜头</span><Button type="text" size="small" onClick={reset}>清除筛选与排序</Button></div></div>}
+    {activeFilters.length > 0 && <div className="study-active-filters"><div>{activeFilters.map(([label, value, clear]) => <Tag key={label} closable closeIcon={<X />} onClose={(event) => { event.preventDefault(); clear(); }}>{label}：{value}</Tag>)}</div><div className="study-overview-results"><span role="status">找到 {matches.length} / {shots.length} 个镜头</span><Button type="text" size="small" onClick={reset}>清除筛选与排序</Button></div></div>}
     <ol className={`study-overview-shots is-${layout}`}>{matches.map(({ shot, index }) => <li key={shot.id} data-overview-shot={shot.id}>
       <ShotFrames shot={shot} index={index} onPreview={onPreview} onSelect={onSelect} />
       <button type="button" className="study-overview-open" aria-label={`研究镜头 ${index + 1}：${shot.title}`} aria-current={playingId === shot.id ? "true" : undefined} onClick={() => onSelect(shot)}>
         <strong><span className="overview-shot-number">{String(index + 1).padStart(2, "0")}</span>{shot.title}{playingId === shot.id && <span className="overview-shot-playback">{playing ? "正在播放" : "播放位置"}</span>}</strong>
-        <span className="overview-shot-facts">{formatVideoTime(shot.start)}–{formatVideoTime(shot.end)} · {[shot.facts?.景别, shot.facts?.运镜].filter(Boolean).join(" · ") || "画面信息待补充"}</span>
+        <span className="overview-shot-facts">
+          <span className="overview-shot-time">{formatVideoTime(shot.start)}–{formatVideoTime(shot.end)}</span>
+          {" · "}
+          {[shot.facts?.景别, shot.facts?.运镜].filter(Boolean).join(" · ") || "画面信息待补充"}
+        </span>
         {shot.summary && <span className="overview-shot-summary">{shot.summary}</span>}
-        <span className="overview-shot-meta"><span>{formatShotDuration(shot)}</span><RightOutlined /></span>
+        <span className="overview-shot-meta"><span>{formatShotDuration(shot)}</span><ChevronRight aria-hidden="true" /></span>
       </button>
-      {Boolean(shot.category || shot.rhythm || shot.transition || shot.subjects?.length || shot.sound || shot.dialogue || shot.onscreenText || shot.narrative) && <details className="overview-shot-extra"><summary>更多镜头资料</summary><div className="overview-shot-context">{[shot.category, shot.rhythm, shot.transition].filter(Boolean).length > 0 && <span>{[shot.category, shot.rhythm, shot.transition].filter(Boolean).join(" · ")}</span>}{shot.subjects?.length > 0 && <span>人物：{shot.subjects.map((id) => people.find((entry) => entry.id === id)?.name || id).join("、")}</span>}{[["sound", "声音"], ["dialogue", "台词"], ["onscreenText", "画面文字"], ["narrative", "叙事作用"]].filter(([key]) => shot[key]).map(([key, label]) => <span key={key}>{label}：{shot[key]}</span>)}</div></details>}
+      {Boolean(shot.category || shot.rhythm || shot.transition || shot.subjects?.length || shot.sound || shot.dialogue || shot.onscreenText || shot.narrative) && <details className="overview-shot-extra"><DisclosureSummary>更多镜头资料</DisclosureSummary><div className="overview-shot-context">{[shot.category, shot.rhythm, shot.transition].filter(Boolean).length > 0 && <span>{[shot.category, shot.rhythm, shot.transition].filter(Boolean).join(" · ")}</span>}{shot.subjects?.length > 0 && <span>人物：{shot.subjects.map((id) => people.find((entry) => entry.id === id)?.name || id).join("、")}</span>}{[["sound", "声音"], ["dialogue", "台词"], ["onscreenText", "画面文字"], ["narrative", "叙事作用"]].filter(([key]) => shot[key]).map(([key, label]) => <span key={key}>{label}：{shot[key]}</span>)}</div></details>}
     </li>)}</ol>
-    {!matches.length && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有找到符合条件的镜头"><Button onClick={reset}>查看全部镜头</Button></Empty>}
+    {!matches.length && <Empty className="empty-compact" description="没有找到符合条件的镜头"><Button onClick={reset}>查看全部镜头</Button></Empty>}
   </section>;
 });

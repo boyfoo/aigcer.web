@@ -1,8 +1,10 @@
 "use client";
+import { DisclosureSummary } from "./DisclosureSummary.jsx";
 import { useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Alert, App, Button, Collapse, Empty, Input, InputNumber, Popconfirm, Select, Tag } from "antd";
-import { ArrowLeftOutlined, EyeOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
+import { ChevronDown, ChevronUp, X, CircleAlert, ArrowLeft, Eye, Plus, RotateCw } from "lucide-react";
+import { useAppMessage } from "./hooks/useAppMessage.jsx";
 import { ContentTagFields } from "./ContentTagFields.jsx";
 import { useManagedContent } from "./ContentProvider.jsx";
 import { casePath, draftPath } from "./lib/content.js";
@@ -23,7 +25,8 @@ const newDraft = () => ({ id: "", title: "", kind: "视频", image: "", duration
 const emptyShot = (start, end) => ({ id: `shot-${crypto.randomUUID()}`, start, end, title: "", image: "", summary: "", facts: { 景别: "", 运镜: "", 构图: "", 光影: "" }, analysis: [], imagePrompt: "", videoPrompt: "" });
 
 export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
-  const { message, modal } = App.useApp();
+  const { modal } = App.useApp();
+  const message = useAppMessage();
   const { records, ready, error, refresh, change } = useManagedContent();
   const [draft, setDraft] = useState(newDraft);
   const [current, setCurrent] = useState(null);
@@ -96,23 +99,23 @@ export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
   const mediaBusy = (delta) => setUploads((count) => Math.max(0, count + delta));
   const imageInput = (label, value, onChange) => <MediaUpload label={label} value={value} onChange={onChange} onBusyChange={mediaBusy} disabled={blocked} />;
   return <main className="tag-settings-page content-entry-page" aria-labelledby="content-title">
-    <div className="tag-settings-page-nav"><Button type="text" icon={<ArrowLeftOutlined />} onClick={onBack}>返回镜头参考</Button><span>内容管理 / 录入</span></div>
+    <div className="tag-settings-page-nav"><Button type="text" icon={<ArrowLeft />} onClick={onBack}>返回镜头参考</Button><span>内容管理 / 录入</span></div>
     <div className="tag-settings-intro"><h1 id="content-title">内容录入</h1><p>先积累素材，再补充提示词与分析，整理好后发布。</p><span>草稿保存在网站；只有已发布内容会出现在访客列表中。</span></div>
     {error ? <Alert type="error" title="内容读取失败" description={error} action={!contentReadOnly && <Button onClick={refresh}>重新读取</Button>} /> : !ready ? <p role="status">正在读取内容…</p> : <div className="entry-layout">
       <aside className="entry-library" aria-label="案例列表">
-        <Button type="primary" block icon={<PlusOutlined />} disabled={blocked} onClick={() => choose(null)}>新增案例</Button>
-        <Input aria-label="搜索已录入案例" placeholder="搜索案例名称" value={search} allowClear onChange={(event) => setSearch(event.target.value)} />
+        <Button type="primary" block icon={<Plus />} disabled={blocked} onClick={() => choose(null)}>新增案例</Button>
+        <Input aria-label="搜索已录入案例" placeholder="搜索案例名称" value={search} allowClear={{ clearIcon: <X /> }} onChange={(event) => setSearch(event.target.value)} />
         <Select aria-label="按发布状态筛选" value={status} onChange={setStatus} options={[{ value: "all", label: "全部内容" }, ...Object.entries(labels).map(([value, label]) => ({ value, label }))]} />
-        <div className="entry-list-heading"><h2>案例资料</h2><span>{filtered.length}</span><Button type="text" size="small" icon={<ReloadOutlined />} aria-label="刷新案例列表" disabled={blocked} onClick={refresh} /></div>
+        <div className="entry-list-heading"><h2>案例资料</h2><span>{filtered.length}</span><Button type="text" size="small" icon={<RotateCw />} aria-label="刷新案例列表" disabled={blocked} onClick={refresh} /></div>
         <div className="entry-case-list">{filtered.map((record) => <button key={record.id} type="button" disabled={blocked} className={`entry-case${draft.id === record.id ? " is-active" : ""}`} aria-pressed={draft.id === record.id} onClick={() => choose(record)}><img src={record.draft.image || "/images/media-placeholder.svg"} alt="" /><span><strong>{record.draft.title || "未命名案例"}</strong><small>{labels[record.status]}{record.status !== "draft" && record.hasChanges ? " · 有待发布修改" : ""}</small></span></button>)}</div>
-        {!filtered.length && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="这里还没有内容" />}
+        {!filtered.length && <Empty className="empty-compact" description="这里还没有内容" />}
       </aside>
       <form className="entry-editor" onSubmit={(event) => { event.preventDefault(); act("save"); }} aria-label="案例录入表单">
-        <div className="entry-editor-heading"><h2>{draft.id ? "编辑案例" : "新增案例"} <Tag>{labels[current?.status || "draft"]}</Tag></h2><div>{current && <Button icon={<EyeOutlined />} disabled={blocked} onClick={() => onNavigate(draftPath(current.id))}>预览草稿</Button>}{current?.status === "published" && <Button type="text" disabled={blocked} onClick={() => onNavigate(casePath(current.id))}>查看已发布版本</Button>}</div></div>
+        <div className="entry-editor-heading"><h2>{draft.id ? "编辑案例" : "新增案例"} <Tag>{labels[current?.status || "draft"]}</Tag></h2><div>{current && <Button icon={<Eye />} disabled={blocked} onClick={() => onNavigate(draftPath(current.id))}>预览草稿</Button>}{current?.status === "published" && <Button type="text" disabled={blocked} onClick={() => onNavigate(casePath(current.id))}>查看已发布版本</Button>}</div></div>
         <p className="entry-state-note">{current?.status === "published" ? "保存修改不会影响访客看到的内容，再次发布后才会更新。" : current?.status === "offline" ? "当前内容已下架。重新上架恢复上次发布的版本；发布则使用当前编辑内容。" : "可以先上传素材保存草稿，发布前至少补充提示词或分析中的一项。"}</p>
         <fieldset className="entry-fields" disabled={blocked}>
         <section className="entry-section" aria-labelledby="entry-basic"><h3 id="entry-basic">基本信息</h3><div className="entry-two-columns"><Field label="案例名称"><Input aria-label="案例名称" value={draft.title} maxLength={80} placeholder="上传时可自动使用文件名" onChange={(event) => update({ title: event.target.value })} /></Field><Field label="内容类型"><Select aria-label="内容类型" disabled={blocked} value={draft.kind} options={[{ value: "分镜", label: "分镜" }, { value: "视频", label: "视频" }]} onChange={(kind) => update({ kind, ...(kind === "视频" && !draft.video ? { video: { src: "", durationSeconds: 0, isMock: false, shots: [] } } : {}) })} /></Field></div>
-          {draft.kind === "视频" && <><MediaUpload label="案例视频" value={draft.video.src} kind="video" onBusyChange={mediaBusy} disabled={blocked} onChange={(src, info) => update({ title: draft.title || (info.name || "").replace(/\.[^.]+$/, "").slice(0, 80), video: { ...draft.video, src, durationSeconds: info.duration || 0, metadata: info.metadata || {}, isMock: false, shots: draft.video.shots.map((shot) => ({ ...shot, review: {} })) } })} /><Field label="视频时长（秒）" hint="自动读取失败时可以手动填写。"><InputNumber aria-label="视频时长秒数" min={0} max={86400} precision={3} value={draft.video.durationSeconds} onChange={(durationSeconds) => updateVideo({ durationSeconds, shots: draft.video.shots.map((shot) => ({ ...shot, review: {} })) })} /></Field><VideoDetailsEditor video={draft.video} onChange={updateVideo} blocked={blocked} /></>}
+          {draft.kind === "视频" && <><MediaUpload label="案例视频" value={draft.video.src} kind="video" onBusyChange={mediaBusy} disabled={blocked} onChange={(src, info) => update({ title: draft.title || (info.name || "").replace(/\.[^.]+$/, "").slice(0, 80), video: { ...draft.video, src, durationSeconds: info.duration || 0, metadata: info.metadata || {}, isMock: false, shots: draft.video.shots.map((shot) => ({ ...shot, review: {} })) } })} /><Field label="视频时长（秒）" hint="自动读取失败时可以手动填写。"><InputNumber controls={{ upIcon: <ChevronUp />, downIcon: <ChevronDown /> }} aria-label="视频时长秒数" min={0} max={86400} precision={3} value={draft.video.durationSeconds} onChange={(durationSeconds) => updateVideo({ durationSeconds, shots: draft.video.shots.map((shot) => ({ ...shot, review: {} })) })} /></Field><VideoDetailsEditor video={draft.video} onChange={updateVideo} blocked={blocked} /></>}
           {imageInput(draft.kind === "视频" ? "案例封面（可后补）" : "案例图片", draft.image, (image, info) => update({ image, title: draft.title || (info.name || "").replace(/\.[^.]+$/, "").slice(0, 80) }))}
           {draft.kind === "分镜" && <Field label="分镜时长（可选）"><Input aria-label="分镜时长" value={draft.duration} placeholder="00:08" maxLength={7} onChange={(event) => update({ duration: event.target.value })} /></Field>}
           <Field label="案例介绍（可选）"><Input.TextArea aria-label="案例介绍" value={draft.description} maxLength={2000} showCount autoSize={{ minRows: 3, maxRows: 8 }} placeholder="简要描述画面与学习重点" onChange={(event) => update({ description: event.target.value })} /></Field>
@@ -131,14 +134,14 @@ export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
               onChange={(changes) => updateShot(shot.id, changes)}
               onRemove={() => updateVideo({ shots: draft.video.shots.filter((entry) => entry.id !== shot.id) })} />,
           }))} />
-          <Button className="entry-add-shot" block type="dashed" icon={<PlusOutlined />} disabled={blocked || draft.video.shots.length >= 100} onClick={addShot}>添加镜头</Button>
+          <Button className="entry-add-shot" block type="dashed" icon={<Plus />} disabled={blocked || draft.video.shots.length >= 100} onClick={addShot}>添加镜头</Button>
         </section>}
-        {draft.kind === "视频" && <details className="entry-section entry-quality"><summary>质量检查 · 15 项</summary><QualityReport video={draft.video} prefix="entry" onSelect={(shot) => { flushSync(() => setOpenShots([shot.id])); shotHeader(shot.id)?.scrollIntoView({ block: "start", behavior: "instant" }); shotHeader(shot.id)?.focus({ preventScroll: true }); }} /></details>}
+        {draft.kind === "视频" && <details className="entry-section entry-quality"><DisclosureSummary>质量检查 · 15 项</DisclosureSummary><QualityReport video={draft.video} prefix="entry" onSelect={(shot) => { flushSync(() => setOpenShots([shot.id])); shotHeader(shot.id)?.scrollIntoView({ block: "start", behavior: "instant" }); shotHeader(shot.id)?.focus({ preventScroll: true }); }} /></details>}
         </fieldset>
         {saveError && <Alert className="entry-error" type="error" title={saveError} showIcon />}
         <div className="entry-save-bar"><span role="status">{uploads ? "素材上传中…" : dirty ? "有未保存的修改" : current?.hasChanges ? "草稿已保存，待发布" : current ? labels[current.status] : "可先上传素材保存"}</span><div>
-          {current?.status === "draft" && <Popconfirm title="删除这个草稿？" okText="删除" cancelText="取消" onConfirm={() => act("delete")}><Button type="text" danger disabled={blocked}>删除草稿</Button></Popconfirm>}
-          {current?.status === "published" && <Popconfirm title="下架这条内容？" description="访客暂时看不到，资料仍会保留，之后可以重新上架。" okText="下架" cancelText="取消" onConfirm={() => act("unlist")}><Button disabled={blocked || dirty}>下架</Button></Popconfirm>}
+          {current?.status === "draft" && <Popconfirm icon={<CircleAlert />} title="删除这个草稿？" okText="删除" cancelText="取消" onConfirm={() => act("delete")}><Button type="text" danger disabled={blocked}>删除草稿</Button></Popconfirm>}
+          {current?.status === "published" && <Popconfirm icon={<CircleAlert />} title="下架这条内容？" description="访客暂时看不到，资料仍会保留，之后可以重新上架。" okText="下架" cancelText="取消" onConfirm={() => act("unlist")}><Button disabled={blocked || dirty}>下架</Button></Popconfirm>}
           {current?.status === "offline" && <Button disabled={blocked || dirty} loading={busy === "relist"} onClick={() => act("relist")}>重新上架</Button>}
           <Button htmlType="submit" disabled={blocked || !dirty} loading={busy === "save"}>保存草稿</Button>
           <Button type="primary" disabled={blocked || (current?.status === "published" && !dirty && !current.hasChanges)} loading={busy === "publish"} onClick={() => act("publish")}>{current?.publishedAt ? "发布更新" : "发布"}</Button>

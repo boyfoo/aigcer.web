@@ -1,5 +1,6 @@
 "use client";
 
+import { DisclosureSummary } from "./DisclosureSummary.jsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,18 +14,19 @@ import {
   Tag,
 } from "antd";
 import {
-  ArrowRightOutlined,
-  CheckOutlined,
-  CopyOutlined,
-  DownOutlined,
-  FileTextOutlined,
-  FolderOutlined,
-  PlayCircleFilled,
-  SearchOutlined,
-  SettingOutlined,
-  StarFilled,
-} from "@ant-design/icons";
+  ArrowRight,
+  Check,
+  Copy,
+  ChevronDown,
+  FileText,
+  Folder,
+  CirclePlay,
+  Search,
+  Settings,
+  Star,
+} from "lucide-react";
 import { TagSettings } from "./TagSettings.jsx";
+import { useAppMessage } from "./hooks/useAppMessage.jsx";
 import { CaseSaveButton } from "./CaseSaveButton.jsx";
 import { ContentEntry } from "./ContentEntry.jsx";
 import { useContentCases } from "./ContentProvider.jsx";
@@ -37,7 +39,8 @@ import { caseLearningFocus } from "./lib/learningPresentation.js";
 import { createInitialTagFilters, matchesTagFilters, reconcileTagFilters } from "./tagSettings.js";
 
 export function App({ page = "home", initialCaseId, collection, previewItem, serverItem }) {
-  const { message, modal } = AntApp.useApp();
+  const { modal } = AntApp.useApp();
+  const message = useAppMessage();
   const router = useRouter();
   const { openLibrary } = useReferenceProjects();
   const { tagGroups, tagRevision, saveTags, tagsLoaded, savedIds, toggleFavorite, favoritesError } = usePreferences();
@@ -192,7 +195,7 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
                 {group.label}
                 <span className={`filter-summary${activeValues.length ? " is-active" : ""}`}>
                   {activeValues.length ? `已选 ${activeValues.length}` : "不限"}
-                  <DownOutlined aria-hidden="true" />
+                  <ChevronDown aria-hidden="true" />
                 </span>
               </button>
             </h2>
@@ -210,7 +213,7 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
                     <span className="option-dot" aria-hidden="true" />
                     <span>{option.label}</span>
                     {active && option.id ? (
-                      <CheckOutlined className="option-check" aria-hidden="true" />
+                      <Check className="option-check" aria-hidden="true" />
                     ) : null}
                   </button>
                 );
@@ -224,9 +227,9 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
 
   const profileMenu = {
     items: [
-      { key: "projects", label: "镜头收藏夹", icon: <FolderOutlined /> },
-      { key: "content", label: "内容录入", icon: <FileTextOutlined /> },
-      { key: "settings", label: "标签设置", icon: <SettingOutlined /> },
+      { key: "projects", label: "镜头收藏夹", icon: <Folder /> },
+      { key: "content", label: "内容录入", icon: <FileText /> },
+      { key: "settings", label: "标签设置", icon: <Settings /> },
     ],
     onClick: ({ key }) => {
       if (key === "settings") navigateTo("settings");
@@ -242,7 +245,7 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
 
       <header className="topbar">
         <Link className="brand" href="/" onClick={(event) => { guardNavigation(event); if (!event.defaultPrevented) resetFilters(); }} aria-label="返回案例首页">
-          <img className="brand-icon" src="/logo.png?v=4" width="32" height="32" alt="" />
+          <img className="brand-icon" src="/logo.png?v=6" width="32" height="32" alt="" />
           <span>镜界</span>
         </Link>
         <nav className="primary-nav" aria-label="主要导航">
@@ -253,7 +256,7 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
           <Dropdown menu={profileMenu} trigger={["click"]}>
             <button className="profile-button" type="button" aria-label="打开个人中心">
               <Avatar size={38} src="/images/avatar-curator.png" />
-              <DownOutlined aria-hidden="true" />
+              <ChevronDown aria-hidden="true" />
             </button>
           </Dropdown>
         </div>
@@ -277,8 +280,8 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
             {selectedItem.video?.src ? <video className="case-simple-video" src={selectedItem.video.src} poster={selectedItem.image} controls playsInline preload="metadata" aria-label={`${selectedItem.title}视频播放器`}>浏览器暂不支持视频播放，可使用<a href={selectedItem.video.src}>视频原链接</a>观看。</video> : <img className="case-image" src={selectedItem.image} alt={selectedItem.title} />}
             <div className="case-body case-reading-body">
               <section><h2>看懂这个画面</h2><p className="case-prompt">{selectedItem.analysis || selectedItem.description || caseLearningFocus(selectedItem)}</p></section>
-              <details><summary>查看画面信息</summary><dl className="case-facts">{[["类型", selectedItem.type], ["情绪", selectedItem.emotion], ["光影", selectedItem.lighting], ["运镜", selectedItem.movement]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{displayTags(value) || "—"}</dd></div>)}</dl><div className="tag-row">{selectedItem.tags.map((tag) => <Tag key={tag}>{tag}</Tag>)}</div></details>
-              <details><summary>查看提示词参考</summary><p className="case-prompt">{selectedItem.prompt || "暂未提供提示词"}</p><Button disabled={!selectedItem.prompt} icon={<CopyOutlined />} onClick={copyPrompt}>复制提示词</Button></details>
+              <details><DisclosureSummary>查看画面信息</DisclosureSummary><dl className="case-facts">{[["类型", selectedItem.type], ["情绪", selectedItem.emotion], ["光影", selectedItem.lighting], ["运镜", selectedItem.movement]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{displayTags(value) || "—"}</dd></div>)}</dl><div className="tag-row">{selectedItem.tags.map((tag) => <Tag key={tag}>{tag}</Tag>)}</div></details>
+              <details><DisclosureSummary>查看提示词参考</DisclosureSummary><p className="case-prompt">{selectedItem.prompt || "暂未提供提示词"}</p><Button disabled={!selectedItem.prompt} icon={<Copy />} onClick={copyPrompt}>复制提示词</Button></details>
               <div className="case-actions"><CaseSaveButton saved={savedIds.has(selectedItem.id)} onClick={() => toggleSaved(selectedItem.id)} /></div>
             </div>
           </article>
@@ -300,7 +303,7 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
                 applySearch(draftQuery);
               }}
             >
-              <SearchOutlined className="hero-search-icon" aria-hidden="true" />
+              <Search className="hero-search-icon" aria-hidden="true" />
               <input
                 ref={searchRef}
                 value={draftQuery}
@@ -326,10 +329,10 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
                 >
                   <img src={selectedItem.image} alt={selectedItem.title} />
                   <span className="featured-badge">
-                    <StarFilled /> {curatedLabel}
+                    <Star /> {curatedLabel}
                   </span>
                   <span className="duration-badge">
-                    <PlayCircleFilled /> {selectedItem.duration}
+                    <CirclePlay /> {selectedItem.duration}
                   </span>
                 </Link>
                 <div className="featured-details">
@@ -337,7 +340,7 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
                   <p className="case-learning-focus"><span>看点</span>{caseLearningFocus(selectedItem)}</p>
                   <p className="description">{selectedItem.description}</p>
                   <div className="featured-actions">
-                    <Link className="case-read-link" href={casePath(selectedItem.id)}>{selectedItem.video?.shots.length ? "看视频与拆解" : "查看案例"}<ArrowRightOutlined aria-hidden="true" /></Link>
+                    <Link className="case-read-link" href={casePath(selectedItem.id)}>{selectedItem.video?.shots.length ? "看视频与拆解" : "查看案例"}<ArrowRight aria-hidden="true" /></Link>
                     <CaseSaveButton
                       type="text"
                       saved={savedIds.has(selectedItem.id)}
@@ -358,14 +361,14 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
                     <img src={item.image} alt="" />
                     <span className="gallery-caption"><strong>{item.title}</strong><span>{caseLearningFocus(item)}</span></span>
                     <span className="duration-badge">
-                      <PlayCircleFilled /> {item.duration}
+                      <CirclePlay /> {item.duration}
                     </span>
                   </Link>
                 ))}
               </div>
             </section>
           ) : filteredItems.length ? (
-            <section className="case-results-grid" aria-label="镜头参考结果">{filteredItems.map((item) => <Link href={casePath(item.id)} className="browse-case" key={item.id} aria-label={`查看案例：${item.title}`}><div className="browse-case-image"><img src={item.image} alt="" /><span className="duration-badge">{item.kind} · {item.duration}</span></div><h2>{item.title}</h2><p>{caseLearningFocus(item)}</p>{collection?.slug === "prompts" && <p className="browse-prompt-excerpt">{item.prompt || "进入案例查看逐镜头提示词"}</p>}<span className="browse-case-action">{collection?.slug === "prompts" ? "查看案例与提示词" : item.video?.shots.length ? "看视频与拆解" : "查看案例"}<ArrowRightOutlined aria-hidden="true" /></span></Link>)}</section>
+            <section className="case-results-grid" aria-label="镜头参考结果">{filteredItems.map((item) => <Link href={casePath(item.id)} className="browse-case" key={item.id} aria-label={`查看案例：${item.title}`}><div className="browse-case-image"><img src={item.image} alt="" /><span className="duration-badge">{item.kind} · {item.duration}</span></div><h2>{item.title}</h2><p>{caseLearningFocus(item)}</p>{collection?.slug === "prompts" && <p className="browse-prompt-excerpt">{item.prompt || "进入案例查看逐镜头提示词"}</p>}<span className="browse-case-action">{collection?.slug === "prompts" ? "查看案例与提示词" : item.video?.shots.length ? "看视频与拆解" : "查看案例"}<ArrowRight aria-hidden="true" /></span></Link>)}</section>
           ) : (
             <section className="empty-state">
               <Empty description="暂时没有匹配的镜头参考">
@@ -388,7 +391,7 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
         onClose={() => setSavedOpen(false)}
       >
         <p className="saved-explanation">收藏整条案例，方便下次回看。</p>
-        <Button className="saved-folders-link" icon={<FolderOutlined />} onClick={() => { setSavedOpen(false); openLibrary(guardNavigation); }}>打开镜头收藏夹</Button>
+        <Button className="saved-folders-link" icon={<Folder />} onClick={() => { setSavedOpen(false); openLibrary(guardNavigation); }}>打开镜头收藏夹</Button>
         <p className="saved-explanation">想把不同案例里的镜头放在一起？可在拆解页将镜头加入收藏夹。</p>
         {favoritesError && <p role="alert">{favoritesError}</p>}
         {savedIds.size > savedItems.length && <p>有 {savedIds.size - savedItems.length} 条收藏暂未公开，重新上架后可继续查看。</p>}

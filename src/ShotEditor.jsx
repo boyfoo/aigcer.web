@@ -1,5 +1,6 @@
+import { DisclosureSummary } from "./DisclosureSummary.jsx";
 import { Button, Input, InputNumber, Popconfirm } from "antd";
-import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import { ChevronDown, ChevronUp, CircleAlert, Plus, Trash2 } from "lucide-react";
 import { EntryField as Field } from "./EntryField.jsx";
 import { MediaUpload } from "./MediaUpload.jsx";
 import { ShotClassification, ShotReview } from "./StudyEntryFields.jsx";
@@ -31,10 +32,10 @@ export function ShotEditor({ shot, index, duration, blocked, mediaBusy, onChange
         </Field>
         <div className="entry-two-columns">
           <Field label="开始（秒）" required>
-            <InputNumber aria-label={`${prefix}开始秒数`} min={0} max={duration} precision={3} value={shot.start} onChange={(start) => onChange({ start })} />
+            <InputNumber controls={{ upIcon: <ChevronUp />, downIcon: <ChevronDown /> }} aria-label={`${prefix}开始秒数`} min={0} max={duration} precision={3} value={shot.start} onChange={(start) => onChange({ start })} />
           </Field>
           <Field label="结束（秒）" required>
-            <InputNumber aria-label={`${prefix}结束秒数`} min={0} max={duration} precision={3} value={shot.end} onChange={(end) => onChange({ end })} />
+            <InputNumber controls={{ upIcon: <ChevronUp />, downIcon: <ChevronDown /> }} aria-label={`${prefix}结束秒数`} min={0} max={duration} precision={3} value={shot.end} onChange={(end) => onChange({ end })} />
           </Field>
         </div>
       </div>
@@ -46,7 +47,7 @@ export function ShotEditor({ shot, index, duration, blocked, mediaBusy, onChange
       {input("summary", "镜头概述")}
       <ShotClassification shot={shot} prefix={prefix} people={people} onChange={onChange} onAddPerson={onAddPerson} blocked={blocked} />
       <details className="entry-shot-context">
-        <summary>声音与叙事（可选）</summary>
+        <DisclosureSummary>声音与叙事（可选）</DisclosureSummary>
         <div className="entry-two-columns">
           {input("sound", "声音与音乐")}
           {input("dialogue", "台词")}
@@ -86,14 +87,14 @@ export function ShotEditor({ shot, index, duration, blocked, mediaBusy, onChange
               onChange={(event) => updateAnalysis(noteIndex, { text: event.target.value })}
             />
             <Button
-              type="text" danger icon={<DeleteOutlined />}
+              type="text" danger icon={<Trash2 />}
               aria-label={`删除${prefix}拆解 ${noteIndex + 1}`}
               onClick={() => onChange({ analysis: shot.analysis.filter((_, i) => i !== noteIndex) })}
             />
           </div>
         ))}
         <Button
-          type="dashed" icon={<PlusOutlined />}
+          type="dashed" icon={<Plus />}
           disabled={shot.analysis.length >= 20}
           onClick={() => onChange({ analysis: [...shot.analysis, { label: "", text: "" }] })}
         >添加拆解</Button>
@@ -101,8 +102,8 @@ export function ShotEditor({ shot, index, duration, blocked, mediaBusy, onChange
       {input("imagePrompt", "首帧图片提示词", 12000)}
       {input("videoPrompt", "视频动态提示词", 12000)}
       <ShotReview shot={shot} prefix={prefix} onChange={onChange} />
-      <Popconfirm title={`删除${prefix}？`} description="保存案例后生效。" onConfirm={onRemove} okText="删除" cancelText="取消">
-        <Button danger type="text" icon={<DeleteOutlined />}>删除这个镜头</Button>
+      <Popconfirm icon={<CircleAlert />} title={`删除${prefix}？`} description="保存案例后生效。" onConfirm={onRemove} okText="删除" cancelText="取消">
+        <Button danger type="text" icon={<Trash2 />}>删除这个镜头</Button>
       </Popconfirm>
     </div>
   );

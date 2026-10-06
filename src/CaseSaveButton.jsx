@@ -1,5 +1,5 @@
 import { Button } from "antd";
-import { BookFilled, BookOutlined } from "@ant-design/icons";
+import { Bookmark, BookmarkCheck } from "lucide-react";
 
 export function CaseSaveButton({ saved, onClick, type = "default" }) {
   return (
@@ -11,8 +11,8 @@ export function CaseSaveButton({ saved, onClick, type = "default" }) {
       onClick={onClick}
       icon={
         <span className="case-save-symbol" aria-hidden="true">
-          <BookOutlined className="case-save-idle" />
-          <BookFilled className="case-save-selected" />
+          <Bookmark className="case-save-idle" />
+          <BookmarkCheck className="case-save-selected" />
         </span>
       }
     >

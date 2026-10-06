@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
-import { Alert, App, Button, Input, Modal, Select } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Alert, Button, Input, Modal, Select } from "antd";
+import { Search, X, Plus } from "lucide-react";
+import { useAppMessage } from "./hooks/useAppMessage.jsx";
 import { usePreferences } from "./Providers.jsx";
 import { caseTagValues } from "./lib/contentEntries.js";
 import { contentReadOnly, requestContent } from "./lib/contentClient.js";
@@ -9,7 +10,7 @@ import { normalizeTagGroups } from "./tagSettings.js";
 
 export function ContentTagFields({ draft, disabled, onSelect, onBusyChange, onExtraTagsChange }) {
   const { tagGroups, saveTags } = usePreferences();
-  const { message } = App.useApp();
+  const message = useAppMessage();
   const [adding, setAdding] = useState(null);
   const [name, setName] = useState("");
   const [firstOption, setFirstOption] = useState("");
@@ -49,18 +50,18 @@ export function ContentTagFields({ draft, disabled, onSelect, onBusyChange, onEx
   };
 
   return <section className="entry-section" aria-labelledby="entry-tags">
-    <div className="entry-tags-heading"><h3 id="entry-tags">分类与标签</h3><Button type="text" size="small" icon={<PlusOutlined />} disabled={disabled || contentReadOnly} onClick={() => open()}>新增一级标签</Button></div>
+    <div className="entry-tags-heading"><h3 id="entry-tags">分类与标签</h3><Button type="text" size="small" icon={<Plus />} disabled={disabled || contentReadOnly} onClick={() => open()}>新增一级标签</Button></div>
     <p className="entry-hint">每组可以多选，也可以在这里新增一级、二级标签。</p>
     <div className="entry-two-columns">{tagGroups.map((group) => {
       const selected = caseTagValues(draft, group.id);
       const options = group.options.map((option) => ({ value: option.value ?? option.label, label: option.label }));
       selected.forEach((value) => { if (!options.some((option) => option.value === value)) options.push({ value, label: `${value}（原标签）` }); });
       return <div className="entry-field" key={group.id}>
-        <div className="entry-tag-label"><span className="entry-field-label">{group.label}</span><Button type="text" size="small" icon={<PlusOutlined />} aria-label={`在${group.label}中新增二级标签`} disabled={disabled || contentReadOnly} onClick={() => open(group)}>新增二级标签</Button></div>
-        <Select aria-label={`分类：${group.label}`} mode="multiple" disabled={disabled} value={selected} options={options} allowClear placeholder="选择标签，可多选" onChange={(values) => onSelect(group.id, values)} />
+        <div className="entry-tag-label"><span className="entry-field-label">{group.label}</span><Button type="text" size="small" icon={<Plus />} aria-label={`在${group.label}中新增二级标签`} disabled={disabled || contentReadOnly} onClick={() => open(group)}>新增二级标签</Button></div>
+        <Select aria-label={`分类：${group.label}`} mode="multiple" showSearch={{ searchIcon: <Search /> }} disabled={disabled} value={selected} options={options} allowClear={{ clearIcon: <X /> }} placeholder="选择标签，可多选" onChange={(values) => onSelect(group.id, values)} />
       </div>;
     })}</div>
-    <div className="entry-field"><div className="entry-field-label">补充标签</div><Select aria-label="画面标签" mode="tags" disabled={disabled} value={draft.tags} tokenSeparators={[",", "，"]} placeholder="输入后按回车添加" onChange={onExtraTagsChange} /></div>
+    <div className="entry-field"><div className="entry-field-label">补充标签</div><Select aria-label="画面标签" mode="tags" showSearch={{ searchIcon: <Search /> }} disabled={disabled} value={draft.tags} tokenSeparators={[",", "，"]} placeholder="输入后按回车添加" onChange={onExtraTagsChange} /></div>
     <Modal title={adding?.groupId ? "新增二级标签" : "新增一级标签"} open={Boolean(adding)} onCancel={() => { if (!saving) setAdding(null); }} onOk={save} okText="新增" cancelText="取消" confirmLoading={saving} cancelButtonProps={{ disabled: saving }} closable={!saving} keyboard={!saving} mask={{ closable: !saving }} destroyOnHidden>
       <div className="entry-tag-dialog">
         {adding?.groupId && <p className="entry-hint">所属一级标签：{adding.groupLabel}</p>}

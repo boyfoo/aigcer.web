@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useContext, useCallback, useEffect, useRef, useState } from "react";
-import { App as AntApp, ConfigProvider, theme } from "antd";
+import { App as AntApp, ConfigProvider, Empty, theme } from "antd";
+import { Check, ChevronDown, ChevronRight, CircleAlert, CircleCheck, CircleX, Inbox, Info, LoaderCircle, X } from "lucide-react";
 import { requestContent } from "./lib/contentClient.js";
 import { FAVORITES_KEY, decodeFavorites, encodeFavorites } from "./lib/favorites.js";
 import { ReferenceProjectsProvider } from "./ReferenceProjects.jsx";
@@ -43,7 +44,22 @@ export function Providers({ children, initialContent }) {
     return next;
   };
 
-  return <ConfigProvider theme={{
+  return <ConfigProvider
+    iconPrefixCls="lucide"
+    button={{ loadingIcon: <LoaderCircle className="icon-spin" /> }}
+    select={{
+      suffixIcon: <ChevronDown />,
+      removeIcon: <X />,
+      menuItemSelectedIcon: <Check />,
+      loadingIcon: <LoaderCircle className="icon-spin" />,
+    }}
+    modal={{ closeIcon: <X />, infoIcon: <Info />, successIcon: <CircleCheck />, errorIcon: <CircleX />, warningIcon: <CircleAlert /> }}
+    drawer={{ closeIcon: <X /> }}
+    alert={{ closeIcon: <X />, infoIcon: <Info />, successIcon: <CircleCheck />, errorIcon: <CircleX />, warningIcon: <CircleAlert /> }}
+    collapse={{ expandIcon: ({ isActive }) => <ChevronRight className={isActive ? "collapse-chevron is-open" : "collapse-chevron"} /> }}
+    empty={{ image: <Inbox className="empty-icon" />, styles: { image: { height: 40 } } }}
+    renderEmpty={() => <Empty description="暂无数据" styles={{ root: { marginBlock: 8 }, image: { height: 35 } }} />}
+    theme={{
     algorithm: theme.darkAlgorithm,
     token: {
       colorPrimary: "#fcd535", colorPrimaryHover: "#ffe36b", colorPrimaryActive: "#e0b920",

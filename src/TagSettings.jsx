@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { App, Button, Empty, Input, Popconfirm, Tooltip } from "antd";
-import { ArrowDownOutlined, ArrowLeftOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import { Button, Empty, Input, Popconfirm, Tooltip } from "antd";
+import { CircleAlert, ArrowDown, ArrowLeft, ArrowUp, Plus, Trash2 } from "lucide-react";
+import { useAppMessage } from "./hooks/useAppMessage.jsx";
 import { moveTagEntry, validateTagGroups } from "./tagSettings.js";
 import { useUnsavedChanges } from "./hooks/useUnsavedChanges.js";
 import { contentReadOnly } from "./lib/contentClient.js";
 
 export function TagSettings({ groups, revision, onBack, onSave, onDirtyChange }) {
-  const { message } = App.useApp();
+  const message = useAppMessage();
   const [draft, setDraft] = useState(() => structuredClone(groups));
   const [selectedId, setSelectedId] = useState(groups[0]?.id);
   const [saving, setSaving] = useState(false);
@@ -48,7 +49,7 @@ export function TagSettings({ groups, revision, onBack, onSave, onDirtyChange })
   return (
     <main className="tag-settings-page" aria-labelledby="settings-page-title">
       <div className="tag-settings-page-nav">
-        <Button type="text" icon={<ArrowLeftOutlined />} onClick={onBack}>返回镜头参考</Button>
+        <Button type="text" icon={<ArrowLeft />} onClick={onBack}>返回镜头参考</Button>
         <span>个人中心 / 设置</span>
       </div>
       <div className="tag-settings-intro">
@@ -73,7 +74,7 @@ export function TagSettings({ groups, revision, onBack, onSave, onDirtyChange })
               </button>
             ))}
           </div>
-          <Button block type="dashed" icon={<PlusOutlined />} onClick={addGroup}>新增一级标签</Button>
+          <Button block type="dashed" icon={<Plus />} onClick={addGroup}>新增一级标签</Button>
         </section>
         <section className="tag-group-editor" aria-label="标签编辑">
           {selected ? (
@@ -82,13 +83,13 @@ export function TagSettings({ groups, revision, onBack, onSave, onDirtyChange })
                 <h3>编辑一级标签</h3>
                 <div className="tag-row-actions">
                   <Tooltip title="一级标签上移">
-                    <Button type="text" icon={<ArrowUpOutlined />} aria-label="一级标签上移" disabled={selectedIndex === 0} onClick={() => setDraft(moveTagEntry(draft, selectedId, -1))} />
+                    <Button type="text" icon={<ArrowUp />} aria-label="一级标签上移" disabled={selectedIndex === 0} onClick={() => setDraft(moveTagEntry(draft, selectedId, -1))} />
                   </Tooltip>
                   <Tooltip title="一级标签下移">
-                    <Button type="text" icon={<ArrowDownOutlined />} aria-label="一级标签下移" disabled={selectedIndex === draft.length - 1} onClick={() => setDraft(moveTagEntry(draft, selectedId, 1))} />
+                    <Button type="text" icon={<ArrowDown />} aria-label="一级标签下移" disabled={selectedIndex === draft.length - 1} onClick={() => setDraft(moveTagEntry(draft, selectedId, 1))} />
                   </Tooltip>
-                  <Popconfirm title="删除这个一级标签？" description="该分组及其二级标签将从菜单移除，已有案例不受影响。" onConfirm={removeGroup} okText="删除" cancelText="取消">
-                    <Button type="text" danger icon={<DeleteOutlined />} aria-label="删除一级标签" />
+                  <Popconfirm icon={<CircleAlert />} title="删除这个一级标签？" description="该分组及其二级标签将从菜单移除，已有案例不受影响。" onConfirm={removeGroup} okText="删除" cancelText="取消">
+                    <Button type="text" danger icon={<Trash2 />} aria-label="删除一级标签" />
                   </Popconfirm>
                 </div>
               </div>
@@ -108,19 +109,19 @@ export function TagSettings({ groups, revision, onBack, onSave, onDirtyChange })
                       onChange={(event) => updateGroup({ options: selected.options.map((entry) => entry.id === option.id ? { ...entry, label: event.target.value } : entry) })}
                     />
                     <div className="tag-row-actions">
-                      <Button type="text" icon={<ArrowUpOutlined />} aria-label={`上移二级标签 ${option.label || index + 1}`} disabled={index === 0} onClick={() => updateGroup({ options: moveTagEntry(selected.options, option.id, -1) })} />
-                      <Button type="text" icon={<ArrowDownOutlined />} aria-label={`下移二级标签 ${option.label || index + 1}`} disabled={index === selected.options.length - 1} onClick={() => updateGroup({ options: moveTagEntry(selected.options, option.id, 1) })} />
-                      <Button type="text" danger icon={<DeleteOutlined />} aria-label={`删除二级标签 ${option.label || index + 1}`} onClick={() => updateGroup({ options: selected.options.filter((entry) => entry.id !== option.id) })} />
+                      <Button type="text" icon={<ArrowUp />} aria-label={`上移二级标签 ${option.label || index + 1}`} disabled={index === 0} onClick={() => updateGroup({ options: moveTagEntry(selected.options, option.id, -1) })} />
+                      <Button type="text" icon={<ArrowDown />} aria-label={`下移二级标签 ${option.label || index + 1}`} disabled={index === selected.options.length - 1} onClick={() => updateGroup({ options: moveTagEntry(selected.options, option.id, 1) })} />
+                      <Button type="text" danger icon={<Trash2 />} aria-label={`删除二级标签 ${option.label || index + 1}`} onClick={() => updateGroup({ options: selected.options.filter((entry) => entry.id !== option.id) })} />
                     </div>
                   </div>
                 ))}
                 {!selected.options.length && <p className="tag-options-empty">还没有二级标签，添加后可在左侧菜单中筛选。</p>}
               </div>
-              <Button type="dashed" block icon={<PlusOutlined />} onClick={() => updateGroup({ options: [...selected.options, { id: `tag-${crypto.randomUUID()}`, label: "", value: null }] })}>新增二级标签</Button>
+              <Button type="dashed" block icon={<Plus />} onClick={() => updateGroup({ options: [...selected.options, { id: `tag-${crypto.randomUUID()}`, label: "", value: null }] })}>新增二级标签</Button>
               <p className="tag-settings-hint">菜单自动包含“全部”，无需添加。</p>
             </div>
           ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="先新增一个一级标签，再添加二级标签" />
+            <Empty className="empty-compact" description="先新增一个一级标签，再添加二级标签" />
           )}
         </section>
       </fieldset>
