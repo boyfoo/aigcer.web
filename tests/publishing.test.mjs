@@ -7,7 +7,8 @@ import { createRepository } from "../src/server/repository.js";
 import { identifyMedia, byteRange } from "../src/server/media.js";
 import { sameOrigin } from "../src/server/http.js";
 import { decodeFavorites, encodeFavorites } from "../src/lib/favorites.js";
-import { createDefaultTagGroups, matchesTagFilters, reconcileTagFilters } from "../src/tagSettings.js";
+import { createDefaultTagGroups, reconcileTagFilters } from "../src/tagSettings.js";
+import { createCreationReferences, filterCreationReferences } from "../src/lib/creationReferences.js";
 
 function database(t) {
   const prefix = path.join(tmpdir(), "jingjie-publishing-");
@@ -69,10 +70,15 @@ test("multi-select tags are OR within a group and AND between groups; empty sele
   const groups = createDefaultTagGroups();
   const id = (group, label) => groups.find(({ id }) => id === group).options.find(({ value }) => value === label).id;
   const filters = { lighting: [id("lighting", "逆光"), id("lighting", "柔光")], emotion: [id("emotion", "温暖")] };
-  assert.equal(matchesTagFilters({ lighting: ["柔光"], emotion: ["温暖"], tags: [] }, groups, filters), true);
-  assert.equal(matchesTagFilters({ lighting: ["逆光", "硬光"], emotion: ["孤独"], tags: [] }, groups, filters), false);
-  assert.equal(matchesTagFilters({ lighting: ["硬光"], emotion: ["温暖"], tags: [] }, groups, filters), false);
-  assert.equal(matchesTagFilters({ lighting: [], emotion: [], tags: [] }, groups, {}), true);
+  const references = createCreationReferences([
+    { ...input, id: "warm-soft", lighting: ["柔光"], emotion: ["温暖"] },
+    { ...input, id: "lonely-backlight", lighting: ["逆光", "硬光"], emotion: ["孤独"] },
+    { ...input, id: "warm-hardlight", lighting: ["硬光"], emotion: ["温暖"] },
+    { ...input, id: "unassigned", lighting: [], emotion: [] },
+  ]);
+  assert.deepEqual(filterCreationReferences(references, { groups, filters }).map(({ caseId }) => caseId), ["warm-soft"]);
+  assert.deepEqual(filterCreationReferences(references, { groups, filters: {} }), references);
+  assert.deepEqual(filterCreationReferences(references, { groups, filters: { lighting: [], emotion: [] } }), references);
   const trimmed = structuredClone(groups);
   trimmed.find(({ id }) => id === "lighting").options = [];
   assert.deepEqual(reconcileTagFilters(trimmed, filters).lighting, []);

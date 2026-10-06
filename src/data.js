@@ -1,37 +1,5 @@
 import { mockVideo } from "./mockVideo.js";
 
-export const filterGroups = [
-  {
-    key: "type",
-    label: "类型",
-    options: ["全部", "故事片", "广告", "纪录片", "短片", "动画", "实验影像"],
-  },
-  {
-    key: "emotion",
-    label: "情绪",
-    options: ["全部", "温暖", "宁静", "怀旧", "孤独", "希望", "紧张", "治愈"],
-  },
-  {
-    key: "lighting",
-    label: "光影",
-    options: [
-      "全部",
-      "自然光",
-      "黄金时刻",
-      "蓝调时刻",
-      "室内暖光",
-      "逆光",
-      "柔光",
-      "硬光",
-    ],
-  },
-  {
-    key: "movement",
-    label: "运镜",
-    options: ["全部", "固定镜头", "推镜头", "拉镜头", "摇镜头", "跟镜头", "升降镜头", "航拍"],
-  },
-];
-
 export const storyboardItems = [
   {
     id: "night-cinema",

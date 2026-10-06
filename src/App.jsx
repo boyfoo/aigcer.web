@@ -14,19 +14,19 @@ import {
   Tag,
 } from "antd";
 import {
-  Check,
   Copy,
   ChevronDown,
   FileText,
   Folder,
   Search,
   Settings,
+  X,
 } from "lucide-react";
 import { TagSettings } from "./TagSettings.jsx";
 import { useAppMessage } from "./hooks/useAppMessage.jsx";
 import { CaseSaveButton } from "./CaseSaveButton.jsx";
-import { CaseCover } from "./CaseCover.jsx";
-import { FilterSelectionSummary } from "./FilterSelectionSummary.jsx";
+import { CreationFilters } from "./CreationFilters.jsx";
+import { CreationReferenceResults } from "./CreationReferenceResults.jsx";
 import { ContentEntry } from "./ContentEntry.jsx";
 import { useContentCases } from "./ContentProvider.jsx";
 import { VideoStudy } from "./VideoStudy.jsx";
@@ -35,7 +35,8 @@ import { usePreferences } from "./Providers.jsx";
 import { casePath, collectionPath } from "./lib/content.js";
 import { displayTags, tagValues } from "./lib/contentEntries.js";
 import { caseLearningFocus } from "./lib/learningPresentation.js";
-import { createInitialTagFilters, matchesTagFilters, reconcileTagFilters } from "./tagSettings.js";
+import { createCreationReferences, filterCreationReferences } from "./lib/creationReferences.js";
+import { createInitialTagFilters, reconcileTagFilters } from "./tagSettings.js";
 
 export function App({ page = "home", initialCaseId, collection, previewItem, serverItem }) {
   const { modal } = AntApp.useApp();
@@ -51,10 +52,16 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState(() => createInitialTagFilters(tagGroups));
   const [filterMotionGroup, setFilterMotionGroup] = useState(null);
-  const [filtersApplied, setFiltersApplied] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
-  const [expandedFilters, setExpandedFilters] = useState({});
   const hasActiveFilters = Object.values(filters).some((values) => tagValues(values).length);
+  const selectedConditionGroups = tagGroups
+    .map((group) => ({
+      group,
+      options: group.options.filter((option) => tagValues(filters[group.id]).includes(option.id)),
+    }))
+    .filter(({ options }) => options.length > 0);
+  const references = useMemo(() => createCreationReferences(items), [items]);
+  const filteredReferences = useMemo(() => filterCreationReferences(references, { groups: tagGroups, filters, query }), [references, tagGroups, filters, query]);
 
   const updateSettingsDirty = useCallback((dirty) => {
     settingsDirtyRef.current = dirty;
@@ -94,30 +101,7 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
     confirmLeaveSettings(() => router.push(href));
   };
 
-  const filteredItems = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    return items.filter((item) => {
-      const filterMatch =
-        !filtersApplied ||
-        matchesTagFilters(item, tagGroups, filters);
-      const haystack = [
-        item.title,
-        item.description,
-        item.analysis,
-        item.prompt,
-        item.kind,
-        item.type,
-        item.emotion,
-        item.lighting,
-        item.movement,
-        ...item.tags,
-        ...Object.values(item.tagValues ?? {}).flat(),
-      ]
-        .join(" ")
-        .toLowerCase();
-      return filterMatch && (!normalizedQuery || haystack.includes(normalizedQuery));
-    });
-  }, [items, filters, filtersApplied, query, tagGroups]);
+  const resultCount = filteredReferences.length;
 
   const selectedItem = previewItem ?? items.find((item) => item.id === initialCaseId) ?? serverItem;
   const savedItems = allItems.filter((item) =>
@@ -131,7 +115,6 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
 
   const updateFilter = (key, option, animate) => {
     setFilterMotionGroup(animate ? key : null);
-    setFiltersApplied(true);
     setFilters((current) => ({
       ...current,
       [key]: option ? (tagValues(current[key]).includes(option) ? tagValues(current[key]).filter((id) => id !== option) : [...tagValues(current[key]), option]) : [],
@@ -143,7 +126,6 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
     setDraftQuery("");
     setQuery("");
     setFilters(createInitialTagFilters(tagGroups));
-    setFiltersApplied(false);
   };
 
   const toggleSaved = (itemId) => {
@@ -172,52 +154,6 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
     }
   };
 
-  const renderFilters = () => (
-    <div className="filters" aria-label="镜头筛选" onKeyDownCapture={() => setFilterMotionGroup(null)}>
-      {!tagGroups.length && <p className="sidebar-empty">还没有标签，可在个人中心的设置中添加。</p>}
-      {tagGroups.map((group) => {
-        const activeValues = tagValues(filters[group.id]);
-        return (
-          <section className="filter-group" key={group.id} data-filter-motion={filterMotionGroup === group.id || undefined}>
-            <h2 className="filter-heading">
-              <button
-                type="button"
-                aria-expanded={Boolean(expandedFilters[group.id])}
-                aria-controls={`filter-${group.id}`}
-                onClick={() => setExpandedFilters((current) => ({ ...current, [group.id]: !current[group.id] }))}
-              >
-                {group.label}
-                <span className={`filter-summary${activeValues.length ? " is-active" : ""}`}>
-                  <FilterSelectionSummary count={activeValues.length} animate={filterMotionGroup === group.id} />
-                  <ChevronDown aria-hidden="true" />
-                </span>
-              </button>
-            </h2>
-            <div className="filter-options" id={`filter-${group.id}`} hidden={!expandedFilters[group.id]}>
-              {[{ id: "", label: "全部" }, ...group.options].map((option) => {
-                const active = option.id ? activeValues.includes(option.id) : !activeValues.length;
-                return (
-                  <button
-                    className={active ? "filter-option is-active" : "filter-option"}
-                    key={option.id}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={(event) => updateFilter(group.id, option.id, event.detail > 0)}
-                  >
-                    <span>{option.label}</span>
-                    {option.id ? (
-                      <Check className="option-check" aria-hidden="true" />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
-    </div>
-  );
-
   const profileMenu = {
     items: [
       { key: "projects", label: "镜头收藏夹", icon: <Folder /> },
@@ -233,7 +169,7 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
   };
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${page === "home" ? " is-browsing" : ""}`}>
       <div className="paper-texture" aria-hidden="true" />
 
       <header className="topbar">
@@ -283,9 +219,13 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
         </main>
       ) : (
       <div className="page-layout">
-        <aside className="sidebar"><p className="filter-intro">按兴趣找案例</p>{renderFilters()}<p className="filter-hint">可以直接浏览，也可以展开分类细选。</p></aside>
+        <aside className="sidebar" aria-label="创作条件筛选" tabIndex={0}>
+          <p className="filter-intro">按创作条件找参考</p>
+          <CreationFilters groups={tagGroups} filters={filters} motionGroup={filterMotionGroup} onChange={updateFilter} onKeyboard={() => setFilterMotionGroup(null)} />
+          <p className="filter-hint">先选主体、动作和表现目标，再按需要细选拍法。</p>
+        </aside>
 
-        <main className="main-content">
+        <main className="main-content" aria-label="镜头参考浏览" tabIndex={0}>
           <section className="search-section" aria-labelledby="page-title">
             <h1 id="page-title" className="visually-hidden">{collection?.title ?? "AI 视频与分镜参考"}</h1>
             <form
@@ -301,7 +241,7 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
                 ref={searchRef}
                 value={draftQuery}
                 aria-label="搜索镜头参考"
-                placeholder="搜索案例、画面或风格，例如：雨夜"
+                placeholder="描述想做的镜头，例如：第一视角 剑 重击"
                 onChange={(event) => setDraftQuery(event.target.value)}
               />
               <Button className="hero-search-button" type="primary" htmlType="submit" autoInsertSpace={false}>
@@ -312,36 +252,39 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
 
           <div className="browse-toolbar">
             <nav className="browse-categories" aria-label="案例分类">
-              {[[undefined, "全部案例"], ["videos", "视频"], ["storyboards", "分镜图片"], ["prompts", "提示词参考"]].map(([slug, label]) => (
+              {[[undefined, "全部"], ["videos", "视频"], ["storyboards", "分镜图片"], ["prompts", "提示词参考"]].map(([slug, label]) => (
                 <Link key={slug || "all"} href={slug ? collectionPath(slug) : "/"} aria-current={collection?.slug === slug ? "page" : undefined}>{label}</Link>
               ))}
             </nav>
-            <span role="status">{query ? `“${query}” · ` : ""}{filteredItems.length} 个案例</span>
+            <span role="status">{query ? `“${query}” · ` : ""}{resultCount} 个参考</span>
             {(query || hasActiveFilters) && <Button size="small" type="text" onClick={resetFilters}>清除条件</Button>}
           </div>
 
-          {filteredItems.length ? (
-            <section className="case-results-masonry" aria-label="镜头参考结果">
-              {filteredItems.map((item) => (
-                <Link
-                  href={casePath(item.id)}
-                  className="browse-case"
-                  key={item.id}
-                  aria-label={`查看案例：${item.title}`}
-                >
-                  <div className="browse-case-image">
-                    <CaseCover src={item.image} />
-                    <span className="duration-badge">{[item.kind, item.duration].filter(Boolean).join(" · ")}</span>
-                  </div>
-                  <h2>{item.title}</h2>
-                  <p>{caseLearningFocus(item)}</p>
-                  {collection?.slug === "prompts" && <p className="browse-prompt-excerpt">{item.prompt || "进入案例查看逐镜头提示词"}</p>}
-                </Link>
+          {selectedConditionGroups.length > 0 && (
+            <ul className="creation-selected-conditions" aria-label="已选创作条件">
+              {selectedConditionGroups.map(({ group, options }) => (
+                <li className="creation-selected-group" key={group.id}>
+                  <span className="creation-selected-group-label">{group.label}：</span>
+                  {options.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      aria-label={`清除${group.label}：${option.label}`}
+                      onClick={() => updateFilter(group.id, option.id, false)}
+                    >
+                      <span>{option.label}</span><X aria-hidden="true" />
+                    </button>
+                  ))}
+                </li>
               ))}
-            </section>
+            </ul>
+          )}
+
+          {resultCount > 0 ? (
+            <CreationReferenceResults references={filteredReferences} groups={tagGroups} showPrompts={collection?.slug === "prompts"} />
           ) : (
             <section className="empty-state">
-              <Empty description="暂时没有匹配的镜头参考">
+              <Empty description="暂时没有符合这些条件的镜头参考，可减少条件或换个关键词。">
                 <Button type="primary" onClick={resetFilters}>
                   清除筛选
                 </Button>

@@ -6,6 +6,7 @@ import { Alert, App, Button, Collapse, Empty, Input, InputNumber, Popconfirm, Se
 import { ChevronDown, ChevronUp, X, CircleAlert, ArrowLeft, Eye, Plus, RotateCw } from "lucide-react";
 import { useAppMessage } from "./hooks/useAppMessage.jsx";
 import { ContentTagFields } from "./ContentTagFields.jsx";
+import { usePreferences } from "./Providers.jsx";
 import { useManagedContent } from "./ContentProvider.jsx";
 import { casePath, draftPath } from "./lib/content.js";
 import { caseTagValues, normalizeContentEntry } from "./lib/contentEntries.js";
@@ -22,11 +23,12 @@ const builtinGroups = ["type", "emotion", "lighting", "movement"];
 const labels = { draft: "草稿", published: "已发布", offline: "已下架" };
 const shotMotion = { motionEnter: false, motionLeave: false, motionAppear: false };
 const newDraft = () => ({ id: "", title: "", kind: "视频", image: "", duration: "00:00", type: [], emotion: [], lighting: [], movement: [], tags: [], tagValues: {}, description: "", analysis: "", prompt: "", video: { src: "", durationSeconds: 0, isMock: false, shots: [] } });
-const emptyShot = (start, end) => ({ id: `shot-${crypto.randomUUID()}`, start, end, title: "", image: "", summary: "", facts: { 景别: "", 运镜: "", 构图: "", 光影: "" }, analysis: [], imagePrompt: "", videoPrompt: "" });
+const emptyShot = (start, end) => ({ id: `shot-${crypto.randomUUID()}`, start, end, title: "", image: "", summary: "", tagValues: {}, facts: { 景别: "", 运镜: "", 构图: "", 光影: "" }, analysis: [], imagePrompt: "", videoPrompt: "" });
 
 export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
   const { modal } = App.useApp();
   const message = useAppMessage();
+  const { tagGroups } = usePreferences();
   const { records, ready, error, refresh, change } = useManagedContent();
   const [draft, setDraft] = useState(newDraft);
   const [current, setCurrent] = useState(null);
@@ -42,6 +44,7 @@ export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
   const dirty = JSON.stringify(draft) !== baseline;
   const blocked = Boolean(busy || uploads || savingTags);
   const filtered = records.filter((record) => (status === "all" || record.status === status) && record.draft.title.toLowerCase().includes(search.trim().toLowerCase()));
+  const caseSelections = Object.fromEntries(tagGroups.map((group) => [group.id, caseTagValues(draft, group.id)]));
 
   useUnsavedChanges(dirty || blocked, onDirtyChange);
 
@@ -120,7 +123,17 @@ export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
           {draft.kind === "分镜" && <Field label="分镜时长（可选）"><Input aria-label="分镜时长" value={draft.duration} placeholder="00:08" maxLength={7} onChange={(event) => update({ duration: event.target.value })} /></Field>}
           <Field label="案例介绍（可选）"><Input.TextArea aria-label="案例介绍" value={draft.description} maxLength={2000} showCount autoSize={{ minRows: 3, maxRows: 8 }} placeholder="简要描述画面与学习重点" onChange={(event) => update({ description: event.target.value })} /></Field>
         </section>
-        <ContentTagFields draft={draft} disabled={blocked} onSelect={selectTags} onBusyChange={setSavingTags} onExtraTagsChange={(tags) => update({ tags })} />
+        <ContentTagFields
+          tagValues={caseSelections}
+          title="案例分类与标签"
+          idPrefix="entry-tags"
+          hint="标记整条案例的内容。具体镜头的创作条件请在下方逐镜填写；每组可多选，也可直接新增标签。"
+          disabled={blocked}
+          onSelect={selectTags}
+          onBusyChange={setSavingTags}
+          extraTags={draft.tags}
+          onExtraTagsChange={(tags) => update({ tags })}
+        />
         <section className="entry-section" aria-labelledby="entry-reference"><h3 id="entry-reference">提示词与分析</h3><p className="entry-hint">发布前至少完成其中一项，也可以填写在下方的具体镜头中。</p><Field label="整体提示词"><Input.TextArea aria-label="整体提示词" value={draft.prompt} maxLength={12000} showCount autoSize={{ minRows: 4, maxRows: 14 }} placeholder="记录对应素材的提示词" onChange={(event) => update({ prompt: event.target.value })} /></Field><Field label="案例分析"><Input.TextArea aria-label="案例分析" value={draft.analysis} maxLength={16000} showCount autoSize={{ minRows: 4, maxRows: 16 }} placeholder="记录镜头、构图、光影与叙事的观察和理解" onChange={(event) => update({ analysis: event.target.value })} /></Field></section>
         {draft.kind === "视频" && <CastEditor video={draft.video} onChange={updateVideo} blocked={blocked} mediaBusy={mediaBusy} />}
         {draft.kind === "视频" && <section ref={shotListRef} className="entry-section entry-shots" aria-labelledby="entry-shots">
@@ -130,7 +143,7 @@ export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
             key: shot.id,
             "data-shot-id": shot.id,
             label: `${String(index + 1).padStart(2, "0")} · ${shot.title || "未命名镜头"}`,
-            children: <ShotEditor shot={shot} index={index} duration={draft.video.durationSeconds} blocked={blocked} mediaBusy={mediaBusy} people={draft.video.cast || []} onAddPerson={(name) => addPersonToShot(shot.id, name)}
+            children: <ShotEditor shot={shot} index={index} duration={draft.video.durationSeconds} blocked={blocked} mediaBusy={mediaBusy} onTagBusyChange={setSavingTags} people={draft.video.cast || []} onAddPerson={(name) => addPersonToShot(shot.id, name)}
               onChange={(changes) => updateShot(shot.id, changes)}
               onRemove={() => updateVideo({ shots: draft.video.shots.filter((entry) => entry.id !== shot.id) })} />,
           }))} />

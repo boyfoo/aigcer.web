@@ -1,10 +1,16 @@
 import { formatVideoTime } from "./videoTimeline.js";
 import { reviewFields, shotCategories, rhythmRoles, shotTransitions } from "./studyReport.js";
+import { creationTagGroups, CREATION_SHOT_FACT_GROUPS } from "./creationTags.js";
 
 export const validCaseId = (id) => typeof id === "string" && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) && id.length <= 150;
 export const tagValues = (value) => Array.isArray(value) ? value : typeof value === "string" && value ? [value] : [];
 export const displayTags = (value) => tagValues(value).join("、");
-export const caseTagValues = (item, groupId) => item.tagValues?.[groupId] ?? (["type", "emotion", "lighting", "movement"].includes(groupId) ? tagValues(item[groupId]) : item.tags ?? []);
+export const caseTagValues = (item, groupId) => {
+  if (item.tagValues?.[groupId] !== undefined) return item.tagValues[groupId];
+  if (["type", "emotion", "lighting", "movement"].includes(groupId)) return tagValues(item[groupId]);
+  if (creationTagGroups.some((group) => group.id === groupId)) return [];
+  return item.tags ?? [];
+};
 
 export function isMediaUrl(value) {
   if (typeof value !== "string" || !value.trim()) return false;
@@ -19,24 +25,29 @@ const text = (value, label, max) => {
   return value.trim();
 };
 const values = (value) => {
+  if (value != null && !Array.isArray(value) && typeof value !== "string") throw new Error("标签格式无效");
   const list = tagValues(value);
   if (list.length > 30) throw new Error("每组最多添加 30 个标签");
   return [...new Set(list.map((tag) => text(tag, "标签", 60)).filter(Boolean))];
 };
 
+export function normalizeGroupedTagValues(input, label = "标签") {
+  const grouped = {};
+  if (input == null) return grouped;
+  if (typeof input !== "object" || Array.isArray(input) || Object.keys(input).length > 50) throw new Error(`${label}分组格式无效`);
+  for (const [key, entries] of Object.entries(input)) {
+    if (!validCaseId(key)) throw new Error(`${label}分组标识无效`);
+    Object.defineProperty(grouped, key, { value: values(entries), enumerable: true });
+  }
+  return grouped;
+}
+
 export function normalizeContentEntry(draft, { publish = true } = {}) {
   if (!draft || !validCaseId(draft.id)) throw new Error("案例标识无效");
   if (!["分镜", "视频"].includes(draft.kind)) throw new Error("请选择分镜或视频");
-  const item = { id: draft.id, kind: draft.kind, title: text(draft.title, "案例名称", 80), description: text(draft.description, "案例介绍", 2000), analysis: text(draft.analysis, "案例分析", 16000), prompt: text(draft.prompt, "整体提示词", 12000), image: text(draft.image, "封面地址", 2048), duration: text(draft.duration, "分镜时长", 7), tags: values(draft.tags), tagValues: {} };
+  const item = { id: draft.id, kind: draft.kind, title: text(draft.title, "案例名称", 80), description: text(draft.description, "案例介绍", 2000), analysis: text(draft.analysis, "案例分析", 16000), prompt: text(draft.prompt, "整体提示词", 12000), image: text(draft.image, "封面地址", 2048), duration: text(draft.duration, "分镜时长", 7), tags: values(draft.tags), tagValues: normalizeGroupedTagValues(draft.tagValues) };
   if (item.image && !isMediaUrl(item.image)) throw new Error("封面地址无效，请重新上传图片");
   for (const key of ["type", "emotion", "lighting", "movement"]) item[key] = values(draft[key]);
-  if (draft.tagValues != null) {
-    if (typeof draft.tagValues !== "object" || Array.isArray(draft.tagValues) || Object.keys(draft.tagValues).length > 50) throw new Error("标签分组格式无效");
-    for (const [key, entries] of Object.entries(draft.tagValues)) {
-      if (!validCaseId(key)) throw new Error("标签分组标识无效");
-      Object.defineProperty(item.tagValues, key, { value: values(entries), enumerable: true });
-    }
-  }
   if (item.kind === "视频") {
     const video = draft.video ?? {};
     const src = text(video.src, "视频地址", 2048);
@@ -82,6 +93,11 @@ export function normalizeContentEntry(draft, { publish = true } = {}) {
       const endImage = text(shot.endImage, `${label}尾帧地址`, 2048);
       if (endImage && !isMediaUrl(endImage)) throw new Error(`${label}尾帧地址无效`);
       const details = {};
+      if (shot.tagValues != null) {
+        details.tagValues = normalizeGroupedTagValues(shot.tagValues, `${label}标签`);
+        const duplicateFactGroup = Object.keys(details.tagValues).find((key) => Object.hasOwn(CREATION_SHOT_FACT_GROUPS, key));
+        if (duplicateFactGroup) throw new Error(`${label}的${CREATION_SHOT_FACT_GROUPS[duplicateFactGroup]}请填写在画面信息中，不能重复保存为标签`);
+      }
       for (const [key, name, choices] of [["category", "类别", shotCategories], ["rhythm", "叙事节奏", rhythmRoles], ["transition", "转场", shotTransitions]]) {
         const value = text(shot[key], `${label}${name}`, 40);
         if (value && !choices.includes(value)) throw new Error(`${label}${name}无效，请从选项中选择`);

@@ -2,6 +2,1049 @@
   "version": 1,
   "groups": [
     {
+      "id": "subject",
+      "label": "主体",
+      "options": [
+        {
+          "id": "subject-0",
+          "label": "人物",
+          "value": "人物"
+        },
+        {
+          "id": "subject-1",
+          "label": "动物",
+          "value": "动物"
+        },
+        {
+          "id": "subject-2",
+          "label": "怪兽",
+          "value": "怪兽"
+        },
+        {
+          "id": "subject-3",
+          "label": "机器人",
+          "value": "机器人"
+        },
+        {
+          "id": "subject-4",
+          "label": "机甲",
+          "value": "机甲"
+        },
+        {
+          "id": "subject-5",
+          "label": "车辆",
+          "value": "车辆"
+        },
+        {
+          "id": "subject-6",
+          "label": "产品",
+          "value": "产品"
+        },
+        {
+          "id": "subject-7",
+          "label": "建筑",
+          "value": "建筑"
+        },
+        {
+          "id": "subject-8",
+          "label": "植物",
+          "value": "植物"
+        },
+        {
+          "id": "subject-9",
+          "label": "抽象物体",
+          "value": "抽象物体"
+        }
+      ]
+    },
+    {
+      "id": "props",
+      "label": "武器与道具",
+      "options": [
+        {
+          "id": "props-0",
+          "label": "剑",
+          "value": "剑"
+        },
+        {
+          "id": "props-1",
+          "label": "刀",
+          "value": "刀"
+        },
+        {
+          "id": "props-2",
+          "label": "双刀",
+          "value": "双刀"
+        },
+        {
+          "id": "props-3",
+          "label": "长枪",
+          "value": "长枪"
+        },
+        {
+          "id": "props-4",
+          "label": "枪械",
+          "value": "枪械"
+        },
+        {
+          "id": "props-5",
+          "label": "弓箭",
+          "value": "弓箭"
+        },
+        {
+          "id": "props-6",
+          "label": "斧",
+          "value": "斧"
+        },
+        {
+          "id": "props-7",
+          "label": "锤",
+          "value": "锤"
+        },
+        {
+          "id": "props-8",
+          "label": "盾牌",
+          "value": "盾牌"
+        },
+        {
+          "id": "props-9",
+          "label": "法杖",
+          "value": "法杖"
+        },
+        {
+          "id": "props-10",
+          "label": "绳索",
+          "value": "绳索"
+        },
+        {
+          "id": "props-11",
+          "label": "日常物件",
+          "value": "日常物件"
+        }
+      ]
+    },
+    {
+      "id": "action",
+      "label": "动作与事件",
+      "options": [
+        {
+          "id": "action-0",
+          "label": "登场",
+          "value": "登场"
+        },
+        {
+          "id": "action-1",
+          "label": "拔刀",
+          "value": "拔刀"
+        },
+        {
+          "id": "action-2",
+          "label": "蓄力",
+          "value": "蓄力"
+        },
+        {
+          "id": "action-3",
+          "label": "重击",
+          "value": "重击"
+        },
+        {
+          "id": "action-4",
+          "label": "劈砍",
+          "value": "劈砍"
+        },
+        {
+          "id": "action-5",
+          "label": "刺击",
+          "value": "刺击"
+        },
+        {
+          "id": "action-6",
+          "label": "连击",
+          "value": "连击"
+        },
+        {
+          "id": "action-7",
+          "label": "格挡",
+          "value": "格挡"
+        },
+        {
+          "id": "action-8",
+          "label": "闪避",
+          "value": "闪避"
+        },
+        {
+          "id": "action-9",
+          "label": "踢击",
+          "value": "踢击"
+        },
+        {
+          "id": "action-10",
+          "label": "投掷",
+          "value": "投掷"
+        },
+        {
+          "id": "action-11",
+          "label": "击飞",
+          "value": "击飞"
+        },
+        {
+          "id": "action-12",
+          "label": "奔跑",
+          "value": "奔跑"
+        },
+        {
+          "id": "action-13",
+          "label": "跳跃",
+          "value": "跳跃"
+        },
+        {
+          "id": "action-14",
+          "label": "追逐",
+          "value": "追逐"
+        },
+        {
+          "id": "action-15",
+          "label": "坠落",
+          "value": "坠落"
+        },
+        {
+          "id": "action-16",
+          "label": "飞行",
+          "value": "飞行"
+        },
+        {
+          "id": "action-17",
+          "label": "碰撞",
+          "value": "碰撞"
+        },
+        {
+          "id": "action-18",
+          "label": "爆炸",
+          "value": "爆炸"
+        },
+        {
+          "id": "action-19",
+          "label": "舞蹈",
+          "value": "舞蹈"
+        }
+      ]
+    },
+    {
+      "id": "transformation",
+      "label": "变身与变化",
+      "options": [
+        {
+          "id": "transformation-0",
+          "label": "人物变身",
+          "value": "人物变身"
+        },
+        {
+          "id": "transformation-1",
+          "label": "兽化",
+          "value": "兽化"
+        },
+        {
+          "id": "transformation-2",
+          "label": "机械化",
+          "value": "机械化"
+        },
+        {
+          "id": "transformation-3",
+          "label": "装甲展开",
+          "value": "装甲展开"
+        },
+        {
+          "id": "transformation-4",
+          "label": "换装",
+          "value": "换装"
+        },
+        {
+          "id": "transformation-5",
+          "label": "巨大化",
+          "value": "巨大化"
+        },
+        {
+          "id": "transformation-6",
+          "label": "缩小",
+          "value": "缩小"
+        },
+        {
+          "id": "transformation-7",
+          "label": "分身",
+          "value": "分身"
+        },
+        {
+          "id": "transformation-8",
+          "label": "物体变形",
+          "value": "物体变形"
+        },
+        {
+          "id": "transformation-9",
+          "label": "消散",
+          "value": "消散"
+        },
+        {
+          "id": "transformation-10",
+          "label": "重组",
+          "value": "重组"
+        }
+      ]
+    },
+    {
+      "id": "intent",
+      "label": "表现目标",
+      "options": [
+        {
+          "id": "intent-0",
+          "label": "力量感",
+          "value": "力量感"
+        },
+        {
+          "id": "intent-1",
+          "label": "速度感",
+          "value": "速度感"
+        },
+        {
+          "id": "intent-2",
+          "label": "压迫感",
+          "value": "压迫感"
+        },
+        {
+          "id": "intent-3",
+          "label": "巨大感",
+          "value": "巨大感"
+        },
+        {
+          "id": "intent-4",
+          "label": "失重感",
+          "value": "失重感"
+        },
+        {
+          "id": "intent-5",
+          "label": "临场感",
+          "value": "临场感"
+        },
+        {
+          "id": "intent-6",
+          "label": "神秘感",
+          "value": "神秘感"
+        },
+        {
+          "id": "intent-7",
+          "label": "紧张感",
+          "value": "紧张感"
+        },
+        {
+          "id": "intent-8",
+          "label": "冲击感",
+          "value": "冲击感"
+        },
+        {
+          "id": "intent-9",
+          "label": "优雅感",
+          "value": "优雅感"
+        },
+        {
+          "id": "intent-10",
+          "label": "孤独感",
+          "value": "孤独感"
+        },
+        {
+          "id": "intent-11",
+          "label": "温暖感",
+          "value": "温暖感"
+        }
+      ]
+    },
+    {
+      "id": "viewpoint",
+      "label": "视点",
+      "options": [
+        {
+          "id": "viewpoint-0",
+          "label": "第一视角",
+          "value": "第一视角"
+        },
+        {
+          "id": "viewpoint-1",
+          "label": "第三视角",
+          "value": "第三视角"
+        },
+        {
+          "id": "viewpoint-2",
+          "label": "监控视角",
+          "value": "监控视角"
+        }
+      ]
+    },
+    {
+      "id": "environment",
+      "label": "环境条件",
+      "options": [
+        {
+          "id": "environment-0",
+          "label": "室内",
+          "value": "室内"
+        },
+        {
+          "id": "environment-1",
+          "label": "室外",
+          "value": "室外"
+        },
+        {
+          "id": "environment-2",
+          "label": "狭窄空间",
+          "value": "狭窄空间"
+        },
+        {
+          "id": "environment-3",
+          "label": "城市街道",
+          "value": "城市街道"
+        },
+        {
+          "id": "environment-4",
+          "label": "森林",
+          "value": "森林"
+        },
+        {
+          "id": "environment-5",
+          "label": "沙漠",
+          "value": "沙漠"
+        },
+        {
+          "id": "environment-6",
+          "label": "雪地",
+          "value": "雪地"
+        },
+        {
+          "id": "environment-7",
+          "label": "废墟",
+          "value": "废墟"
+        },
+        {
+          "id": "environment-8",
+          "label": "水下",
+          "value": "水下"
+        },
+        {
+          "id": "environment-9",
+          "label": "空中",
+          "value": "空中"
+        },
+        {
+          "id": "environment-10",
+          "label": "太空",
+          "value": "太空"
+        },
+        {
+          "id": "environment-11",
+          "label": "白天",
+          "value": "白天"
+        },
+        {
+          "id": "environment-12",
+          "label": "夜晚",
+          "value": "夜晚"
+        },
+        {
+          "id": "environment-13",
+          "label": "雨天",
+          "value": "雨天"
+        },
+        {
+          "id": "environment-14",
+          "label": "雪天",
+          "value": "雪天"
+        },
+        {
+          "id": "environment-15",
+          "label": "雾天",
+          "value": "雾天"
+        }
+      ]
+    },
+    {
+      "id": "effects",
+      "label": "视觉特效",
+      "options": [
+        {
+          "id": "effects-0",
+          "label": "火焰",
+          "value": "火焰"
+        },
+        {
+          "id": "effects-1",
+          "label": "雷电",
+          "value": "雷电"
+        },
+        {
+          "id": "effects-2",
+          "label": "冰冻",
+          "value": "冰冻"
+        },
+        {
+          "id": "effects-3",
+          "label": "能量光束",
+          "value": "能量光束"
+        },
+        {
+          "id": "effects-4",
+          "label": "冲击波",
+          "value": "冲击波"
+        },
+        {
+          "id": "effects-5",
+          "label": "火花",
+          "value": "火花"
+        },
+        {
+          "id": "effects-6",
+          "label": "烟尘",
+          "value": "烟尘"
+        },
+        {
+          "id": "effects-7",
+          "label": "碎裂",
+          "value": "碎裂"
+        },
+        {
+          "id": "effects-8",
+          "label": "液体飞溅",
+          "value": "液体飞溅"
+        },
+        {
+          "id": "effects-9",
+          "label": "粒子消散",
+          "value": "粒子消散"
+        },
+        {
+          "id": "effects-10",
+          "label": "发光",
+          "value": "发光"
+        },
+        {
+          "id": "effects-11",
+          "label": "拖影",
+          "value": "拖影"
+        }
+      ]
+    },
+    {
+      "id": "shot-size",
+      "label": "景别",
+      "options": [
+        {
+          "id": "shot-size-0",
+          "label": "大远景",
+          "value": "大远景"
+        },
+        {
+          "id": "shot-size-1",
+          "label": "远景",
+          "value": "远景"
+        },
+        {
+          "id": "shot-size-2",
+          "label": "全景",
+          "value": "全景"
+        },
+        {
+          "id": "shot-size-3",
+          "label": "中景",
+          "value": "中景"
+        },
+        {
+          "id": "shot-size-4",
+          "label": "近景",
+          "value": "近景"
+        },
+        {
+          "id": "shot-size-5",
+          "label": "特写",
+          "value": "特写"
+        },
+        {
+          "id": "shot-size-6",
+          "label": "大特写",
+          "value": "大特写"
+        }
+      ]
+    },
+    {
+      "id": "angle",
+      "label": "拍摄角度",
+      "options": [
+        {
+          "id": "angle-0",
+          "label": "平视",
+          "value": "平视"
+        },
+        {
+          "id": "angle-1",
+          "label": "俯拍",
+          "value": "俯拍"
+        },
+        {
+          "id": "angle-2",
+          "label": "仰拍",
+          "value": "仰拍"
+        },
+        {
+          "id": "angle-3",
+          "label": "顶拍",
+          "value": "顶拍"
+        },
+        {
+          "id": "angle-4",
+          "label": "倾斜机位",
+          "value": "倾斜机位"
+        }
+      ]
+    },
+    {
+      "id": "composition",
+      "label": "构图",
+      "options": [
+        {
+          "id": "composition-0",
+          "label": "居中构图",
+          "value": "居中构图"
+        },
+        {
+          "id": "composition-1",
+          "label": "对称构图",
+          "value": "对称构图"
+        },
+        {
+          "id": "composition-2",
+          "label": "三分构图",
+          "value": "三分构图"
+        },
+        {
+          "id": "composition-3",
+          "label": "负空间",
+          "value": "负空间"
+        },
+        {
+          "id": "composition-4",
+          "label": "框中框",
+          "value": "框中框"
+        },
+        {
+          "id": "composition-5",
+          "label": "前景遮挡",
+          "value": "前景遮挡"
+        },
+        {
+          "id": "composition-6",
+          "label": "纵深分层",
+          "value": "纵深分层"
+        },
+        {
+          "id": "composition-7",
+          "label": "双人同框",
+          "value": "双人同框"
+        },
+        {
+          "id": "composition-8",
+          "label": "过肩构图",
+          "value": "过肩构图"
+        }
+      ]
+    },
+    {
+      "id": "focus",
+      "label": "焦点与景深",
+      "options": [
+        {
+          "id": "focus-0",
+          "label": "浅景深",
+          "value": "浅景深"
+        },
+        {
+          "id": "focus-1",
+          "label": "深焦",
+          "value": "深焦"
+        },
+        {
+          "id": "focus-2",
+          "label": "焦点转移",
+          "value": "焦点转移"
+        },
+        {
+          "id": "focus-3",
+          "label": "由虚到实",
+          "value": "由虚到实"
+        },
+        {
+          "id": "focus-4",
+          "label": "由实到虚",
+          "value": "由实到虚"
+        }
+      ]
+    },
+    {
+      "id": "shot-purpose",
+      "label": "镜头用途",
+      "options": [
+        {
+          "id": "shot-purpose-0",
+          "label": "建立环境",
+          "value": "建立环境"
+        },
+        {
+          "id": "shot-purpose-1",
+          "label": "人物出场",
+          "value": "人物出场"
+        },
+        {
+          "id": "shot-purpose-2",
+          "label": "交代关系",
+          "value": "交代关系"
+        },
+        {
+          "id": "shot-purpose-3",
+          "label": "动作展示",
+          "value": "动作展示"
+        },
+        {
+          "id": "shot-purpose-4",
+          "label": "人物反应",
+          "value": "人物反应"
+        },
+        {
+          "id": "shot-purpose-5",
+          "label": "细节强调",
+          "value": "细节强调"
+        },
+        {
+          "id": "shot-purpose-6",
+          "label": "信息揭示",
+          "value": "信息揭示"
+        },
+        {
+          "id": "shot-purpose-7",
+          "label": "悬念隐藏",
+          "value": "悬念隐藏"
+        }
+      ]
+    },
+    {
+      "id": "blocking",
+      "label": "人物调度",
+      "options": [
+        {
+          "id": "blocking-0",
+          "label": "入画",
+          "value": "入画"
+        },
+        {
+          "id": "blocking-1",
+          "label": "出画",
+          "value": "出画"
+        },
+        {
+          "id": "blocking-2",
+          "label": "接近",
+          "value": "接近"
+        },
+        {
+          "id": "blocking-3",
+          "label": "远离",
+          "value": "远离"
+        },
+        {
+          "id": "blocking-4",
+          "label": "对峙",
+          "value": "对峙"
+        },
+        {
+          "id": "blocking-5",
+          "label": "位置交换",
+          "value": "位置交换"
+        },
+        {
+          "id": "blocking-6",
+          "label": "前后景互动",
+          "value": "前后景互动"
+        },
+        {
+          "id": "blocking-7",
+          "label": "纵深移动",
+          "value": "纵深移动"
+        },
+        {
+          "id": "blocking-8",
+          "label": "群体调度",
+          "value": "群体调度"
+        }
+      ]
+    },
+    {
+      "id": "editing",
+      "label": "剪辑与衔接",
+      "options": [
+        {
+          "id": "editing-0",
+          "label": "动作衔接",
+          "value": "动作衔接"
+        },
+        {
+          "id": "editing-1",
+          "label": "视线匹配",
+          "value": "视线匹配"
+        },
+        {
+          "id": "editing-2",
+          "label": "形状匹配",
+          "value": "形状匹配"
+        },
+        {
+          "id": "editing-3",
+          "label": "运动方向匹配",
+          "value": "运动方向匹配"
+        },
+        {
+          "id": "editing-4",
+          "label": "切入细节",
+          "value": "切入细节"
+        },
+        {
+          "id": "editing-5",
+          "label": "反应镜头",
+          "value": "反应镜头"
+        },
+        {
+          "id": "editing-6",
+          "label": "正反打",
+          "value": "正反打"
+        },
+        {
+          "id": "editing-7",
+          "label": "交叉剪辑",
+          "value": "交叉剪辑"
+        },
+        {
+          "id": "editing-8",
+          "label": "平行剪辑",
+          "value": "平行剪辑"
+        },
+        {
+          "id": "editing-9",
+          "label": "跳切",
+          "value": "跳切"
+        },
+        {
+          "id": "editing-10",
+          "label": "硬切",
+          "value": "硬切"
+        },
+        {
+          "id": "editing-11",
+          "label": "叠化",
+          "value": "叠化"
+        },
+        {
+          "id": "editing-12",
+          "label": "淡入淡出",
+          "value": "淡入淡出"
+        },
+        {
+          "id": "editing-13",
+          "label": "遮挡转场",
+          "value": "遮挡转场"
+        },
+        {
+          "id": "editing-14",
+          "label": "甩镜转场",
+          "value": "甩镜转场"
+        },
+        {
+          "id": "editing-15",
+          "label": "声音先入",
+          "value": "声音先入"
+        },
+        {
+          "id": "editing-16",
+          "label": "声音延续",
+          "value": "声音延续"
+        },
+        {
+          "id": "editing-17",
+          "label": "音乐卡点",
+          "value": "音乐卡点"
+        }
+      ]
+    },
+    {
+      "id": "time",
+      "label": "时间处理",
+      "options": [
+        {
+          "id": "time-0",
+          "label": "慢动作",
+          "value": "慢动作"
+        },
+        {
+          "id": "time-1",
+          "label": "快动作",
+          "value": "快动作"
+        },
+        {
+          "id": "time-2",
+          "label": "速度渐变",
+          "value": "速度渐变"
+        },
+        {
+          "id": "time-3",
+          "label": "子弹时间",
+          "value": "子弹时间"
+        },
+        {
+          "id": "time-4",
+          "label": "时间静止",
+          "value": "时间静止"
+        },
+        {
+          "id": "time-5",
+          "label": "倒放",
+          "value": "倒放"
+        },
+        {
+          "id": "time-6",
+          "label": "闪回",
+          "value": "闪回"
+        },
+        {
+          "id": "time-7",
+          "label": "闪前",
+          "value": "闪前"
+        },
+        {
+          "id": "time-8",
+          "label": "时间省略",
+          "value": "时间省略"
+        },
+        {
+          "id": "time-9",
+          "label": "重复呈现",
+          "value": "重复呈现"
+        },
+        {
+          "id": "time-10",
+          "label": "长镜头",
+          "value": "长镜头"
+        }
+      ]
+    },
+    {
+      "id": "rhythm",
+      "label": "节奏",
+      "options": [
+        {
+          "id": "rhythm-0",
+          "label": "舒缓铺陈",
+          "value": "舒缓铺陈"
+        },
+        {
+          "id": "rhythm-1",
+          "label": "逐步加速",
+          "value": "逐步加速"
+        },
+        {
+          "id": "rhythm-2",
+          "label": "快慢交替",
+          "value": "快慢交替"
+        },
+        {
+          "id": "rhythm-3",
+          "label": "密集爆发",
+          "value": "密集爆发"
+        },
+        {
+          "id": "rhythm-4",
+          "label": "停顿蓄力",
+          "value": "停顿蓄力"
+        },
+        {
+          "id": "rhythm-5",
+          "label": "收束余韵",
+          "value": "收束余韵"
+        }
+      ]
+    },
+    {
+      "id": "movement",
+      "label": "运镜",
+      "options": [
+        {
+          "id": "movement-0",
+          "label": "固定镜头",
+          "value": "固定镜头"
+        },
+        {
+          "id": "movement-1",
+          "label": "推镜头",
+          "value": "推镜头"
+        },
+        {
+          "id": "movement-2",
+          "label": "拉镜头",
+          "value": "拉镜头"
+        },
+        {
+          "id": "movement-3",
+          "label": "摇镜头",
+          "value": "摇镜头"
+        },
+        {
+          "id": "movement-4",
+          "label": "跟镜头",
+          "value": "跟镜头"
+        },
+        {
+          "id": "movement-5",
+          "label": "升降镜头",
+          "value": "升降镜头"
+        },
+        {
+          "id": "movement-6",
+          "label": "航拍",
+          "value": "航拍"
+        },
+        {
+          "id": "movement-7",
+          "label": "横移镜头",
+          "value": "横移镜头"
+        },
+        {
+          "id": "movement-8",
+          "label": "环绕镜头",
+          "value": "环绕镜头"
+        },
+        {
+          "id": "movement-9",
+          "label": "手持镜头",
+          "value": "手持镜头"
+        },
+        {
+          "id": "movement-10",
+          "label": "甩镜头",
+          "value": "甩镜头"
+        },
+        {
+          "id": "movement-11",
+          "label": "穿越镜头",
+          "value": "穿越镜头"
+        },
+        {
+          "id": "movement-12",
+          "label": "滑动变焦",
+          "value": "滑动变焦"
+        }
+      ]
+    },
+    {
       "id": "type",
       "label": "类型",
       "options": [
@@ -118,48 +1161,7 @@
           "value": "硬光"
         }
       ]
-    },
-    {
-      "id": "movement",
-      "label": "运镜",
-      "options": [
-        {
-          "id": "movement-0",
-          "label": "固定镜头",
-          "value": "固定镜头"
-        },
-        {
-          "id": "movement-1",
-          "label": "推镜头",
-          "value": "推镜头"
-        },
-        {
-          "id": "movement-2",
-          "label": "拉镜头",
-          "value": "拉镜头"
-        },
-        {
-          "id": "movement-3",
-          "label": "摇镜头",
-          "value": "摇镜头"
-        },
-        {
-          "id": "movement-4",
-          "label": "跟镜头",
-          "value": "跟镜头"
-        },
-        {
-          "id": "movement-5",
-          "label": "升降镜头",
-          "value": "升降镜头"
-        },
-        {
-          "id": "movement-6",
-          "label": "航拍",
-          "value": "航拍"
-        }
-      ]
     }
   ],
-  "revision": 1
+  "revision": 2
 }

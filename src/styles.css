@@ -1092,7 +1092,7 @@ a:focus-visible {
     transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
   }
 
-  .filter-group[data-filter-motion="true"] .filter-options:not([hidden]) .option-check path {
+  .creation-filter-group[data-filter-motion="true"] .filter-options .option-check path {
     transition: stroke-dashoffset 140ms ease;
   }
 
@@ -1121,7 +1121,7 @@ a:focus-visible {
 .top-actions { width: auto; justify-self: end; }
 .primary-nav { gap: 34px; }
 .nav-count { margin-left: 7px; color: var(--muted); font-size: 12px; }
-.page-layout { grid-template-columns: 206px minmax(0, 1fr); }
+.page-layout { grid-template-columns: 230px minmax(0, 1fr); }
 .sidebar { padding: 32px 24px 40px 30px; }
 .filter-intro { margin: 0 0 20px; color: var(--muted); font-size: 14px; }
 .filters { gap: 0; }

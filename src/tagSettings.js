@@ -1,15 +1,10 @@
-import { filterGroups } from "./data.js";
-import { caseTagValues, tagValues } from "./lib/contentEntries.js";
+import { creationTagGroups } from "./lib/creationTags.js";
+import { tagValues } from "./lib/contentEntries.js";
 
 export function createDefaultTagGroups() {
-  return filterGroups.map((group) => ({
-    id: group.key,
-    label: group.label,
-    options: group.options.filter((label) => label !== "全部").map((label, index) => ({
-      id: `${group.key}-${index}`,
-      label,
-      value: label,
-    })),
+  return creationTagGroups.map((group) => ({
+    ...group,
+    options: group.options.map((option) => ({ ...option })),
   }));
 }
 
@@ -72,14 +67,6 @@ export function reconcileTagFilters(groups, filters) {
     group.id,
     tagValues(filters[group.id]).filter((id) => group.options.some((option) => option.id === id)),
   ]));
-}
-
-export function matchesTagFilters(item, groups, filters) {
-  return groups.every((group) => {
-    const options = group.options.filter((candidate) => tagValues(filters[group.id]).includes(candidate.id));
-    if (!options.length) return true;
-    return options.some((option) => caseTagValues(item, group.id).includes(option.value));
-  });
 }
 
 export function moveTagEntry(entries, id, offset) {

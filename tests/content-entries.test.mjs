@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { getCases, casePath, shotPath, draftPath } from "../src/lib/content.js";
 import { isMediaUrl, normalizeContentEntry, normalizeDraft, presentCase } from "../src/lib/contentEntries.js";
-import { createDefaultTagGroups, matchesTagFilters } from "../src/tagSettings.js";
+import { createDefaultTagGroups } from "../src/tagSettings.js";
+import { createCreationReferences, filterCreationReferences } from "../src/lib/creationReferences.js";
 import { getShotAnnotation } from "../src/lib/shotPresentation.js";
 import { filterStudyShots, formatShotDuration, shotSegments } from "../src/lib/shotOverview.js";
 import { caseLearningFocus } from "../src/lib/learningPresentation.js";
+import { createStudyReport } from "../src/lib/studyReport.js";
 
 const entry = () => ({ ...structuredClone(getCases()[2]), id: "local-test", title: "  新录入案例  " });
 
@@ -73,9 +75,11 @@ test("entered cases remain filterable when displayed labels are renamed", () => 
   const group = groups.find(({ id }) => id === "type");
   const option = group.options.find(({ value }) => value === "故事片");
   option.label = "剧情片";
-  assert.equal(matchesTagFilters(normalizeContentEntry(entry()), groups, { type: option.id }), true);
+  const references = createCreationReferences([normalizeContentEntry(entry())]);
+  assert.equal(filterCreationReferences(references, { groups, filters: { type: option.id } }).length, 1);
   const custom = { id: "custom", label: "风格", options: [{ id: "film", label: "电影质感", value: "胶片" }] };
-  assert.equal(matchesTagFilters(normalizeContentEntry({ ...entry(), tags: ["胶片"] }), [...groups, custom], { custom: "film" }), true);
+  const customReferences = createCreationReferences([normalizeContentEntry({ ...entry(), tags: ["胶片"] })]);
+  assert.equal(filterCreationReferences(customReferences, { groups: [...groups, custom], filters: { custom: "film" } }).length, 1);
 });
 
 test("optional shot frames and context round trip without adding invented content to old cases", () => {
@@ -101,6 +105,68 @@ test("tail frames follow upload URL validation and optional context keeps text l
     const item = structuredClone(getCases()[0]);
     Object.assign(item.video.shots[0], changes);
     assert.throws(() => normalizeDraft(item), /尾帧|声音|台词/);
+  }
+});
+
+test("shot creation tags round trip through draft and published content without inheriting case tags", () => {
+  const item = structuredClone(getCases()[0]);
+  item.tagValues = { viewpoint: ["第一视角"], action: ["重击"] };
+  item.tags = ["剑", "力量感"];
+  item.video.shots[0].tagValues = {
+    props: [" 剑 ", "剑", ""],
+    action: ["重击"],
+    intent: ["力量感"],
+    viewpoint: "第一视角",
+    editing: ["动作衔接"],
+  };
+  item.video.shots[0].facts = { 景别: "特写", 运镜: "固定镜头", 构图: "居中构图", 光影: "逆光" };
+  Object.assign(item.video.shots[0], { category: "主观", rhythm: "重音", transition: "硬切" });
+  const before = structuredClone(item);
+  const expected = { props: ["剑"], action: ["重击"], intent: ["力量感"], viewpoint: ["第一视角"], editing: ["动作衔接"] };
+  const saved = normalizeDraft(item);
+  const published = normalizeContentEntry(JSON.parse(JSON.stringify(saved)));
+  assert.deepEqual(saved.video.shots[0].tagValues, expected);
+  assert.deepEqual(published.video.shots[0].tagValues, expected);
+  assert.deepEqual(presentCase(published).video.shots[0].tagValues, expected);
+  assert.deepEqual(JSON.parse(JSON.stringify(createStudyReport(published))).case.video.shots[0].tagValues, expected);
+  assert.equal("tagValues" in published.video.shots[1], false);
+  assert.deepEqual(item, before);
+  assert.deepEqual(published.video.shots[0].facts, before.video.shots[0].facts);
+  for (const key of ["category", "rhythm", "transition"]) assert.equal(published.video.shots[0][key], before.video.shots[0][key]);
+  item.video.shots[0].tagValues = {};
+  assert.deepEqual(normalizeDraft(item).video.shots[0].tagValues, {});
+});
+
+test("case and shot creation tags share group, value and identifier limits", () => {
+  const invalid = [
+    [],
+    "重击",
+    { "Invalid Group": ["剑"] },
+    Object.fromEntries(Array.from({ length: 51 }, (_, index) => [`group-${index}`, []])),
+    { props: Array.from({ length: 31 }, (_, index) => `道具${index}`) },
+    { props: ["剑".repeat(61)] },
+    { props: {} },
+  ];
+  for (const tagValues of invalid) {
+    const item = structuredClone(getCases()[0]);
+    assert.throws(() => normalizeDraft({ ...item, tagValues }), /标签/);
+    item.video.shots[0].tagValues = tagValues;
+    assert.throws(() => normalizeDraft(item), /标签/);
+  }
+  const item = structuredClone(getCases()[0]);
+  item.video.shots[0].tagValues = Object.fromEntries(Array.from({ length: 50 }, (_, index) => [`group-${index}`, []]));
+  item.video.shots[0].tagValues.props = Array.from({ length: 30 }, (_, index) => `道具${index}`);
+  delete item.video.shots[0].tagValues["group-49"];
+  const saved = normalizeDraft(item);
+  assert.equal(Object.keys(saved.video.shots[0].tagValues).length, 50);
+  assert.equal(saved.video.shots[0].tagValues.props.length, 30);
+});
+
+test("shot facts cannot be duplicated as independently editable creation tags", () => {
+  for (const groupId of ["shot-size", "movement", "composition", "lighting"]) {
+    const item = structuredClone(getCases()[0]);
+    item.video.shots[0].tagValues = { [groupId]: ["重复值"] };
+    assert.throws(() => normalizeDraft(item), /画面信息.*重复/);
   }
 });
 

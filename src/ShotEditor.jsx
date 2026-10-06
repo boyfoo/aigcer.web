@@ -2,11 +2,25 @@ import { DisclosureSummary } from "./DisclosureSummary.jsx";
 import { Button, Input, InputNumber, Popconfirm } from "antd";
 import { ChevronDown, ChevronUp, CircleAlert, Plus, Trash2 } from "lucide-react";
 import { EntryField as Field } from "./EntryField.jsx";
+import { ContentTagFields } from "./ContentTagFields.jsx";
+import { usePreferences } from "./Providers.jsx";
 import { MediaUpload } from "./MediaUpload.jsx";
 import { ShotClassification, ShotReview } from "./StudyEntryFields.jsx";
+import { CREATION_SHOT_FACT_GROUPS } from "./lib/creationTags.js";
 
-export function ShotEditor({ shot, index, duration, blocked, mediaBusy, onChange, onRemove, people, onAddPerson }) {
+const factGroupIds = Object.keys(CREATION_SHOT_FACT_GROUPS);
+
+export function ShotEditor({ shot, index, duration, blocked, mediaBusy, onTagBusyChange, onChange, onRemove, people, onAddPerson }) {
+  const { tagGroups } = usePreferences();
   const prefix = `镜头 ${index + 1}`;
+  const displayedFactLabels = tagGroups.filter((group) => Object.hasOwn(CREATION_SHOT_FACT_GROUPS, group.id)).map((group) => CREATION_SHOT_FACT_GROUPS[group.id]);
+  const shotSelections = {
+    ...shot.tagValues,
+    ...Object.fromEntries(Object.entries(CREATION_SHOT_FACT_GROUPS).map(([groupId, label]) => [
+      groupId,
+      shot.facts[label] ? [shot.facts[label]] : [],
+    ])),
+  };
   const input = (key, label, max = 2000) => (
     <Field label={label}>
       <Input.TextArea
@@ -45,6 +59,24 @@ export function ShotEditor({ shot, index, duration, blocked, mediaBusy, onChange
       </div>
       <small className="entry-hint">首帧留空时会标明使用案例封面；尾帧可后补。按视频顺序填写时间段，不能重叠。</small>
       {input("summary", "镜头概述")}
+      <ContentTagFields
+        tagValues={shotSelections}
+        title={`${prefix}创作条件`}
+        idPrefix={`entry-${shot.id}-tags`}
+        hint="只标记这个镜头实际出现的主体、动作、道具和表现目标，便于创作时组合寻找参考。未知或未出现的内容留空。"
+        disabled={blocked}
+        onBusyChange={onTagBusyChange}
+        singleGroupIds={factGroupIds}
+        onSelect={(groupId, values, append = false) => {
+          const factLabel = CREATION_SHOT_FACT_GROUPS[groupId];
+          if (factLabel) {
+            onChange({ facts: { ...shot.facts, [factLabel]: values[0] || "" } });
+            return;
+          }
+          const selected = append ? [...new Set([...(shot.tagValues?.[groupId] || []), ...values])] : values;
+          onChange({ tagValues: { ...shot.tagValues, [groupId]: selected } });
+        }}
+      />
       <ShotClassification shot={shot} prefix={prefix} people={people} onChange={onChange} onAddPerson={onAddPerson} blocked={blocked} />
       <details className="entry-shot-context">
         <DisclosureSummary>声音与叙事（可选）</DisclosureSummary>
@@ -56,7 +88,7 @@ export function ShotEditor({ shot, index, duration, blocked, mediaBusy, onChange
         </div>
       </details>
       <div className="entry-two-columns">
-        {Object.entries(shot.facts).map(([label, value]) => (
+        {Object.entries(shot.facts).filter(([label]) => !displayedFactLabels.includes(label)).map(([label, value]) => (
           <Field key={label} label={label}>
             <Input
               aria-label={`${prefix}${label}`}
