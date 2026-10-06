@@ -14,7 +14,6 @@ import {
   Tag,
 } from "antd";
 import {
-  ArrowRight,
   Check,
   Copy,
   ChevronDown,
@@ -337,10 +336,6 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
                   <h2>{item.title}</h2>
                   <p>{caseLearningFocus(item)}</p>
                   {collection?.slug === "prompts" && <p className="browse-prompt-excerpt">{item.prompt || "进入案例查看逐镜头提示词"}</p>}
-                  <span className="browse-case-action">
-                    {collection?.slug === "prompts" ? "查看案例与提示词" : item.video?.shots.length ? "看视频与拆解" : "查看案例"}
-                    <ArrowRight aria-hidden="true" />
-                  </span>
                 </Link>
               ))}
             </section>
