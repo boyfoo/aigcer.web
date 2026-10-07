@@ -21,7 +21,7 @@ export function CreationReferenceResults({ references, groups, showPrompts }) {
             ? reference.shot.videoPrompt || reference.shot.imagePrompt
             : reference.item.prompt;
           return (
-            <article className="browse-case creation-reference" key={reference.id}>
+            <article className="browse-case creation-reference" key={reference.id} data-reference-id={reference.id}>
               <div className="browse-case-image">
                 <Link href={reference.href} aria-label={`查看${reference.kind === "shot" ? "镜头" : "参考"}：${reference.title}`}>
                   <CaseCover src={reference.image} />
@@ -30,8 +30,8 @@ export function CreationReferenceResults({ references, groups, showPrompts }) {
                   {reference.kind === "shot" ? `镜头 ${String(reference.index + 1).padStart(2, "0")} · ${formatVideoTime(reference.duration)}` : reference.kind === "video" ? "整片 · 未拆解" : "分镜画面"}
                 </span>
                 {reference.item.video?.src && (
-                  <button className="creation-preview-button" type="button" aria-label={`预览片段：${reference.title}`} onClick={() => setPreview(reference)}>
-                    <CirclePlay aria-hidden="true" />预览片段
+                  <button className="creation-preview-button" type="button" aria-label={`预览：${reference.title}`} onClick={() => setPreview(reference)}>
+                    <CirclePlay aria-hidden="true" />预览
                   </button>
                 )}
               </div>

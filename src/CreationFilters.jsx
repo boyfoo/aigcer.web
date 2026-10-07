@@ -4,7 +4,7 @@ import { FilterSelectionSummary } from "./FilterSelectionSummary.jsx";
 import { tagValues } from "./lib/contentEntries.js";
 import { groupCreationFilters } from "./lib/creationNavigation.js";
 
-export function CreationFilters({ groups, filters, motionGroup, onChange, onKeyboard }) {
+export function CreationFilters({ groups, filters, motionGroup, onChange }) {
   const [expandedEntry, setExpandedEntry] = useState(null);
   const expandedHeadingRef = useRef(null);
   const entries = groupCreationFilters(groups);
@@ -44,7 +44,7 @@ export function CreationFilters({ groups, filters, motionGroup, onChange, onKeyb
   };
 
   return (
-    <div className="creation-filters" onKeyDownCapture={onKeyboard}>
+    <div className="creation-filters">
       {!groups.length && <p className="sidebar-empty">还没有标签，可在个人菜单的设置中添加。</p>}
       <div className="filters creation-entry-list" aria-label="创作条件">
         {entries.map((entry) => {

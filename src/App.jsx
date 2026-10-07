@@ -20,13 +20,14 @@ import {
   Folder,
   Search,
   Settings,
-  X,
 } from "lucide-react";
 import { TagSettings } from "./TagSettings.jsx";
 import { useAppMessage } from "./hooks/useAppMessage.jsx";
 import { CaseSaveButton } from "./CaseSaveButton.jsx";
 import { CreationFilters } from "./CreationFilters.jsx";
+import { CreationSelectedConditions } from "./CreationSelectedConditions.jsx";
 import { CreationReferenceResults } from "./CreationReferenceResults.jsx";
+import { useCreationBrowseMotion } from "./hooks/useCreationBrowseMotion.js";
 import { ContentEntry } from "./ContentEntry.jsx";
 import { useContentCases } from "./ContentProvider.jsx";
 import { VideoStudy } from "./VideoStudy.jsx";
@@ -53,6 +54,8 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
   const [filters, setFilters] = useState(() => createInitialTagFilters(tagGroups));
   const [filterMotionGroup, setFilterMotionGroup] = useState(null);
   const [savedOpen, setSavedOpen] = useState(false);
+  const browsePointerRef = useRef(false);
+  const browseMotion = useCreationBrowseMotion(`${page}:${collection?.slug ?? "all"}`);
   const hasActiveFilters = Object.values(filters).some((values) => tagValues(values).length);
   const selectedConditionGroups = tagGroups
     .map((group) => ({
@@ -110,10 +113,13 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
 
   const applySearch = (value) => {
     const nextQuery = value.trim();
+    if (nextQuery === query) return;
+    browseMotion.prepare(browsePointerRef.current);
     setQuery(nextQuery);
   };
 
   const updateFilter = (key, option, animate) => {
+    browseMotion.prepare(animate);
     setFilterMotionGroup(animate ? key : null);
     setFilters((current) => ({
       ...current,
@@ -121,7 +127,8 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
     }));
   };
 
-  const resetFilters = () => {
+  const resetFilters = (event) => {
+    browseMotion.prepare(event?.detail > 0);
     setFilterMotionGroup(null);
     setDraftQuery("");
     setQuery("");
@@ -218,14 +225,22 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
           )}
         </main>
       ) : (
-      <div className="page-layout">
+      <div
+        className="page-layout"
+        onPointerDownCapture={() => { browsePointerRef.current = true; }}
+        onKeyDownCapture={() => {
+          browsePointerRef.current = false;
+          setFilterMotionGroup(null);
+          browseMotion.cancel();
+        }}
+      >
         <aside className="sidebar" aria-label="创作条件筛选" tabIndex={0}>
           <p className="filter-intro">按创作条件找参考</p>
-          <CreationFilters groups={tagGroups} filters={filters} motionGroup={filterMotionGroup} onChange={updateFilter} onKeyboard={() => setFilterMotionGroup(null)} />
+          <CreationFilters groups={tagGroups} filters={filters} motionGroup={filterMotionGroup} onChange={updateFilter} />
           <p className="filter-hint">先选主体、动作和表现目标，再按需要细选拍法。</p>
         </aside>
 
-        <main className="main-content" aria-label="镜头参考浏览" tabIndex={0}>
+        <main ref={browseMotion.rootRef} className="main-content" aria-label="镜头参考浏览" tabIndex={0}>
           <section className="search-section" aria-labelledby="page-title">
             <h1 id="page-title" className="visually-hidden">{collection?.title ?? "AI 视频与分镜参考"}</h1>
             <form
@@ -260,25 +275,7 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
             {(query || hasActiveFilters) && <Button size="small" type="text" onClick={resetFilters}>清除条件</Button>}
           </div>
 
-          {selectedConditionGroups.length > 0 && (
-            <ul className="creation-selected-conditions" aria-label="已选创作条件">
-              {selectedConditionGroups.map(({ group, options }) => (
-                <li className="creation-selected-group" key={group.id}>
-                  <span className="creation-selected-group-label">{group.label}：</span>
-                  {options.map((option) => (
-                    <button
-                      key={option.id}
-                      type="button"
-                      aria-label={`清除${group.label}：${option.label}`}
-                      onClick={() => updateFilter(group.id, option.id, false)}
-                    >
-                      <span>{option.label}</span><X aria-hidden="true" />
-                    </button>
-                  ))}
-                </li>
-              ))}
-            </ul>
-          )}
+          <CreationSelectedConditions selections={selectedConditionGroups} onRemove={updateFilter} />
 
           {resultCount > 0 ? (
             <CreationReferenceResults references={filteredReferences} groups={tagGroups} showPrompts={collection?.slug === "prompts"} />

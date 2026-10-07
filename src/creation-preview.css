@@ -1,0 +1,53 @@
+.creation-preview-feedback {
+  display: grid;
+  min-height: 30px;
+  margin-top: 8px;
+}
+
+.creation-preview-status {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 22px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(3px);
+  transition: opacity 140ms ease, transform 140ms ease, visibility 0s linear 140ms;
+}
+
+.creation-preview-status.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition-delay: 0s;
+}
+
+.creation-preview-status .lucide {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+}
+
+.creation-preview-status.is-visible .creation-preview-loading-icon {
+  animation: creation-preview-loading 900ms linear infinite;
+}
+
+@keyframes creation-preview-loading {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .creation-preview-status {
+    transform: none;
+    transition: none;
+  }
+
+  .creation-preview-status.is-visible .creation-preview-loading-icon {
+    animation: none;
+  }
+}
