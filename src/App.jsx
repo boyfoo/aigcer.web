@@ -27,13 +27,14 @@ import { CaseSaveButton } from "./CaseSaveButton.jsx";
 import { CreationFilters } from "./CreationFilters.jsx";
 import { CreationSelectedConditions } from "./CreationSelectedConditions.jsx";
 import { CreationReferenceResults } from "./CreationReferenceResults.jsx";
+import { CreationCategoryNav } from "./CreationCategoryNav.jsx";
 import { useCreationBrowseMotion } from "./hooks/useCreationBrowseMotion.js";
 import { ContentEntry } from "./ContentEntry.jsx";
 import { useContentCases } from "./ContentProvider.jsx";
 import { VideoStudy } from "./VideoStudy.jsx";
 import { useReferenceProjects } from "./ReferenceProjects.jsx";
 import { usePreferences } from "./Providers.jsx";
-import { casePath, collectionPath } from "./lib/content.js";
+import { casePath } from "./lib/content.js";
 import { displayTags, tagValues } from "./lib/contentEntries.js";
 import { caseLearningFocus } from "./lib/learningPresentation.js";
 import { createCreationReferences, filterCreationReferences } from "./lib/creationReferences.js";
@@ -266,11 +267,7 @@ export function App({ page = "home", initialCaseId, collection, previewItem, ser
           </section>
 
           <div className="browse-toolbar">
-            <nav className="browse-categories" aria-label="案例分类">
-              {[[undefined, "全部"], ["videos", "视频"], ["storyboards", "分镜图片"], ["prompts", "提示词参考"]].map(([slug, label]) => (
-                <Link key={slug || "all"} href={slug ? collectionPath(slug) : "/"} aria-current={collection?.slug === slug ? "page" : undefined}>{label}</Link>
-              ))}
-            </nav>
+            <CreationCategoryNav slug={collection?.slug} />
             <span role="status">{query ? `“${query}” · ` : ""}{resultCount} 个参考</span>
             {(query || hasActiveFilters) && <Button size="small" type="text" onClick={resetFilters}>清除条件</Button>}
           </div>

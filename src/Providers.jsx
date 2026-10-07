@@ -7,6 +7,7 @@ import { requestContent } from "./lib/contentClient.js";
 import { FAVORITES_KEY, decodeFavorites, encodeFavorites } from "./lib/favorites.js";
 import { ReferenceProjectsProvider } from "./ReferenceProjects.jsx";
 import { ContentProvider } from "./ContentProvider.jsx";
+import { CreationCategoryMotionProvider } from "./CreationCategoryNav.jsx";
 
 const PreferencesContext = createContext(null);
 export const usePreferences = () => useContext(PreferencesContext);
@@ -70,6 +71,6 @@ export function Providers({ children, initialContent }) {
     },
     components: { Button: { fontWeight: 500, primaryColor: "#0b0d0c", lineWidth: 1, defaultShadow: "none", primaryShadow: "none" }, Input: { activeShadow: "none" }, Tag: { borderRadiusSM: 999 } },
   }}><AntApp><PreferencesContext.Provider value={{ tagGroups, tagRevision: tagState.revision, saveTags, tagsLoaded, savedIds, toggleFavorite, favoritesError }}>
-    <ContentProvider initialItems={initialContent.items} onTagsChange={updateTags}><ReferenceProjectsProvider>{children}</ReferenceProjectsProvider></ContentProvider>
+    <ContentProvider initialItems={initialContent.items} onTagsChange={updateTags}><ReferenceProjectsProvider><CreationCategoryMotionProvider>{children}</CreationCategoryMotionProvider></ReferenceProjectsProvider></ContentProvider>
   </PreferencesContext.Provider></AntApp></ConfigProvider>;
 }
