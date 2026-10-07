@@ -1,0 +1,208 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { createInitialDocument } from "../src/server/repository.js";
+import { handleMcpRequest } from "../src/server/mcp.js";
+
+const endpoint = "https://jingjie.example/mcp";
+const toolNames = ["jingjie_get_submission_status", "jingjie_prepare_upload", "jingjie_submit_case"];
+
+function repositoryOptions() {
+  let document = createInitialDocument([]);
+  return {
+    provider: {
+      async read() { return structuredClone(document); },
+      async update(work) {
+        const next = structuredClone(document);
+        const result = await work(next);
+        document = next;
+        return structuredClone(result);
+      },
+      async close() {},
+      async getDirectUploadConfig() { return { enabled: true, expiresSeconds: 900 }; },
+      async makeUploadKey(submissionId, name) { return `jingjie/uploads/${submissionId}/${name}`; },
+      async createUploadUrl({ key, mime, size }) {
+        return {
+          uploadUrl: `https://unit-bucket.oss-cn-hangzhou.aliyuncs.com/${key}?Signature=test-signature`,
+          headers: { "Content-Type": mime, "Content-Length": String(size) },
+          expiresAt: new Date(Date.now() + 900000).toISOString(),
+        };
+      },
+    },
+  };
+}
+
+function toolOutput(message) {
+  assert.notEqual(message.result.isError, true);
+  return message.result.structuredContent ?? JSON.parse(message.result.content.find((item) => item.type === "text").text);
+}
+
+async function rpc(options, method, params = {}, headers = {}, id = 1) {
+  const request = new Request(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream", ...headers },
+    body: JSON.stringify({ jsonrpc: "2.0", ...(id != null && { id }), method, params }),
+  });
+  const response = await handleMcpRequest(request, { repositoryOptions: options });
+  const text = await response.text();
+  const messages = text.startsWith("{") ? [JSON.parse(text)] : text.split(/\r?\n/)
+    .filter((line) => line.startsWith("data:"))
+    .map((line) => JSON.parse(line.slice(5).trim()));
+  return { response, message: messages.find((message) => message.id === id), text };
+}
+
+test("a remote client initializes, discovers the server's tool contracts, and calls a tool", async () => {
+  const options = repositoryOptions();
+  const initialized = await rpc(options, "initialize", {
+    protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "local-shot-analysis", version: "1.0.0" },
+  });
+  assert.equal(initialized.response.status, 200);
+  assert.equal(initialized.message.result.protocolVersion, "2025-11-25");
+  assert.ok(initialized.message.result.capabilities.tools);
+  assert.match(initialized.message.result.instructions, /草稿|draft/i);
+
+  const notification = await rpc(options, "notifications/initialized", {}, { "MCP-Protocol-Version": "2025-11-25" }, null);
+  assert.equal(notification.response.status, 202);
+
+  const listed = await rpc(options, "tools/list", {}, { "MCP-Protocol-Version": "2025-11-25" });
+  assert.equal(listed.response.status, 200);
+  const tools = listed.message.result.tools;
+  assert.deepEqual(tools.map((tool) => tool.name).sort(), toolNames);
+  for (const tool of tools) {
+    assert.ok(tool.description.length > 20);
+    assert.equal(tool.inputSchema.type, "object");
+  }
+  const prepare = tools.find((tool) => tool.name === "jingjie_prepare_upload");
+  assert.ok(prepare.inputSchema.required.includes("requestId"));
+  assert.ok(prepare.inputSchema.required.includes("files"));
+  const file = prepare.inputSchema.properties.files.items;
+  for (const field of ["localName", "kind", "mime", "size"]) assert.ok(file.required.includes(field));
+  const submit = tools.find((tool) => tool.name === "jingjie_submit_case");
+  for (const field of ["submissionId", "data", "assets"]) assert.ok(submit.inputSchema.required.includes(field));
+  assert.equal(prepare.outputSchema.properties.uploads.items.properties.uploadUrl.type, "string");
+  assert.equal(prepare.outputSchema.properties.uploads.items.properties.headers.type, "object");
+  assert.equal(submit.outputSchema.properties.status.const, "draft");
+  assert.equal(submit.outputSchema.properties.warnings.items.type, "string");
+
+  const called = await rpc(options, "tools/call", {
+    name: "jingjie_get_submission_status", arguments: { submissionId: "submission-not-found" },
+  }, { "MCP-Protocol-Version": "2025-11-25" });
+  assert.equal(called.response.status, 200);
+  assert.equal(called.message.result.isError, true);
+  assert.match(called.message.result.content.map((item) => item.text ?? "").join("\n"), /不存在|not found/i);
+  assert.equal(called.message.result.structuredContent.error.status, 404);
+});
+
+test("clients can discover and read the backend's submission guide as an MCP resource", async () => {
+  const options = repositoryOptions();
+  const listed = await rpc(options, "resources/list");
+  assert.equal(listed.response.status, 200);
+  const resource = listed.message.result.resources.find((item) => item.uri === "jingjie://submission-guide");
+  assert.ok(resource);
+  assert.equal(resource.mimeType, "text/plain");
+  const read = await rpc(options, "resources/read", { uri: resource.uri });
+  assert.equal(read.response.status, 200);
+  const guide = read.message.result.contents[0];
+  assert.equal(guide.uri, resource.uri);
+  assert.match(guide.text, /PUT/);
+  assert.match(guide.text, /原始文件字节/);
+  assert.match(guide.text, /草稿/);
+  assert.match(guide.text, /jingjie_get_submission_status/);
+});
+
+test("same-origin requests and clients without Origin can connect; foreign browser origins are rejected", async () => {
+  const options = repositoryOptions();
+  for (const headers of [{}, { Origin: "https://jingjie.example" }]) {
+    const { response, message } = await rpc(options, "tools/list", {}, headers);
+    assert.equal(response.status, 200);
+    assert.deepEqual(message.result.tools.map((tool) => tool.name).sort(), toolNames);
+  }
+  const response = await handleMcpRequest(new Request(endpoint, {
+    method: "POST",
+    headers: { Origin: "https://unrelated.example", "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
+  }), { repositoryOptions: options });
+  assert.equal(response.status, 403);
+});
+
+test("tool calls return upload URLs and save an incomplete draft without exposing server credentials", async () => {
+  const options = repositoryOptions();
+  const prepared = await rpc(options, "tools/call", {
+    name: "jingjie_prepare_upload",
+    arguments: { requestId: "http-import", files: [{ localName: "cover.png", kind: "image", mime: "image/png", size: 12 }] },
+  });
+  assert.equal(prepared.response.status, 200);
+  const planned = toolOutput(prepared.message);
+  assert.equal(planned.status, "prepared");
+  assert.ok(planned.uploads[0].uploadUrl.includes("Signature="));
+  assert.equal(planned.uploads[0].headers["Content-Type"], "image/png");
+  assert.doesNotMatch(prepared.text, /accessKeySecret|securityToken/i);
+
+  const committed = await rpc(options, "tools/call", {
+    name: "jingjie_submit_case",
+    arguments: { submissionId: planned.submissionId, data: { kind: "image", title: "尚未上传图片", image: "cover.png" }, assets: [] },
+  });
+  assert.equal(committed.response.status, 200);
+  const saved = toolOutput(committed.message);
+  assert.equal(saved.status, "draft");
+  assert.ok(saved.warnings.length);
+  assert.match(saved.previewUrl, /^https:\/\/jingjie\.example\/case-preview\?id=/);
+  const document = await options.provider.read();
+  assert.equal(document.content.length, 1);
+  assert.equal(document.content[0].published, null);
+  assert.equal(document.content[0].status, "draft");
+});
+
+test("invalid tool arguments and malformed JSON produce explicit protocol errors without writing a draft", async () => {
+  const options = repositoryOptions();
+  const malformed = await handleMcpRequest(new Request(endpoint, {
+    method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream" }, body: "{broken",
+  }), { repositoryOptions: options });
+  assert.equal(malformed.status, 400);
+
+  const invalid = await rpc(options, "tools/call", { name: "jingjie_prepare_upload", arguments: { files: [] } });
+  assert.equal(invalid.response.status, 200);
+  assert.ok(invalid.message.error || invalid.message.result?.isError);
+  const planned = toolOutput((await rpc(options, "tools/call", {
+    name: "jingjie_prepare_upload", arguments: { requestId: "invalid-source", files: [] },
+  })).message);
+  const invalidSource = await rpc(options, "tools/call", {
+    name: "jingjie_submit_case", arguments: { submissionId: planned.submissionId, data: { kind: "image", title: 123 }, assets: [] },
+  });
+  assert.equal(invalidSource.message.result.isError, true);
+  assert.equal(invalidSource.message.result.structuredContent.error.status, 400);
+  assert.match(invalidSource.message.result.structuredContent.error.message, /title/);
+  assert.deepEqual((await options.provider.read()).content, []);
+});
+
+test("the stateless HTTP endpoint does not leave an anonymous GET waiting on a stream", async () => {
+  const response = await handleMcpRequest(new Request(endpoint, {
+    headers: { Accept: "application/json, text/event-stream" },
+  }), { repositoryOptions: repositoryOptions() });
+  assert.equal(response.status, 405);
+});
+
+test("modern MCP discovery exposes the same tools without the legacy initialize handshake", async () => {
+  const options = repositoryOptions();
+  const metadata = {
+    "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+    "io.modelcontextprotocol/clientInfo": { name: "local-shot-analysis", version: "1.0.0" },
+    "io.modelcontextprotocol/clientCapabilities": {},
+  };
+  const discover = await rpc(options, "server/discover", { _meta: metadata }, { "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "server/discover" });
+  assert.equal(discover.response.status, 200, discover.text);
+  assert.ok(discover.message.result.capabilities.tools);
+  const listed = await rpc(options, "tools/list", { _meta: metadata }, { "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/list" });
+  assert.equal(listed.response.status, 200);
+  assert.deepEqual(listed.message.result.tools.map((tool) => tool.name).sort(), toolNames);
+  const called = await rpc(options, "tools/call", {
+    _meta: metadata, name: "jingjie_prepare_upload", arguments: { requestId: "modern-upload", files: [] },
+  }, { "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/call", "Mcp-Name": "jingjie_prepare_upload" });
+  assert.equal(called.response.status, 200, called.text);
+  assert.equal(toolOutput(called.message).status, "prepared");
+  const failure = await rpc(options, "tools/call", {
+    _meta: metadata, name: "jingjie_get_submission_status", arguments: { submissionId: "missing-modern-submission" },
+  }, { "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/call", "Mcp-Name": "jingjie_get_submission_status" });
+  assert.equal(failure.response.status, 200, failure.text);
+  assert.equal(failure.message.result.isError, true);
+  assert.equal(failure.message.result.structuredContent.error.status, 404);
+});

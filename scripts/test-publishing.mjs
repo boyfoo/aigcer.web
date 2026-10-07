@@ -44,6 +44,24 @@ const start = async () => {
 };
 try {
   await start();
+  const mcp = async (method, params = {}) => {
+    const response = await request("/mcp", {
+      method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream", "MCP-Protocol-Version": "2025-11-25" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    });
+    const text = await response.text();
+    assert.equal(response.status, 200, text);
+    checks++;
+    return text.startsWith("{") ? JSON.parse(text) : JSON.parse(text.split(/\r?\n/).find((line) => line.startsWith("data:")).slice(5));
+  };
+  const initialized = await mcp("initialize", { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "next-http-check", version: "1.0.0" } });
+  assert.equal(initialized.result.serverInfo.name, "jingjie");
+  const discovered = await mcp("tools/list");
+  assert.deepEqual(discovered.result.tools.map((tool) => tool.name).sort(), ["jingjie_get_submission_status", "jingjie_prepare_upload", "jingjie_submit_case"]);
+  const missingSubmission = await mcp("tools/call", { name: "jingjie_get_submission_status", arguments: { submissionId: "missing" } });
+  assert.equal(missingSubmission.result.isError, true);
+  assert.match(missingSubmission.result.content[0].text, /不存在/);
+  console.log("PASS remote MCP discovery and tool invocation through the production Next.js route");
   const image = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
   const upload = await request("/api/uploads?kind=image&name=reference.png", { method: "POST", headers: { "Content-Type": "application/octet-stream", Origin: origin }, body: image });
   assert.equal(upload.status, 201, await upload.clone().text());
@@ -127,7 +145,7 @@ try {
   assert.deepEqual(Buffer.from(await (await request(media.url)).arrayBuffer()), image); checks++;
   assert.equal((await json("/api/public")).tags.groups[0].label, "共享标签测试");
   const stored = JSON.parse(await readFile(path.join(directory, "content.json"), "utf8"));
-  assert.equal(stored.version, 2);
+  assert.equal(stored.version, 3);
   assert.ok(stored.items.some((row) => row.id === study.id));
   assert.equal(stored.items.find((row) => row.id === study.id).draft, undefined);
   const studyFile = JSON.parse(await readFile(path.join(directory, "content", `${study.id}.json`), "utf8"));
@@ -137,6 +155,9 @@ try {
   assert.equal(mediaFile.items[0].originalName, "reference.png");
   const tagFile = JSON.parse(await readFile(path.join(directory, "tags.json"), "utf8"));
   assert.equal(tagFile.groups[0].label, "共享标签测试");
+  const submissions = JSON.parse(await readFile(path.join(directory, "submissions.json"), "utf8"));
+  assert.equal(submissions.version, 1);
+  assert.deepEqual(submissions.items, []);
   assert.ok(!(await readdir(directory)).some((name) => name.includes("sqlite")));
   checks++;
   console.log(`PASS ${checks} HTTP checks, including persistence after a full server restart`);

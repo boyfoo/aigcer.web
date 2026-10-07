@@ -9,13 +9,14 @@ export { ContentError } from "./errors.js";
 
 export function createInitialDocument(seeds = storyboardItems) {
   return {
-    version: 1,
+    version: 2,
     content: seeds.map((seed, position) => ({
       id: seed.id, draft: normalizeDraft(seed), published: normalizeDraft(seed), status: "published", revision: 1,
       updatedAt: "2026-09-07T00:00:00.000Z", publishedAt: "2026-09-07T00:00:00.000Z", position,
     })),
     tags: { groups: createDefaultTagGroups(), revision: 1 },
     media: [],
+    submissions: [],
   };
 }
 
@@ -41,6 +42,38 @@ export function createRepository({ directory, seeds = storyboardItems, provider 
       const row = (await storage.read()).content.find((row) => row.id === id);
       return row?.status === "published" ? presentCase(row.published) : null;
     },
+    getSubmission: async (id) => (await storage.read()).submissions.find((entry) => entry.id === id) ?? null,
+    prepareSubmission: (submission) => storage.update((document) => {
+      const existing = document.submissions.find((entry) => entry.requestId === submission.requestId);
+      if (existing) {
+        if (existing.manifestHash !== submission.manifestHash) throw new ContentError("同一提交标识的文件清单发生变化，请为新的提交使用新的 requestId。", 409);
+        return existing;
+      }
+      document.submissions.push(submission);
+      return submission;
+    }),
+    commitSubmission: ({ submissionId, payloadHash, draft, media, source, result }) => storage.update((document) => {
+      const submission = document.submissions.find((entry) => entry.id === submissionId);
+      if (!submission) throw new ContentError("提交不存在，请先申请上传地址。", 404);
+      if (submission.status === "submitted") {
+        if (submission.payloadHash !== payloadHash) throw new ContentError("这次提交已保存，不能用同一提交标识覆盖不同资料。", 409);
+        return submission.result;
+      }
+      const value = normalizeDraft(draft);
+      if (document.content.some((entry) => entry.id === value.id)) throw new ContentError("案例标识已存在，提交未覆盖原资料。", 409);
+      for (const item of media) {
+        if (document.media.some((entry) => entry.name === item.name)) throw new ContentError("素材标识已存在，提交未覆盖原素材。", 409);
+      }
+      const now = new Date().toISOString();
+      document.media.push(...media);
+      document.content.push({
+        id: value.id, draft: value, published: null, status: "draft", revision: 1,
+        updatedAt: now, publishedAt: null,
+        position: document.content.reduce((max, entry) => Math.max(max, entry.position), 0) + 1,
+      });
+      Object.assign(submission, { status: "submitted", updatedAt: now, caseId: value.id, payloadHash, source, result });
+      return result;
+    }),
     change: ({ action, draft, id, revision }) => storage.update((document) => {
       if (!["save", "publish", "unlist", "relist", "delete"].includes(action)) throw new ContentError("不支持的内容操作");
       const targetId = id || `case-${randomUUID()}`;
@@ -93,6 +126,11 @@ export function createRepository({ directory, seeds = storyboardItems, provider 
     openMedia: (name, range) => storage.openMedia(name, range),
     removeMedia: (name) => storage.removeMedia(name),
     exportMedia: (name, destination) => storage.exportMedia(name, destination),
+    getDirectUploadConfig: () => storage.getDirectUploadConfig(),
+    makeUploadKey: (submissionId, name) => storage.makeUploadKey(submissionId, name),
+    createUploadUrl: (file) => storage.createUploadUrl(file),
+    inspectUploadedObject: (file) => storage.inspectUploadedObject(file),
+    promoteUploadedObject: (file) => storage.promoteUploadedObject(file),
   };
 }
 

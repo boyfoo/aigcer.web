@@ -17,6 +17,11 @@ import { JsonDataProvider } from "./json.js";
  * @property {(name: string, range?: {start: number, end: number}) => Promise<ReadableStream>} openMedia
  * @property {(name: string) => Promise<void>} removeMedia
  * @property {(name: string, destination: string) => Promise<void>} exportMedia
+ * @property {() => Promise<{enabled: boolean, expiresSeconds: number}>} getDirectUploadConfig
+ * @property {(submissionId: string, name: string) => Promise<string>} makeUploadKey
+ * @property {(input: {key: string, mime: string, size: number}) => Promise<{uploadUrl: string, headers: Object, expiresAt: string}>} createUploadUrl
+ * @property {(input: {key: string, kind: string, size: number, mime: string}) => Promise<{size: number, mime: string, etag: string}>} inspectUploadedObject
+ * @property {(input: {sourceKey: string, name: string, etag: string}) => Promise<{provider: 'oss', bucket: string, key: string}>} promoteUploadedObject
  * @property {() => Promise<void>} close
  */
 
@@ -29,7 +34,7 @@ const providers = {
 };
 
 /** @returns {DataProvider} */
-export function createDataProvider({ name = process.env.JINGJIE_DATA_PROVIDER || "json", directory = storageRoot(), initialize } = {}) {
+export function createDataProvider({ name = process.env.JINGJIE_DATA_PROVIDER || "json", directory = storageRoot(), initialize, oss } = {}) {
   if (!Object.hasOwn(providers, name)) throw new ContentError(`未知的数据提供者：${name}，请检查 JINGJIE_DATA_PROVIDER 配置。`, 503);
-  return providers[name]({ directory, initialize });
+  return providers[name]({ directory, initialize, oss });
 }

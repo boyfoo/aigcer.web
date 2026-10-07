@@ -1,6 +1,6 @@
 # 镜界
 
-基于 Next.js App Router、React 和 Ant Design 的 AI 视频与图片案例学习网站，用于本人积累、回顾和向访客分享。学习流程围绕观看结果、阅读分镜拆解、比较案例、收藏参考；不提供视频生成、跟练或作品提交。
+基于 Next.js App Router、React 和 Ant Design 的 AI 视频与图片案例学习网站，用于本人积累、回顾和向访客分享。学习流程围绕观看结果、阅读分镜拆解、比较案例、收藏参考，支持网页录入和通过远程 MCP 导入本地拉片资料。
 
 ## 本地运行
 
@@ -62,6 +62,44 @@ Get-Command node.exe, npm.cmd | Select-Object Name, Source
 
 `/settings` 提供全站一级、二级标签设置。录入页的案例分类与逐镜头创作条件都可以直接新增一级、二级标签；新增一级标签时可一起创建首个二级标签，二级标签新增后自动选中，保留正在编辑的内容。主体、动作、道具、变化、表现目标等条件在前，专业拍法按需展开；镜头的景别、运镜、构图和光影复用原有画面信息单选，不重复维护。新增标签立即同步全站设置，案例仍需按原流程保存或发布。多选筛选同组满足任意一个，不同组需同时满足，镜头参考的全部条件必须命中同一镜头。保存有版本冲突时保留输入并提示重新载入，避免覆盖另一页面的更新。
 
+## 远程 MCP：本地拉片后提交到镜界
+
+普通 Next.js 服务提供 Streamable HTTP MCP 地址：`https://你的域名/mcp`。AI 客户端添加此远程 URL 后，会从后端发现工具名称、说明、输入/输出结构和提交流程指南，无需在本地安装镜界 MCP 服务。支持 2025 协议的初始化流程和 2026 协议的服务发现。客户端需要具备读取本地文件和执行 HTTP 上传的能力；只有远程 MCP 连接、不能访问本地文件的客户端无法直传本地素材。
+
+工具标题、说明及服务指南使用网站名称“镜界”，明确对应“提交到镜界”“上传到镜界”“把拉片结果保存到镜界”等请求，并说明申请地址、直传素材、保存草稿及恢复上传的调用顺序。客户端连接后可重新获取工具列表查看这些说明；实际是否调用仍由客户端和模型根据对话判断。
+
+在服务器按 `.env.example` 配置 `SITE_URL`、持久数据目录，以及 `JINGJIE_OSS_BUCKET`、`JINGJIE_OSS_REGION`（如 `cn-hangzhou`）、`JINGJIE_OSS_ACCESS_KEY_ID`、`JINGJIE_OSS_ACCESS_KEY_SECRET`。这四项全不配置时，网站现有本地上传仍可用，MCP 申请直传会明确提示未配置；只配置部分项会报配置错误。可选 `JINGJIE_OSS_SECURITY_TOKEN` 适用于临时凭据，凭据到期前需更新服务端配置。密钥始终在服务端，客户端仅收到具有有限有效期和指定对象路径的上传 URL。
+
+| MCP 工具 | 用途 |
+| --- | --- |
+| `jingjie_prepare_upload` | 传 `requestId` 和文件清单，返回 `submissionId`、各文件的 `assetId`、`objectKey`、稳定 `url`、临时 `uploadUrl`、`headers` 和 `expiresAt` |
+| `jingjie_submit_case` | 传 `submissionId`、原始拉片 JSON `data` 和成功上传的 `assets`；核验后保存新草稿，返回编辑/预览链接、镜头数量与缺失项 |
+| `jingjie_get_submission_status` | 查询同次提交的保存结果和逐文件状态；未保存时续签上传地址，已保存时返回原结果 |
+
+文件清单示例：
+
+```json
+{
+  "requestId": "local-analysis-20261007-001",
+  "files": [
+    { "localName": "video.mp4", "kind": "video", "mime": "video/mp4", "size": 123456 },
+    { "localName": "frames/S01a.jpg", "kind": "image", "mime": "image/jpeg", "size": 23456 }
+  ]
+}
+```
+
+实际 `requestId` 使用 UUID 或 1–120 位字母、数字、下划线、短横线；`size` 必须是文件真实字节数。`localName` 使用输出目录内相对路径，后端用它关联原视频、人物图片和首尾帧。每次最多 252 个素材、1 条视频，图片 20 MiB、视频 512 MiB，文件类型与网页上传相同。
+
+本地 AI 的执行顺序为：读取文件 → 申请地址 → 向 OSS **PUT 原始文件字节** → 调用提交工具。不要使用 FormData，也不要把本地路径或 URL 文本作为上传正文。返回的 `Content-Type`、`Content-Length` 和 `x-oss-*` 请求头必须按原值携带；预签名地址默认 30 分钟有效，可通过 `JINGJIE_OSS_UPLOAD_TTL_SECONDS` 设置 60–3600 秒。上传禁止覆盖，并使用私有对象权限；二进制文件不经过 MCP 或网站上传接口。
+
+上传完成后，提交参数形如 `{submissionId, data: 原始shots.json对象, assets: [{assetId, url, objectKey}]}`；`url` 和 `objectKey` 可省略，提供时必须是后端返回的原值。稳定 `url` 用于网站访问，临时 `uploadUrl` 仅用于上传。单张图片的 `data` 使用 `{kind:"image",title,image:"图片localName",description,analysis,prompt}`。
+
+后端直接接收 [reelbench-skills](https://github.com/eternityspring/reelbench-skills) 产生的 `shots.json`，转换已知枚举和资料字段。`source` 对应视频 `localName`；首尾帧默认匹配 `frames/S01a.jpg`、`frames/S01b.jpg`，也可在镜头 `image`、`endImage` 指定路径，人物图片用 `cast.image` 指定。`frame` 转为概述、`size/camera` 转为景别/运镜、`rhythmNote` 转为叙事、`audio` 作为来源提供的台词。未知枚举和缺失素材留空并返回提示，不推测模型参数或提示词，来源机器复核不转成作者人工确认。原始 JSON 与标识映射保存在提交记录中，不随公开内容或 Sites 导出。
+
+断网或地址过期时先查询状态，跳过 `uploaded` 文件，只重新上传 `awaiting_upload` 文件。`unavailable` 表示 OSS 暂时无法核验，保留标识后稍后查询；`invalid` 表示文件核验失败，按返回原因处理，错误格式文件不能用原地址覆盖，应修正后新建提交。申请与提交均可重试：沿用相同 `requestId`、`submissionId` 和原资料，不会重复创建案例；相同标识配不同清单或资料会返回冲突。草稿允许缺图或不完整资料，保存与手动发布分开。
+
+浏览器来源默认限制为本站，原生 MCP 客户端没有 `Origin` 时可以连接；需要跨域浏览器客户端时，用 `JINGJIE_MCP_ALLOWED_ORIGINS` 配置逗号分隔的完整来源地址。此来源检查沿用当前免登录产品边界，不是账号认证。远程服务需要普通 Next.js 部署，Sites 静态站点不提供 `/mcp`。
+
 ## 数据保存
 
 默认数据提供者为 `json`，数据目录是 `web/data/`，可使用环境变量 `JINGJIE_DATA_DIR` 指向持久磁盘中的绝对路径。每种数据独立存文件，每个案例的完整资料独立存于子目录：
@@ -71,15 +109,18 @@ data/
 ├── content.json          # 案例列表：ID、名称、类型、状态、版本、时间、排序
 ├── tags.json             # 全站标签与标签版本
 ├── media.json            # 素材文件名、原名、类型与大小
+├── submissions.json      # MCP 提交、文件清单、原始拉片资料与幂等结果
 ├── content/
 │   ├── night-cinema.json # 单个案例的编辑稿与独立公开快照
 │   └── <案例ID>.json     # 视频参数、人物、镜头、提示词和分析均在所属案例中
-└── uploads/              # 上传的图片与视频原文件
+└── uploads/              # 网页本地上传的图片与视频原文件
 ```
 
-JSON 使用 UTF-8、两空格缩进。`content.json` 的文件格式版本为 2，`items` 只放列表摘要；`content/<id>.json` 包含 `id`、`draft` 和 `published`，详情文件不再与其他案例混存。标签、素材索引和详情文件的格式版本为 1。只更新发生变化的文件，修改单个案例不会重写其他案例，修改标签不会重写案例。提供者对业务层返回的 `DataDocument` 契约保持不变，拆分是 JSON 提供者内部实现。
+JSON 使用 UTF-8、两空格缩进。`content.json` 的文件格式版本为 3，`items` 只放列表摘要；`content/<id>.json` 包含 `id`、`draft` 和 `published`，详情文件不再与其他案例混存。标签、素材、提交索引和详情文件的格式版本为 1。提供者对业务层返回 `DataDocument` v2（新增 `submissions`）。只更新发生变化的文件，修改单个案例不会重写其他案例，修改标签不会重写案例。
 
-全新数据目录首次读取时导入 `src/data.js` 的示例，已有文件不会重新初始化；索引、详情或标签等文件损坏、缺失、版本不支持时明确报错。旧版合并 `content.json` 在首次读取时直接拆分成上述结构，不生成备份文件。草稿、公开快照、版本和素材路径均保留，无需手工拆文件。
+OSS 素材在 `media.json` 记录 `storage: {provider:"oss",bucket,key}`，与本地素材共存，网站统一使用 `/media/<文件名>` 读取及范围播放，Sites 导出通过提供者下载已发布快照引用的素材。临时上传对象位于 `<前缀>/uploads/<submissionId>/`，核验后通过 OSS 内部复制到 `<前缀>/media/`，与上传地址隔离。默认前缀为 `jingjie`；变更 Bucket 或目录前缀前需迁移已有对象与记录。未提交及未引用素材暂不自动回收。
+
+全新数据目录首次读取时导入 `src/data.js` 的示例，已有文件不会重新初始化；索引、详情、标签或提交文件损坏、缺失、版本不支持时明确报错。旧版合并 `content.json` 及 v2 拆分索引在首次读取时于提供者边界迁移成上述结构，并初始化空提交索引，不生成备份文件。草稿、公开快照、版本和素材路径均保留，无需手工拆文件。v3 索引缺少提交文件会报错，不静默补空。
 
 本地的 20 条布局演示可整理为左侧分类的筛选测试资料：`npm run data:filter-examples` 只检查覆盖，`npm run data:filter-examples -- --apply` 通过 DataProvider 更新演示记录，并补充 10 条播放器测试案例。20 条分镜和 20 个测试镜头分别覆盖现有二级选项，支持检查同组多选和跨组组合。资料明确标为虚构筛选示例，封面为布局占位图，视频仅用于播放器测试。执行前备份当前数据到 `.cache/`；自行编辑过的演示记录会拒绝覆盖，原始案例、素材和浏览器收藏保留。此工具需使用前文说明的兼容 Node.js 与 npm。
 
@@ -98,6 +139,10 @@ JSON 使用 UTF-8、两空格缩进。`content.json` 的文件格式版本为 2�
 | `writeMedia(name, chunks)` | 流式写入素材；中断或失败时清理未完成文件 |
 | `statMedia(name)` / `openMedia(name, range)` | 查询大小、读取完整或指定范围的素材流；返回的流在 `close()` 后仍可使用 |
 | `removeMedia(name)` / `exportMedia(name, destination)` | 清理失败上传、将公开素材导出为静态文件 |
+| `getDirectUploadConfig()` / `makeUploadKey(submissionId, name)` | 查询直传配置、生成本次提交的临时对象路径 |
+| `createUploadUrl({key, mime, size})` | 签发指定类型、大小和路径的上传 URL |
+| `inspectUploadedObject({key, kind, size, mime})` | 核验 OSS 对象是否存在、大小、真实格式及 ETag |
+| `promoteUploadedObject({sourceKey, name, etag})` | 按已核验 ETag 复制至正式素材目录，支持相同内容重试 |
 | `close()` | 释放提供者资源 |
 
 以后新增数据库或远程存储时，实现这组接口，在工厂的 `providers` 中注册名称，再设置 `JINGJIE_DATA_PROVIDER=提供者名称` 并重启。页面、客户端、API、发布规则和 Sites 导出无需修改。当前只注册 `json`；未知名称会报错，不会静默回退。更换提供者前需迁移原数据，新实现也必须遵循 `storage/document.js` 的版本化数据契约及事务语义。测试可通过 `createRepository({ provider })` 注入独立实现。
@@ -142,6 +187,6 @@ npm run build:sites
 npm run test:sites
 ```
 
-`test:publishing` 运行已构建的 Next.js 服务，使用临时独立 JSON 数据目录与端口，检查上传、范围请求、发布状态、公开 HTML 和重启持久化；完成后清理自己的服务与测试数据。
+`test:publishing` 运行已构建的 Next.js 服务，使用临时独立 JSON 数据目录与端口，检查 MCP 远程发现/调用、上传、范围请求、发布状态、公开 HTML 和重启持久化；完成后清理自己的服务与测试数据。`npm test` 包含 MCP 协议、提交转换、幂等事务和 OSS 签名/对象核验测试；OSS 网络操作使用替身，真实 Bucket 联通仍需部署配置后实测。
 
 Sites 构建通过当前提供者导出已发布内容的静态快照，复制这些快照引用的上传素材，保留 `dist/client/`、`dist/server/index.js` 与 `dist/.openai/hosting.json` 的既有打包方式。静态包不包含原始 JSON 数据文件、数据库、未发布内容和运行时写入接口。Sites 页面可以阅读、收藏和整理参考集；录入与标签保存需要普通 Next.js 服务。静态快照要更新内容需重新构建和部署。

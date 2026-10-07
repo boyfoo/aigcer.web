@@ -2,6 +2,8 @@
 const nextConfig = {
   poweredByHeader: false,
   agentRules: false,
+  // OSS uses Node.js runtime dependencies and lazy optional proxy imports.
+  serverExternalPackages: ["ali-oss"],
   // Exclude runtime handlers from the read-only Sites snapshot.
   pageExtensions: process.env.JINGJIE_BUILD_TARGET === "sites" ? ["snapshot.js", "js", "jsx"] : ["runtime.js", "js", "jsx"],
   env: { NEXT_PUBLIC_CONTENT_READ_ONLY: process.env.JINGJIE_BUILD_TARGET === "sites" ? "1" : "0" },

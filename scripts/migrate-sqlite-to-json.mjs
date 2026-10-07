@@ -20,7 +20,8 @@ export async function migrateSqlite(source, destination) {
     db.exec("BEGIN");
     const tags = db.prepare("SELECT value, revision FROM settings WHERE key='tags'").get();
     document = validateDocument({
-      version: 1,
+      version: 2,
+      submissions: [],
       content: db.prepare("SELECT * FROM content ORDER BY position").all().map((row) => ({
         id: row.id, draft: JSON.parse(row.draft), published: row.published === null ? null : JSON.parse(row.published),
         status: row.status, revision: row.revision, updatedAt: row.updated_at, publishedAt: row.published_at, position: row.position,

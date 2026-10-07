@@ -33,7 +33,7 @@ test("JSON is the default, unknown providers fail explicitly and reads do not re
   record = await repository.change({ action: "save", id: record.id, revision: record.revision, draft: { ...record.draft, title: "未公开标题" } });
   const index = JSON.parse(await readFile(path.join(dir, "content.json"), "utf8"));
   const detail = JSON.parse(await readFile(path.join(dir, "content", `${record.id}.json`), "utf8"));
-  assert.equal(index.version, 2);
+  assert.equal(index.version, 3);
   assert.equal(index.items[0].title, "未公开标题");
   assert.equal(index.items[0].revision, 2);
   assert.equal(index.items[0].draft, undefined);
@@ -45,7 +45,7 @@ test("JSON is the default, unknown providers fail explicitly and reads do not re
   assert.equal((await reopened.listRecords()).length, 1);
   record.draft.title = "外部引用不应写入文件";
   assert.equal((await reopened.getRecord(record.id)).draft.title, "未公开标题");
-  assert.deepEqual((await readdir(dir)).sort(), ["content", "content.json", "media.json", "tags.json"]);
+  assert.deepEqual((await readdir(dir)).sort(), ["content", "content.json", "media.json", "submissions.json", "tags.json"]);
 });
 
 test("simultaneous instances serialize saves and reject only stale revisions", async (t) => {
@@ -95,7 +95,7 @@ test("corrupt JSON and failed updates retain the original file and release the l
     await assert.rejects(provider.update(() => {}), (error) => error.status === 503);
     assert.equal(await readFile(file, "utf8"), broken);
   }
-  assert.deepEqual((await readdir(dir)).sort(), ["content.json", "media.json", "tags.json"]);
+  assert.deepEqual((await readdir(dir)).sort(), ["content.json", "media.json", "submissions.json", "tags.json"]);
 });
 
 test("the repository accepts a different async provider and closes it after work finishes", async () => {
@@ -123,18 +123,71 @@ test("single-file data migrates without creating backups or losing snapshots", a
   document.content[0].revision = 8;
   document.content[1].status = "offline";
   document.tags.revision = 4;
-  const original = JSON.stringify(document, null, 2) + "\n";
+  const { submissions, ...legacy } = document;
+  const original = JSON.stringify({ ...legacy, version: 1 }, null, 2) + "\n";
   await writeFile(path.join(dir, "content.json"), original);
   const providers = [1, 2].map(() => new JsonDataProvider({ directory: dir, initialize: () => { throw new Error("must not reseed"); } }));
   const [first, second] = await Promise.all(providers.map((provider) => provider.read()));
   assert.deepEqual(first, document);
   assert.deepEqual(second, document);
-  assert.deepEqual((await readdir(dir)).sort(), ["content", "content.json", "media.json", "tags.json"]);
+  assert.deepEqual((await readdir(dir)).sort(), ["content", "content.json", "media.json", "submissions.json", "tags.json"]);
   assert.deepEqual((await readdir(path.join(dir, "content"))).sort(), ["case-a.json", "case-b.json"]);
   assert.equal(JSON.parse(await readFile(path.join(dir, "tags.json"), "utf8")).revision, 4);
   await providers[0].update((value) => { value.tags.revision++; });
   assert.equal((await providers[1].read()).tags.revision, 5);
-  assert.deepEqual((await readdir(dir)).sort(), ["content", "content.json", "media.json", "tags.json"]);
+  assert.deepEqual((await readdir(dir)).sort(), ["content", "content.json", "media.json", "submissions.json", "tags.json"]);
+});
+
+test("previous split indexes migrate once while current indexes require the submissions file", async (t) => {
+  const dir = await directory(t);
+  const provider = new JsonDataProvider({ directory: dir, initialize: () => createInitialDocument([]) });
+  const expected = await provider.read();
+  const indexPath = path.join(dir, "content.json"), submissionPath = path.join(dir, "submissions.json");
+  const index = JSON.parse(await readFile(indexPath, "utf8"));
+  await writeFile(indexPath, JSON.stringify({ ...index, version: 2 }));
+  await unlink(submissionPath);
+  assert.deepEqual(await provider.read(), expected);
+  assert.equal(JSON.parse(await readFile(indexPath, "utf8")).version, 3);
+  assert.deepEqual(JSON.parse(await readFile(submissionPath, "utf8")), { version: 1, items: [] });
+  await unlink(submissionPath);
+  await assert.rejects(provider.read(), /submissions.json/);
+  await assert.rejects(stat(submissionPath), { code: "ENOENT" });
+});
+
+const preparedSubmission = () => ({
+  id: "12345678-1234-1234-1234-123456789abc", requestId: "test-request", manifestHash: "a".repeat(64),
+  status: "prepared", createdAt: "2026-10-07T00:00:00.000Z", updatedAt: "2026-10-07T00:00:00.000Z",
+  files: [{ assetId: "12345678-1234-1234-1234-123456789def", localName: "frame.png", kind: "image", mime: "image/png", size: 8,
+    name: "12345678-1234-1234-1234-123456789def.png", uploadKey: "jingjie/uploads/12345678-1234-1234-1234-123456789abc/12345678-1234-1234-1234-123456789def.png" }],
+});
+
+test("submissions persist independently, reject malformed state and roll back atomically with content", async (t) => {
+  const dir = await directory(t);
+  const provider = new JsonDataProvider({ directory: dir, initialize: () => createInitialDocument([]) });
+  const repo = createRepository({ provider });
+  const record = await repo.change({ action: "save", draft: input });
+  await provider.update((document) => document.submissions.push(preparedSubmission()));
+  const names = ["content.json", `content/${record.id}.json`, "submissions.json"];
+  const original = await Promise.all(names.map(async (name) => ({ name, before: await readFile(path.join(dir, name), "utf8") })));
+  const write = provider.atomicWrite.bind(provider);
+  let failed = false;
+  provider.atomicWrite = async (name, text) => {
+    if (name === `content/${record.id}.json` && !failed) { failed = true; throw new Error("submission transaction failure"); }
+    return write(name, text);
+  };
+  await assert.rejects(provider.update((document) => {
+    document.content[0].draft.title = "must roll back";
+    document.content[0].revision++;
+    document.submissions[0].updatedAt = "2026-10-07T01:00:00.000Z";
+  }), /submission transaction failure/);
+  for (const { name, before } of original) assert.equal(await readFile(path.join(dir, name), "utf8"), before);
+  await writeFile(path.join(dir, ".content-transaction.json"), JSON.stringify({ version: 1, files: original }));
+  await writeFile(path.join(dir, "submissions.json"), '{"version":1,"items":[]}');
+  assert.equal((await provider.read()).submissions.length, 1);
+  for (const { name, before } of original) assert.equal(await readFile(path.join(dir, name), "utf8"), before);
+  await assert.rejects(provider.update((document) => { document.submissions.push(preparedSubmission()); }), (error) => error.status === 503);
+  await assert.rejects(provider.update((document) => { document.submissions[0].status = "submitted"; }), (error) => error.status === 503);
+  assert.equal((await provider.read()).submissions[0].status, "prepared");
 });
 
 test("saving one case, tags or media only changes their own files and draft deletion removes its detail", async (t) => {
@@ -142,7 +195,7 @@ test("saving one case, tags or media only changes their own files and draft dele
   const repo = createRepository({ directory: dir, seeds: [] });
   let a = await repo.change({ action: "save", draft: input });
   const b = await repo.change({ action: "save", draft: input });
-  const untouched = ["tags.json", "media.json", `content/${b.id}.json`];
+  const untouched = ["tags.json", "media.json", "submissions.json", `content/${b.id}.json`];
   const oldTime = new Date("2000-01-01T00:00:00Z");
   for (const name of untouched) await utimes(path.join(dir, name), oldTime, oldTime);
   a = await repo.change({ action: "save", id: a.id, revision: a.revision, draft: { ...a.draft, title: "仅修改这条" } });
@@ -188,7 +241,7 @@ test("missing type files, missing details and unsafe index IDs fail without rese
   const dir = await directory(t);
   const repo = createRepository({ directory: dir, seeds: [] });
   const record = await repo.change({ action: "save", draft: input });
-  for (const name of ["tags.json", "media.json", `content/${record.id}.json`, "content.json"]) {
+  for (const name of ["tags.json", "media.json", "submissions.json", `content/${record.id}.json`, "content.json"]) {
     const file = path.join(dir, name), original = await readFile(file, "utf8");
     await unlink(file);
     await assert.rejects(repo.listRecords(), (error) => error.status === 503);

@@ -7,18 +7,20 @@ import path from "node:path";
 import { ContentError } from "../errors.js";
 import { validateDocument, validMediaName } from "./document.js";
 import { validCaseId } from "../../lib/contentEntries.js";
+import { OssMediaStorage } from "./oss.js";
 
 const serialize = (value) => JSON.stringify(value, null, 2) + "\n";
 const storageError = (message) => new ContentError(`${message}；请检查数据文件，原数据不会重新初始化。`, 503);
-const dataFilename = (name) => ["content.json", "tags.json", "media.json"].includes(name) ||
+const dataFilename = (name) => ["content.json", "tags.json", "media.json", "submissions.json"].includes(name) ||
   (typeof name === "string" && name.startsWith("content/") && name.endsWith(".json") && validCaseId(name.slice(8, -5)));
 
 function filesFor(document) {
   validateDocument(document);
   const files = new Map([
-    ["content.json", { version: 2, items: document.content.map(({ draft, published, ...record }) => ({ ...record, kind: draft.kind, title: draft.title })) }],
+    ["content.json", { version: 3, items: document.content.map(({ draft, published, ...record }) => ({ ...record, kind: draft.kind, title: draft.title })) }],
     ["tags.json", { version: 1, ...document.tags }],
     ["media.json", { version: 1, items: document.media }],
+    ["submissions.json", { version: 1, items: document.submissions }],
   ]);
   for (const { id, draft, published } of document.content) files.set(`content/${id}.json`, { version: 1, id, draft, published });
   return new Map([...files].map(([name, value]) => [name, serialize(value)]));
@@ -26,11 +28,12 @@ function filesFor(document) {
 
 /** @implements {import('./provider.js').DataProvider} */
 export class JsonDataProvider {
-  constructor({ directory, initialize }) {
+  constructor({ directory, initialize, oss }) {
     this.directory = path.resolve(directory);
     this.lock = path.join(this.directory, ".content.lock");
     this.journal = ".content-transaction.json";
     this.initialize = initialize;
+    this.oss = oss ?? new OssMediaStorage();
   }
 
   async readText(name) {
@@ -50,7 +53,8 @@ export class JsonDataProvider {
 
   async hasSplitFiles() {
     const details = await readdir(path.join(this.directory, "content")).catch((error) => { if (error.code !== "ENOENT") throw error; return []; });
-    return await this.readText("tags.json") !== null || await this.readText("media.json") !== null || details.length > 0;
+    return await this.readText("tags.json") !== null || await this.readText("media.json") !== null ||
+      await this.readText("submissions.json") !== null || details.length > 0;
   }
 
   async readExisting() {
@@ -61,28 +65,33 @@ export class JsonDataProvider {
     }
     // One-time migration at the storage boundary; subsequent access uses split files only.
     if (index?.version === 1 && Array.isArray(index.content)) {
-      const document = validateDocument(index);
+      const document = validateDocument({ ...index, version: 2, submissions: [] });
       if (await this.hasSplitFiles()) throw storageError("旧合并文件与拆分文件同时存在，无法安全自动迁移");
       await this.write(document);
       return document;
     }
-    if (index?.version !== 2 || !Array.isArray(index.items)) throw storageError("案例索引结构或版本无效");
+    if (![2, 3].includes(index?.version) || !Array.isArray(index.items)) throw storageError("案例索引结构或版本无效");
     const ids = new Set();
     for (const entry of index.items) {
       if (!validCaseId(entry?.id) || ids.has(entry.id)) throw storageError("案例索引包含无效或重复的标识");
       ids.add(entry.id);
     }
-    const [tags, media, content] = await Promise.all([
+    const [tags, media, submissions, content] = await Promise.all([
       this.readJson("tags.json"),
       this.readJson("media.json"),
+      this.readJson("submissions.json", index.version === 2),
       Promise.all(index.items.map(async ({ kind, title, ...record }) => {
         const detail = await this.readJson(`content/${record.id}.json`);
         if (detail?.version !== 1 || detail.id !== record.id) throw storageError(`案例详情结构或版本无效：${record.id}`);
         return { ...record, draft: detail.draft, published: detail.published };
       })),
     ]);
-    if (tags?.version !== 1 || media?.version !== 1) throw storageError("标签或素材索引版本无效");
-    return validateDocument({ version: 1, content, tags: { groups: tags.groups, revision: tags.revision }, media: media.items });
+    if (tags?.version !== 1 || media?.version !== 1 || (submissions !== null && submissions?.version !== 1)) throw storageError("标签、素材或提交索引版本无效");
+    if (index.version === 2 && submissions !== null) throw storageError("旧案例索引与提交索引同时存在，无法安全自动迁移");
+    const document = validateDocument({ version: 2, content, tags: { groups: tags.groups, revision: tags.revision },
+      media: media.items, submissions: submissions?.items ?? [] });
+    if (index.version === 2) await this.write(document);
+    return document;
   }
 
   async locked(work) {
@@ -211,21 +220,40 @@ export class JsonDataProvider {
   }
 
   async statMedia(name) {
+    const storage = await this.mediaStorage(name);
+    if (storage) return this.oss.statMedia(storage);
     try { const info = await stat(this.mediaPath(name)); return info.isFile() ? { size: info.size } : null; }
     catch (error) { if (error.code === "ENOENT") return null; throw error; }
   }
 
   async openMedia(name, range) {
+    const storage = await this.mediaStorage(name);
+    if (storage) return this.oss.openMedia(storage, range);
     return Readable.toWeb(createReadStream(this.mediaPath(name), range));
   }
 
   async removeMedia(name) {
+    const storage = await this.mediaStorage(name);
+    if (storage) return this.oss.removeMedia(storage);
     await unlink(this.mediaPath(name)).catch((error) => { if (error.code !== "ENOENT") throw error; });
   }
 
   async exportMedia(name, destination) {
+    const storage = await this.mediaStorage(name);
+    if (storage) return this.oss.exportMedia(storage, destination);
     await copyFile(this.mediaPath(name), destination);
   }
 
   async close() {}
+
+  async mediaStorage(name) {
+    if (!validMediaName(name)) throw new ContentError("素材文件名无效");
+    return (await this.read()).media.find((item) => item.name === name)?.storage;
+  }
+
+  async getDirectUploadConfig() { return this.oss.getDirectUploadConfig(); }
+  async makeUploadKey(submissionId, name) { return this.oss.makeUploadKey(submissionId, name); }
+  async createUploadUrl(input) { return this.oss.createUploadUrl(input); }
+  async inspectUploadedObject(input) { return this.oss.inspectUploadedObject(input); }
+  async promoteUploadedObject(input) { return this.oss.promoteUploadedObject(input); }
 }
