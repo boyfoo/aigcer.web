@@ -159,7 +159,7 @@ const preparedSubmission = () => ({
   id: "12345678-1234-1234-1234-123456789abc", requestId: "test-request", manifestHash: "a".repeat(64),
   status: "prepared", createdAt: "2026-10-07T00:00:00.000Z", updatedAt: "2026-10-07T00:00:00.000Z",
   files: [{ assetId: "12345678-1234-1234-1234-123456789def", localName: "frame.png", kind: "image", mime: "image/png", size: 8,
-    name: "12345678-1234-1234-1234-123456789def.png", uploadKey: "jingjie/uploads/12345678-1234-1234-1234-123456789abc/12345678-1234-1234-1234-123456789def.png" }],
+    name: "12345678-1234-1234-1234-123456789def.png", uploadKey: "jingjie/media/12345678-1234-1234-1234-123456789def.png" }],
 });
 
 test("submissions persist independently, reject malformed state and roll back atomically with content", async (t) => {

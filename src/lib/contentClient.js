@@ -1,22 +1,9 @@
-import { isOssMediaUrl, mediaNameFromUrl, ossAccessExpiresAt, unsignedOssUrl } from "./mediaUrls.js";
 import { MEDIA_TYPES } from "./mediaFormats.js";
 
 export const contentReadOnly = process.env.NEXT_PUBLIC_CONTENT_READ_ONLY === "1";
 
 export async function requestOfflineImage(url, signal) {
-  const access = await requestMediaAccess(url, signal);
-  return fetch(access.url, { signal });
-}
-
-export async function requestMediaAccess(url, signal) {
-  if (!contentReadOnly && isOssMediaUrl(url)) {
-    const expiresAt = ossAccessExpiresAt(url);
-    if (expiresAt && Date.parse(expiresAt) > Date.now()) {
-      return { url, mediaUrl: unsignedOssUrl(url), expiresAt };
-    }
-    if (mediaNameFromUrl(url)) return requestContent("/api/media/access", { url }, signal);
-  }
-  return { url, mediaUrl: url, expiresAt: null };
+  return fetch(url, { signal });
 }
 
 function putUpload(file, prepared, onProgress, signal) {
@@ -81,29 +68,26 @@ export async function uploadFile(file, kind, onProgress = () => {}, onRequest = 
 
   try {
     onPhase("preparing");
-    const prepared = await requestContent("/api/uploads", {
-      action: "prepare",
-      kind,
-      name: file.name || (kind === "video" ? "video.mp4" : "image.png"),
-      mime: file.type || type?.[0] || "",
-      size: file.size,
+    controller.signal.throwIfAborted();
+    const { uploads } = await requestContent("/api/oss/presign", {
+      uploads: [{
+        kind,
+        name: file.name || (kind === "video" ? "video.mp4" : "image.png"),
+        mime: file.type || type?.[0] || "",
+        size: file.size,
+      }],
     }, controller.signal);
     controller.signal.throwIfAborted();
+    const prepared = uploads[0];
 
     onPhase("uploading");
     await putUpload(file, prepared, onProgress, controller.signal);
     controller.signal.throwIfAborted();
 
-    onPhase("confirming");
-    const uploaded = await requestContent("/api/uploads", {
-      action: "complete",
-      uploadToken: prepared.uploadToken,
-    }, controller.signal);
-    controller.signal.throwIfAborted();
-    return uploaded;
+    return prepared;
   } catch (error) {
     if (controller.signal.aborted) throw Object.assign(new Error("上传已取消"), { name: "AbortError" });
-    if (error.name === "TimeoutError") throw new Error("上传准备或确认超时，请检查网络后重试。");
+    if (error.name === "TimeoutError") throw new Error("上传准备超时，请检查网络后重试。");
     if (error instanceof TypeError) throw new Error("无法连接网站，请检查网络后重试。");
     throw error;
   }

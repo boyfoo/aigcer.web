@@ -68,14 +68,13 @@ Get-Command node.exe, npm.cmd | Select-Object Name, Source
 
 工具标题、说明及服务指南使用网站名称“镜界”，明确对应“提交到镜界”“上传到镜界”“把拉片结果保存到镜界”等请求，并说明申请地址、直传素材、保存草稿及恢复上传的调用顺序。客户端连接后可重新获取工具列表查看这些说明；实际是否调用仍由客户端和模型根据对话判断。
 
-在服务器按 `.env.example` 配置 `SITE_URL`、持久数据目录，以及 `JINGJIE_OSS_BUCKET`、`JINGJIE_OSS_REGION`（如 `cn-hangzhou`）、`JINGJIE_OSS_ACCESS_KEY_ID`、`JINGJIE_OSS_ACCESS_KEY_SECRET`。后台录入与 MCP 预上传共用同一 OSS Bucket 和目录前缀，图片、视频均由浏览器或 MCP 客户端直接 PUT 到私有 OSS；网站接口仅接收 JSON 元数据，负责签名、核验及登记；素材预览和播放由浏览器或 MCP 客户端直接 GET OSS。上传与私有素材访问必须配置 OSS，未配置时返回 503，只配置部分项会报配置错误。Bucket CORS 需允许站点来源的 PUT、GET、HEAD，以及 `Content-Type`、`x-oss-*` 请求头；开发来源与生产来源均须覆盖。可选 `JINGJIE_OSS_SECURITY_TOKEN` 适用于临时凭据，凭据到期前需更新服务端配置。密钥始终在服务端，浏览器与 MCP 客户端仅收到具有有限有效期和指定对象路径的上传 URL。
+在服务器按 `.env.example` 配置 `SITE_URL`、持久数据目录，以及 `JINGJIE_OSS_BUCKET`、`JINGJIE_OSS_REGION`（如 `cn-hangzhou`）、`JINGJIE_OSS_ACCESS_KEY_ID`、`JINGJIE_OSS_ACCESS_KEY_SECRET`。后台录入与 MCP 预上传共用同一 OSS Bucket 和目录前缀，图片、视频均由浏览器或 MCP 客户端直接 PUT 到 OSS；网站上传预签名接口仅接收 JSON 元数据，批量签发 PUT 地址并预登记素材。对象使用 `public-read` 权限，素材预览和播放直接读取公开 OSS 地址。上传必须配置 OSS，未配置时返回 503，只配置部分项会报配置错误。Bucket CORS 需允许站点来源的 PUT、GET、HEAD，以及 `Content-Type`、`x-oss-*` 请求头；开发来源与生产来源均须覆盖。可选 `JINGJIE_OSS_SECURITY_TOKEN` 适用于临时凭据，凭据到期前需更新服务端配置。密钥始终在服务端，浏览器与 MCP 客户端仅收到具有有限有效期和指定对象路径的上传 URL。
 
 | MCP 工具 | 用途 |
 | --- | --- |
-| `jingjie_prepare_upload` | 传 `requestId` 和文件清单，返回 `submissionId`、各文件的 `assetId`、`objectKey`、真实 OSS `url`、临时 `uploadUrl`、`headers` 和 `expiresAt` |
-| `jingjie_submit_case` | 传 `submissionId`、原始拉片 JSON `data` 和成功上传的 `assets`；核验后保存新草稿，返回编辑/预览链接、镜头数量与缺失项 |
-| `jingjie_get_submission_status` | 查询同次提交的保存结果和逐文件状态；未保存时续签上传地址，已保存时返回原结果 |
-| `jingjie_get_media_access` | 传 `{url: 已登记的真实 OSS 对象地址}`，返回 GET 签名 `url`、原 `mediaUrl` 和 `expiresAt`，默认 1 小时有效；客户端直接 GET OSS 读取 |
+| `jingjie_presign` | 唯一上传签名工具；传 `requestId` 和 `files` 批量获取 `submissionId`、`uploads`，包含 `assetId`、`objectKey`、公开素材地址 `mediaUrl` 与 PUT `uploadUrl`/`uploadExpiresAt`/`headers` |
+| `jingjie_submit_case` | 传 `submissionId`、原始拉片 JSON `data` 和成功上传的 `assets`，核对 OSS 元信息并保存草稿，返回编辑/预览链接、镜头数量与缺失项 |
+| `jingjie_get_submission_status` | 只查询保存结果与 OSS 对象元信息，返回逐文件状态，不签发地址 |
 
 文件清单示例：
 
@@ -89,15 +88,15 @@ Get-Command node.exe, npm.cmd | Select-Object Name, Source
 }
 ```
 
-实际 `requestId` 使用 UUID 或 1–120 位字母、数字、下划线、短横线；`size` 必须是文件真实字节数。`localName` 使用输出目录内相对路径，后端用它关联原视频、人物图片和首尾帧。每次最多 252 个素材、1 条视频，图片 20 MiB、视频 512 MiB，文件类型与网页上传相同。
+实际 `requestId` 使用 UUID 或 1–120 位字母、数字、下划线、短横线；`size` 必须是文件真实字节数。`localName` 使用输出目录内相对路径，后端用它关联原视频、人物图片和首尾帧。每次文件清单最多 252 个素材，其中最多 1 条视频；图片 20 MiB、视频 512 MiB，文件类型与网页上传相同。
 
-本地 AI 的执行顺序为：读取文件 → 申请地址 → 向 OSS **PUT 原始文件字节** → 调用提交工具。不要使用 FormData，也不要把本地路径或 URL 文本作为上传正文。返回的 `Content-Type`、`Content-Length` 和 `x-oss-*` 请求头必须按原值携带；预签名地址默认 30 分钟有效，可通过 `JINGJIE_OSS_UPLOAD_TTL_SECONDS` 设置 60–3600 秒。上传禁止覆盖，并使用私有对象权限；二进制文件不经过 MCP 或网站上传接口。
+本地 AI 的执行顺序为：读取文件 → 调用 `jingjie_presign` → 向 OSS **PUT 原始文件字节** → 直接用返回的 `mediaUrl` 预览 → 调用 `jingjie_submit_case` 保存资料。申请时已预登记素材，PUT 写入正式 `<前缀>/media/` 对象，成功后即可预览，无需上传确认或复制。不要使用 FormData，也不要把本地路径或 URL 文本作为上传正文；返回的 `Content-Type` 和 `x-oss-*` 请求头按原值携带，签名不绑定浏览器禁止设置的 `Content-Length`。PUT 地址默认 30 分钟有效，可通过 `JINGJIE_OSS_UPLOAD_TTL_SECONDS` 设置 60–3600 秒。上传禁止覆盖，对象使用 `public-read` 权限，文件字节不经过 MCP 或网站后端。
 
-上传完成后，提交参数形如 `{submissionId, data: 原始shots.json对象, assets: [{assetId, url, objectKey}]}`；`url` 和 `objectKey` 可省略，提供时必须是后端返回的原值。稳定 `url` 是保存资料的真实 OSS 对象地址，读取时生成访问签名；临时 `uploadUrl` 仅用于 PUT 上传，不能用于预览。预览素材须先通过 `jingjie_submit_case` 完成核验和登记，再以真实 OSS 对象地址调用 `jingjie_get_media_access` 获取 GET 签名；素材字节直接从 OSS 读取，不通过 MCP 或网站后端。单张图片的 `data` 使用 `{kind:"image",title,image:"图片localName",description,analysis,prompt}`。
+上传完成后，提交参数形如 `{submissionId, data: 原始shots.json对象, assets: [{assetId, mediaUrl, objectKey}]}`；`mediaUrl` 和 `objectKey` 可省略，提供时必须是后端返回的原值。`mediaUrl` 同时用于资料保存、预览和播放，`uploadUrl` 仅用于 PUT 上传。保存前后端通过 OSS HEAD 核对所选文件的大小和 Content-Type，不读取文件内容。单张图片的 `data` 使用 `{kind:"image",title,image:"图片localName",description,analysis,prompt}`。
 
 后端直接接收 [reelbench-skills](https://github.com/eternityspring/reelbench-skills) 产生的 `shots.json`，转换已知枚举和资料字段。`source` 对应视频 `localName`；首尾帧默认匹配 `frames/S01a.jpg`、`frames/S01b.jpg`，也可在镜头 `image`、`endImage` 指定路径，人物图片用 `cast.image` 指定。`frame` 转为概述、`size/camera` 转为景别/运镜、`rhythmNote` 转为叙事、`audio` 作为来源提供的台词。未知枚举和缺失素材留空并返回提示，不推测模型参数或提示词，来源机器复核不转成作者人工确认。原始 JSON 与标识映射保存在提交记录中，不随公开内容或 Sites 导出。
 
-断网或地址过期时先查询状态，跳过 `uploaded` 文件，只重新上传 `awaiting_upload` 文件。`unavailable` 表示 OSS 暂时无法核验，保留标识后稍后查询；`invalid` 表示文件核验失败，按返回原因处理，错误格式文件不能用原地址覆盖，应修正后新建提交。申请与提交均可重试：沿用相同 `requestId`、`submissionId` 和原资料，不会重复创建案例；相同标识配不同清单或资料会返回冲突。草稿允许缺图或不完整资料，保存与手动发布分开。
+断网或地址过期时先查询状态，跳过 `uploaded` 文件，只重新上传 `awaiting_upload` 文件。`unavailable` 表示 OSS 暂时无法核验，保留标识后稍后查询；`invalid` 表示文件核验失败，按返回原因处理，错误格式文件不能用原地址覆盖，应修正后新建提交。PUT 地址过期时，用原 `requestId` 与相同 `files` 调用 `jingjie_presign`；状态查询只核对元信息，不返回新签名。申请与提交均可重试：沿用相同 `requestId`、`submissionId` 和原资料，不会重复创建案例；相同标识配不同清单或资料会返回冲突。草稿允许缺图或不完整资料，保存与手动发布分开。
 
 浏览器来源默认限制为本站，原生 MCP 客户端没有 `Origin` 时可以连接；需要跨域浏览器客户端时，用 `JINGJIE_MCP_ALLOWED_ORIGINS` 配置逗号分隔的完整来源地址。此来源检查沿用当前免登录产品边界，不是账号认证。远程服务需要普通 Next.js 部署，Sites 静态站点不提供 `/mcp`。
 
@@ -119,19 +118,19 @@ data/
 
 JSON 使用 UTF-8、两空格缩进。`content.json` 的文件格式版本为 3，`items` 只放列表摘要；`content/<id>.json` 包含 `id`、`draft` 和 `published`，详情文件不再与其他案例混存。标签、素材、提交索引和详情文件的格式版本为 1。提供者对业务层返回 `DataDocument` v2（新增 `submissions`）。只更新发生变化的文件，修改单个案例不会重写其他案例，修改标签不会重写案例。
 
-网站素材保存在 OSS，并在 `media.json` 记录 `storage: {provider:"oss",bucket,key}`。草稿和公开快照保存真实 OSS 对象 URL，不持久保存有期限的签名。内容 API 与服务端页面读取资料时，为已登记的 OSS 素材生成新的 V4 签名地址，浏览器直接读取私有对象及范围播放。`POST /api/media/access` 接收 `{url}`，返回 `{url, mediaUrl, expiresAt}`，可根据已登记的真实或旧签名地址重新获取访问链接；不会为其他 Bucket、未知对象或外部网址签名。`/api/media/access` 只返回访问元信息，不传输图片或视频字节；普通 Next.js 运行时不提供 `/media/<文件名>` 素材读取入口。访问链接默认 1 小时有效，可通过 `JINGJIE_OSS_ACCESS_TTL_SECONDS=3600` 配置 60–86400 秒，与上传地址的有效期独立。访问查询响应使用 `Cache-Control: private, no-store`，每次查询重新签名；浏览器可复用未过期的签名，过期后重新查询。本地素材读写仅用于内部迁移与静态交付工具，不提供运行时代理。
+网站素材保存在公开 OSS 对象中，并在 `media.json` 记录 `storage: {provider:"oss",bucket,key}`。草稿、公开快照、内容 API 与服务端页面统一使用真实 OSS 对象 URL，浏览器直接读取图片和视频。读取与保存内容不依赖上传签名服务。唯一 HTTP 上传签名接口为 `POST /api/oss/presign`，响应使用 `Cache-Control: private, no-store`。普通 Next.js 运行时不提供 `/media/<文件名>` 素材读取入口，本地素材读写仅用于内部迁移与静态交付工具。
 
-网页与 MCP 的图片展示、视频播放，以及离线报告图片均通过有效签名地址直接读取 OSS；服务端只生成访问签名。离线报告读取 OSS 图片并嵌入 data URI，需要 Bucket CORS 允许站点来源的 GET/HEAD 读取及范围请求；读取失败会显示缺图提示，不通过网站后端代理图片字节。Sites 构建把已发布快照中的登记 OSS 引用映射为包内 `/media/<文件名>`，通过提供者下载对应实体素材，不携带有期限的签名地址；该静态交付不使用网站运行时素材代理。
+网页与 MCP 的图片展示、视频播放，以及离线报告图片均直接读取公开 OSS 地址。离线报告读取 OSS 图片并嵌入 data URI，需要 Bucket CORS 允许站点来源的 GET/HEAD 读取及范围请求；读取失败会显示缺图提示，不通过网站后端代理图片字节。Sites 构建把已发布快照中的登记 OSS 引用映射为包内 `/media/<文件名>`，通过提供者下载对应实体素材；该静态交付不使用网站运行时素材代理。
 
-后台上传分三步：向 `POST /api/uploads` 发送 JSON `{action:"prepare", kind, name, mime, size}`，获得 `{uploadToken, uploadUrl, headers, expiresAt, mediaUrl}`；浏览器携带返回的请求头向 `uploadUrl` PUT 原始 `File`；再向同一接口发送 JSON `{action:"complete", uploadToken}`。浏览器上传签名不绑定 `Content-Length`，无需手工设置浏览器禁止写入的该请求头；后端通过 OSS HEAD 严格核对大小，并读取最多 1024 字节核验真实格式和 ETag，再通过 OSS 内部复制到 `<前缀>/media/` 后登记素材。完成接口返回 `{url, mediaUrl, expiresAt, name, size, kind}`：`url` 是签名访问地址，`expiresAt` 是 ISO 格式的访问到期时间，`mediaUrl` 是不带签名的真实 OSS 对象 URL。录入预览直接使用 `url`，字段更新和保存使用 `mediaUrl`。
+浏览器通过 `POST /api/oss/presign` 批量申请上传：请求为 `{uploads:[{name,kind,mime,size,mediaUrl?}]}`，每批 1–252 个文件，响应为 `{uploads}`。上传项包含 `{name,size,kind,mediaUrl,uploadUrl,headers,uploadExpiresAt}`；`mediaUrl` 是公开对象地址，`uploadExpiresAt` 是 PUT 到期时间。
 
-上传票据由服务端使用 HMAC 签发，绑定申请时的元数据并防止篡改，无需新增配置或持久化待上传会话。票据在 PUT 地址到期后再保留 10 分钟用于确认；核验、复制或登记失败时保留对象供确认重试，成功后清理临时对象。图片、视频原始文件不经过 `/api/uploads`，该接口只接受准备与完成两种 JSON 操作。
+后台选择单个文件时只发送一次 `{uploads:[文件元数据]}`，取得 `uploads[0]` 后由浏览器携带返回的请求头 PUT 原始 `File` 到 OSS，成功后立即使用 `mediaUrl` 预览和保存资料，无需回调后台确认。签名不绑定 `Content-Length`，浏览器自动设置文件长度。申请时仅预登记元数据，文件直接写入正式 `<前缀>/media/` 对象；上传和进度由浏览器处理，取消会同时中止正在进行的签名请求或 PUT。重新申请同一未上传对象时可携带原 `mediaUrl` 与相同文件元数据。
 
-MCP 临时上传对象位于 `<前缀>/uploads/<submissionId>/`，核验后通过 OSS 内部复制到 `<前缀>/media/`，与上传地址隔离。默认前缀为 `jingjie`；变更 Bucket 或目录前缀前需迁移已有对象与记录。未提交及未引用素材暂不自动回收。
+MCP 的 `jingjie_presign` 与该 HTTP 接口共用 `DataProvider.presignMedia`。默认前缀为 `jingjie`；变更 Bucket 或目录前缀前需迁移已有对象与记录。申请但尚未上传或未引用的素材记录暂不自动回收。
 
-配置完整后，提供者在读取和保存边界将已登记 OSS 素材的 `/media/` 引用或旧签名地址规范为真实 OSS 对象 URL，覆盖封面、视频、镜头首尾帧和人物图片；本地素材、外部地址与正文保留。迁移不改变内容版本或发布状态，访问签名也不写回资料。
+配置完整后，提供者在读取和保存边界将已登记 OSS 素材的 `/media/` 引用或旧签名地址规范为真实 OSS 对象 URL，覆盖封面、视频、镜头首尾帧和人物图片；本地素材、外部地址与正文保留。迁移不改变内容版本或发布状态。
 
-全新数据目录首次读取时导入 `src/data.js` 的示例，已有文件不会重新初始化；索引、详情、标签或提交文件损坏、缺失、版本不支持时明确报错。初始示例图片存于私有 OSS，首次初始化同时登记对应素材，读取图片需配置原 Bucket 的访问凭据，不重置已有资料。旧版合并 `content.json` 及 v2 拆分索引在首次读取时于提供者边界迁移成上述结构，并初始化空提交索引，不生成备份文件。草稿、公开快照、版本和素材关联均保留，无需手工拆文件。v3 索引缺少提交文件会报错，不静默补空。
+全新数据目录首次读取时导入 `src/data.js` 的示例，已有文件不会重新初始化；索引、详情、标签或提交文件损坏、缺失、版本不支持时明确报错。初始示例图片存于公开 OSS，首次初始化同时登记对应素材，不重置已有资料。旧版合并 `content.json` 及 v2 拆分索引在首次读取时于提供者边界迁移成上述结构，并初始化空提交索引，不生成备份文件。草稿、公开快照、版本和素材关联均保留，无需手工拆文件。v3 索引缺少提交文件会报错，不静默补空。
 
 本地的 20 条布局演示可整理为左侧分类的筛选测试资料：`npm run data:filter-examples` 只检查覆盖，`npm run data:filter-examples -- --apply` 通过 DataProvider 更新演示记录，并补充 10 条播放器测试案例。20 条分镜和 20 个测试镜头分别覆盖现有二级选项，支持检查同组多选和跨组组合。资料明确标为虚构筛选示例，封面为布局占位图，视频仅用于播放器测试。执行前备份当前数据到 `.cache/`；自行编辑过的演示记录会拒绝覆盖，原始案例、素材和浏览器收藏保留。此工具需使用前文说明的兼容 Node.js 与 npm。
 
@@ -139,7 +138,7 @@ MCP 临时上传对象位于 `<前缀>/uploads/<submissionId>/`，核验后通�
 
 ### 提供者接口与切换
 
-调用关系为页面/HTTP API → `src/server/repository.js`（校验、发布规则、版本冲突）→ `DataProvider`（实际持久化）。浏览器通过 `src/lib/contentClient.js` 使用 `/api/content`、`/api/public`、`/api/tags`、`/api/uploads`、`/api/media/access`，统一处理请求与返回值。
+调用关系为页面/HTTP API → `src/server/repository.js`（校验、发布规则、版本冲突）→ `DataProvider`（实际持久化）。浏览器通过 `src/lib/contentClient.js` 使用 `/api/content`、`/api/public`、`/api/tags`、`/api/oss/presign`，统一处理请求与返回值。
 
 接口定义和集中工厂位于 `src/server/storage/provider.js`，默认实现位于 `src/server/storage/json.js`。所有方法均为异步：
 
@@ -148,22 +147,18 @@ MCP 临时上传对象位于 `<前缀>/uploads/<submissionId>/`，核验后通�
 | `read()` | 返回独立的数据快照，不允许返回共享可变引用 |
 | `update(work)` | 在事务中读取最新快照，执行回调并原子提交；失败不提交，跨实例写入必须串行化 |
 | `writeMedia(name, chunks)` | 仅内部迁移和静态交付工具流式写入本地素材；网站与 MCP 上传均使用 OSS 预签名直传 |
-| `createMediaUrl(name, method, uploadedStorage?)` | 为 OSS 素材签发对应 GET/HEAD 方法的访问 URL，返回 `{url, expiresAt}`；登记前可传入写入返回的 `storage`，本地素材返回 `null` |
 | `getMediaReference(name, uploadedStorage?)` / `getPlannedMediaReference(name)` | 返回真实 OSS 对象 URL；直传申请可按已配置目录生成正式对象地址 |
 | `resolveMediaReference(url)` | 按已登记对象匹配真实或签名 OSS 地址，返回素材记录；未知对象返回 `null` |
 | `canonicalizeMediaUrls(value, media?)` | 将已登记素材字段转为不带签名的真实 OSS URL，保留本地、外站地址及正文；事务内传入当前素材清单 |
-| `resolveMediaAccess(value)` / `resolveStaticMedia(value)` | 为案例素材字段生成访问签名，或映射为 Sites 包内地址；保留持久资料原值 |
+| `resolveStaticMedia(value)` | 将已发布案例的登记 OSS 素材映射为 Sites 包内地址；保留持久资料原值 |
 | `statMedia(name)` | 内部工具查询素材大小 |
 | `openMedia(name, range)` | 仅内部迁移和静态交付工具读取本地素材流，拒绝读取 OSS 素材；流在 `close()` 后仍可使用 |
-| `removeMedia(name, uploadedStorage?)` | 内部工具移除指定本地或 OSS 对象；上传登记失败不调用该方法，保留对象供重试 |
+| `removeMedia(name, uploadedStorage?)` | 内部工具移除指定本地或 OSS 对象 |
 | `exportMedia(name, destination)` | 为 Sites 静态交付下载或复制已发布快照引用的实体素材 |
-| `getDirectUploadConfig()` / `makeUploadKey(submissionId, name)` | 查询直传配置、生成本次提交的临时对象路径 |
-| `createUploadUrl({key, mime, size})` | 签发指定类型、大小和路径的上传 URL |
-| `createBrowserUpload(input)` | 为浏览器签发绑定素材元数据的上传票据、PUT 地址及请求头 |
-| `verifyBrowserUpload(uploadToken)` | 验证上传票据签名和到期时间，返回票据绑定的元数据 |
-| `removeUploadedObject(key)` | 清理本次直传的 OSS 临时对象 |
-| `inspectUploadedObject({key, kind, size, mime})` | 核验 OSS 对象是否存在、大小、真实格式及 ETag |
-| `promoteUploadedObject({sourceKey, name, etag})` | 按已核验 ETag 复制至正式素材目录，支持相同内容重试 |
+| `getDirectUploadConfig()` | 查询 OSS 直传是否启用及 PUT 地址有效期 |
+| `planMediaUploads(files)` | 根据类型、大小和原名规划正式 OSS 素材，供提交绑定 |
+| `presignMedia({uploads})` | 批量预登记上传元数据并签发正式对象的 PUT 地址，返回公开 `mediaUrl`；HTTP 与 MCP 共用 |
+| `inspectMediaObject({key, kind, size, mime})` | 仅通过 OSS HEAD 核对元信息，供 MCP 状态查询和保存资料使用，不读取文件内容 |
 | `close()` | 释放提供者资源 |
 
 以后新增数据库或远程存储时，实现这组接口，在工厂的 `providers` 中注册名称，再设置 `JINGJIE_DATA_PROVIDER=提供者名称` 并重启。页面、客户端、API、发布规则和 Sites 导出无需修改。当前只注册 `json`；未知名称会报错，不会静默回退。更换提供者前需迁移原数据，新实现也必须遵循 `storage/document.js` 的版本化数据契约及事务语义。测试可通过 `createRepository({ provider })` 注入独立实现。
@@ -208,6 +203,6 @@ npm run build:sites
 npm run test:sites
 ```
 
-`test:publishing` 运行已构建的 Next.js 服务，使用临时独立 JSON 数据目录与端口，检查 MCP 远程发现/调用、上传、范围请求、发布状态、公开 HTML 和重启持久化；完成后清理自己的服务与测试数据。`npm test` 包含 MCP 协议、提交转换、幂等事务和 OSS 签名/对象核验测试；OSS 网络操作使用替身，真实 Bucket 联通仍需部署配置后实测。
+`test:publishing` 运行已构建的 Next.js 服务，使用临时独立 JSON 数据目录与端口，检查 MCP 远程发现/调用、OSS 直传与读取、范围请求、发布状态、公开 HTML 和重启持久化；需要有效 OSS 配置，完成后清理自己的服务、测试数据和本次上传对象。`npm test` 包含 MCP 协议、提交转换、幂等事务和 OSS 签名/对象核验测试，其中 OSS 网络操作使用替身。
 
 Sites 构建通过当前提供者导出已发布内容的静态快照，复制这些快照引用的上传素材，保留 `dist/client/`、`dist/server/index.js` 与 `dist/.openai/hosting.json` 的既有打包方式。静态包不包含原始 JSON 数据文件、数据库、未发布内容和运行时写入接口。Sites 页面可以阅读、收藏和整理参考集；录入与标签保存需要普通 Next.js 服务。静态快照要更新内容需重新构建和部署。

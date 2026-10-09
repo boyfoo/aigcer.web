@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { getCases, casePath, shotPath, draftPath } from "../src/lib/content.js";
-import { isMediaUrl, normalizeContentEntry, normalizeDraft, presentCase } from "../src/lib/contentEntries.js";
+import { applyVideoUpload, isMediaUrl, normalizeContentEntry, normalizeDraft, presentCase } from "../src/lib/contentEntries.js";
 import { createDefaultTagGroups } from "../src/tagSettings.js";
 import { createCreationReferences, filterCreationReferences } from "../src/lib/creationReferences.js";
 import { getShotAnnotation } from "../src/lib/shotPresentation.js";
@@ -10,6 +10,65 @@ import { caseLearningFocus } from "../src/lib/learningPresentation.js";
 import { createStudyReport } from "../src/lib/studyReport.js";
 
 const entry = () => ({ ...structuredClone(getCases()[2]), id: "local-test", title: "  新录入案例  " });
+
+test("replacing a video clears previous measurements and reviews while preserving authored material", () => {
+  const draft = {
+    kind: "视频", title: "", prompt: "保留提示词", description: "未保存介绍",
+    video: {
+      src: "https://example.com/old.mp4", durationSeconds: 99, isMock: true,
+      metadata: { width: 1920, height: 1080, fps: 24, hasAudio: true },
+      cast: [{ id: "person", name: "主角" }],
+      shots: [{ id: "shot", narrative: "未保存分析", review: { boundary: { confirmed: true } } }],
+    },
+  };
+  const before = structuredClone(draft);
+  const changed = applyVideoUpload(draft, "https://example.com/new.mp4", { phase: "uploaded", name: "新片.mp4", duration: 0, metadata: {} });
+  assert.equal(changed.title, "新片");
+  assert.equal(changed.video.src, "https://example.com/new.mp4");
+  assert.equal(changed.video.durationSeconds, 0);
+  assert.deepEqual(changed.video.metadata, {});
+  assert.equal(changed.video.isMock, false);
+  assert.deepEqual(changed.video.shots, [{ id: "shot", narrative: "未保存分析", review: {} }]);
+  assert.deepEqual(changed.video.cast, draft.video.cast);
+  assert.equal(changed.prompt, draft.prompt);
+  assert.equal(changed.description, draft.description);
+  assert.deepEqual(draft, before);
+});
+
+test("late OSS measurements preserve current manual timing, video parameters and other unsaved edits", () => {
+  const draft = {
+    kind: "视频", title: "新填写的标题", prompt: "新的提示词", description: "新的介绍",
+    video: {
+      src: "https://example.com/new.mp4", durationSeconds: 12.5, isMock: false,
+      metadata: { width: 640, height: 360, fps: 25, hasAudio: false },
+      cast: [{ id: "person", name: "刚填写的人物" }],
+      shots: [{ id: "shot", narrative: "刚填写的分析", review: { boundary: { confirmed: true } } }],
+    },
+  };
+  const before = structuredClone(draft);
+  const changed = applyVideoUpload(draft, draft.video.src, { phase: "metadata", name: "文件名.mp4", duration: 30, metadata: { width: 1920, height: 1080 } });
+  assert.deepEqual(changed, draft);
+  assert.deepEqual(draft, before);
+});
+
+test("OSS measurements fill only unknown video fields and ignore a source that was replaced or removed", () => {
+  const draft = {
+    kind: "视频", title: "当前标题", prompt: "未保存提示词",
+    video: { src: "https://example.com/new.mp4", durationSeconds: 0, metadata: { fps: 24, hasAudio: false }, shots: [] },
+  };
+  const info = { phase: "metadata", duration: 30, metadata: { width: 1920, height: 1080 } };
+  const changed = applyVideoUpload(draft, draft.video.src, info);
+  assert.equal(changed.video.durationSeconds, 30);
+  assert.deepEqual(changed.video.metadata, { width: 1920, height: 1080, fps: 24, hasAudio: false });
+  assert.equal(changed.title, draft.title);
+  assert.equal(changed.prompt, draft.prompt);
+  for (const src of ["", "https://example.com/other.mp4"]) {
+    const current = { ...draft, video: { ...draft.video, src } };
+    assert.equal(applyVideoUpload(current, draft.video.src, info), current);
+  }
+  const image = { ...draft, kind: "分镜" };
+  assert.equal(applyVideoUpload(image, draft.video.src, info), image);
+});
 
 test("case learning focus uses authored material and never presents mock shot analysis as a real lesson", () => {
   assert.equal(caseLearningFocus({ analysis: "逆光描出轮廓。后续细节。" }), "逆光描出轮廓。");

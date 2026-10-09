@@ -12,6 +12,33 @@ export const caseTagValues = (item, groupId) => {
   return item.tags ?? [];
 };
 
+export function applyVideoUpload(draft, src, info) {
+  const video = draft.video;
+  if (info.phase === "metadata") {
+    if (draft.kind !== "视频" || video.src !== src) return draft;
+    return {
+      ...draft,
+      video: {
+        ...video,
+        durationSeconds: video.durationSeconds > 0 ? video.durationSeconds : info.duration,
+        metadata: { ...info.metadata, ...video.metadata },
+      },
+    };
+  }
+  return {
+    ...draft,
+    title: draft.title || (info.name || "").replace(/\.[^.]+$/, "").slice(0, 80),
+    video: {
+      ...video,
+      src,
+      durationSeconds: 0,
+      metadata: {},
+      isMock: false,
+      shots: video.shots.map((shot) => ({ ...shot, review: {} })),
+    },
+  };
+}
+
 export function isMediaUrl(value) {
   if (typeof value !== "string" || !value.trim()) return false;
   if (/^\/(?!\/)/.test(value) && !/[\\\s]/.test(value)) return true;

@@ -8,7 +8,7 @@
 .entry-case { display: flex; gap: 10px; align-items: center; width: 100%; padding: 7px; text-align: left; border: 2px solid transparent; border-radius: 8px; background: transparent; color: var(--text); cursor: pointer; }
 .entry-case:hover { background: var(--surface-soft); }
 .entry-case.is-active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
-.entry-case img { flex: 0 0 56px; width: 56px; height: 46px; object-fit: cover; border-radius: 4px; }
+.entry-case img { flex: 0 0 56px; width: 56px; height: 46px; object-fit: contain; border-radius: 4px; background: var(--surface); }
 .entry-case span { min-width: 0; }
 .entry-case strong { display: block; font-size: 14px; font-weight: 400; overflow-wrap: anywhere; }
 .entry-case small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
@@ -59,8 +59,9 @@
 .entry-state-note { margin: 0 0 28px; color: var(--muted); font-size: 14px; line-height: 1.75; }
 .entry-editor-heading > div { display: flex; flex-wrap: wrap; gap: 8px; }
 .entry-upload { display: grid; gap: 12px; min-width: 0; }
-.entry-upload-preview { display: grid; place-items: center; width: min(100%, 360px); height: 180px; border: 1px dashed var(--line-strong); border-radius: 8px; background: var(--surface); overflow: hidden; }
-.entry-upload-preview img, .entry-upload-preview video { width: 100%; height: 100%; object-fit: contain; }
+.entry-upload-preview { display: grid; place-items: center; justify-self: start; width: fit-content; min-width: 0; max-width: min(100%, 640px); border: 1px dashed var(--line-strong); border-radius: 8px; background: var(--surface); overflow: hidden; }
+.entry-upload-preview:has(> span) { width: min(100%, 360px); min-height: 180px; }
+.entry-upload-preview img, .entry-upload-preview video { display: block; width: auto; height: auto; max-width: 100%; max-height: min(320px, 45svh); object-fit: contain; }
 .entry-upload-preview span { padding: 16px; color: var(--muted); font-size: 14px; }
 .entry-upload-actions { display: flex; gap: 8px; }
 .entry-upload small { color: var(--muted); font-size: 13px; line-height: 1.7; }

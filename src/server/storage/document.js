@@ -24,6 +24,9 @@ import { MEDIA_TYPES } from "../../lib/mediaFormats.js";
 
 export const validMediaName = (name) => typeof name === "string" && /^[a-f0-9-]+\.(png|jpg|gif|webp|mp4|webm)$/.test(name);
 export const validSubmissionId = (id) => typeof id === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(id);
+export const sameStoredMedia = (left, right) => Boolean(left && right) &&
+  ["name", "mime", "size", "originalName"].every((field) => left[field] === right[field]) &&
+  ["provider", "bucket", "key"].every((field) => left.storage?.[field] === right.storage?.[field]);
 const object = (item) => item !== null && typeof item === "object" && !Array.isArray(item);
 const hash = (value) => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
 const date = (value) => typeof value === "string" && Number.isFinite(Date.parse(value));
@@ -40,7 +43,7 @@ function validSubmission(row) {
         !Number.isSafeInteger(file.size) || file.size <= 0 ||
         !validMediaName(file.name) || names.has(file.name) || typeof file.uploadKey !== "string" ||
         !file.name.endsWith(`.${MEDIA_TYPES[file.mime].extension}`) ||
-        !file.uploadKey.endsWith(`/uploads/${row.id}/${file.name}`) || keys.has(file.uploadKey)) return false;
+        !file.uploadKey.endsWith(`/media/${file.name}`) || keys.has(file.uploadKey)) return false;
     assets.add(file.assetId); names.add(file.name); keys.add(file.uploadKey);
   }
   if (row.caseId !== undefined && !validCaseId(row.caseId)) return false;

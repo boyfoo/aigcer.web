@@ -9,7 +9,7 @@ import { ContentTagFields } from "./ContentTagFields.jsx";
 import { usePreferences } from "./Providers.jsx";
 import { useManagedContent } from "./ContentProvider.jsx";
 import { casePath, draftPath } from "./lib/content.js";
-import { caseTagValues, normalizeContentEntry } from "./lib/contentEntries.js";
+import { applyVideoUpload, caseTagValues, normalizeContentEntry } from "./lib/contentEntries.js";
 import { MediaUpload } from "./MediaUpload.jsx";
 import { contentReadOnly } from "./lib/contentClient.js";
 import { CastEditor, VideoDetailsEditor } from "./StudyEntryFields.jsx";
@@ -49,6 +49,10 @@ export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
   useUnsavedChanges(dirty || blocked, onDirtyChange);
 
   const update = (changes) => { setDraft((value) => ({ ...value, ...changes })); setSaveError(""); };
+  const changeVideo = (src, info) => {
+    setDraft((value) => applyVideoUpload(value, src, info));
+    setSaveError("");
+  };
   const updateVideo = (changes) => update({ video: { ...draft.video, ...changes } });
   const updateShot = (id, changes) => updateVideo({ shots: draft.video.shots.map((entry) => entry.id === id ? { ...entry, ...changes, ...(!("review" in changes) && { review: {} }) } : entry) });
   const addPersonToShot = (id, name) => {
@@ -118,7 +122,7 @@ export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
         <p className="entry-state-note">{current?.status === "published" ? "保存修改不会影响访客看到的内容，再次发布后才会更新。" : current?.status === "offline" ? "当前内容已下架。重新上架恢复上次发布的版本；发布则使用当前编辑内容。" : "可以先上传素材保存草稿，发布前至少补充提示词或分析中的一项。"}</p>
         <fieldset className="entry-fields" disabled={blocked}>
         <section className="entry-section" aria-labelledby="entry-basic"><h3 id="entry-basic">基本信息</h3><div className="entry-two-columns"><Field label="案例名称"><Input aria-label="案例名称" value={draft.title} maxLength={80} placeholder="上传时可自动使用文件名" onChange={(event) => update({ title: event.target.value })} /></Field><Field label="内容类型"><Select aria-label="内容类型" disabled={blocked} value={draft.kind} options={[{ value: "分镜", label: "分镜" }, { value: "视频", label: "视频" }]} onChange={(kind) => update({ kind, ...(kind === "视频" && !draft.video ? { video: { src: "", durationSeconds: 0, isMock: false, shots: [] } } : {}) })} /></Field></div>
-          {draft.kind === "视频" && <><MediaUpload label="案例视频" value={draft.video.src} kind="video" onBusyChange={mediaBusy} disabled={blocked} onChange={(src, info) => update({ title: draft.title || (info.name || "").replace(/\.[^.]+$/, "").slice(0, 80), video: { ...draft.video, src, durationSeconds: info.duration || 0, metadata: info.metadata || {}, isMock: false, shots: draft.video.shots.map((shot) => ({ ...shot, review: {} })) } })} /><Field label="视频时长（秒）" hint="自动读取失败时可以手动填写。"><InputNumber controls={{ upIcon: <ChevronUp />, downIcon: <ChevronDown /> }} aria-label="视频时长秒数" min={0} max={86400} precision={3} value={draft.video.durationSeconds} onChange={(durationSeconds) => updateVideo({ durationSeconds, shots: draft.video.shots.map((shot) => ({ ...shot, review: {} })) })} /></Field><VideoDetailsEditor video={draft.video} onChange={updateVideo} blocked={blocked} /></>}
+          {draft.kind === "视频" && <><MediaUpload label="案例视频" value={draft.video.src} kind="video" onBusyChange={mediaBusy} disabled={blocked} onChange={changeVideo} /><Field label="视频时长（秒）" hint="自动读取失败时可以手动填写。"><InputNumber controls={{ upIcon: <ChevronUp />, downIcon: <ChevronDown /> }} aria-label="视频时长秒数" min={0} max={86400} precision={3} value={draft.video.durationSeconds} onChange={(durationSeconds) => updateVideo({ durationSeconds, shots: draft.video.shots.map((shot) => ({ ...shot, review: {} })) })} /></Field><VideoDetailsEditor video={draft.video} onChange={updateVideo} blocked={blocked} /></>}
           {imageInput(draft.kind === "视频" ? "案例封面（可后补）" : "案例图片", draft.image, (image, info) => update({ image, title: draft.title || (info.name || "").replace(/\.[^.]+$/, "").slice(0, 80) }))}
           {draft.kind === "分镜" && <Field label="分镜时长（可选）"><Input aria-label="分镜时长" value={draft.duration} placeholder="00:08" maxLength={7} onChange={(event) => update({ duration: event.target.value })} /></Field>}
           <Field label="案例介绍（可选）"><Input.TextArea aria-label="案例介绍" value={draft.description} maxLength={2000} showCount autoSize={{ minRows: 3, maxRows: 8 }} placeholder="简要描述画面与学习重点" onChange={(event) => update({ description: event.target.value })} /></Field>

@@ -17,33 +17,6 @@ export function unsignedOssUrl(value) {
   return url.href;
 }
 
-export function ossAccessExpiresAt(value) {
-  if (!isOssMediaUrl(value)) return null;
-  const params = new URL(value).searchParams;
-  let expires;
-
-  if (params.get("x-oss-signature")) {
-    const date = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(params.get("x-oss-date") || "");
-    const duration = params.get("x-oss-expires");
-    if (!date || !/^\d+$/.test(duration || "")) return null;
-    const seconds = Number(duration);
-    if (!Number.isSafeInteger(seconds) || seconds <= 0) return null;
-    const issuedIso = `${date[1]}-${date[2]}-${date[3]}T${date[4]}:${date[5]}:${date[6]}.000Z`;
-    const issued = Date.parse(issuedIso);
-    if (!Number.isFinite(issued) || new Date(issued).toISOString() !== issuedIso) return null;
-    expires = issued + seconds * 1000;
-  } else {
-    const timestamp = params.get("Expires");
-    if (!params.get("Signature") || !/^\d+$/.test(timestamp || "")) return null;
-    const seconds = Number(timestamp);
-    if (!Number.isSafeInteger(seconds) || seconds <= 0) return null;
-    expires = seconds * 1000;
-  }
-
-  if (!Number.isSafeInteger(expires) || !Number.isFinite(new Date(expires).valueOf())) return null;
-  return new Date(expires).toISOString();
-}
-
 export function mediaNameFromUrl(value) {
   if (typeof value !== "string") return null;
   let pathname = value;

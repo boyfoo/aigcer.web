@@ -3,7 +3,6 @@ import { ContentError } from "./errors.js";
 import { MEDIA_LIMITS, MEDIA_TYPES } from "../lib/mediaFormats.js";
 import { convertReelbenchImport } from "../lib/reelbenchImport.js";
 import { normalizeDraft } from "../lib/contentEntries.js";
-import { isOssMediaUrl, unsignedOssUrl } from "../lib/mediaUrls.js";
 
 export const MAX_SUBMISSION_FILES = 252;
 
@@ -57,51 +56,36 @@ export function createSubmissionService(repository, { origin = "" } = {}) {
   const getSubmission = async (submissionId) => {
     identifier(submissionId, "submissionId");
     const submission = await repository.getSubmission(submissionId);
-    if (!submission) throw new ContentError("提交不存在，请先调用 jingjie_prepare_upload。", 404);
+    if (!submission) throw new ContentError("提交不存在，请先调用 jingjie_presign。", 404);
     return submission;
   };
-  const uploads = (submission) => parallelMap(submission.files, async (file) => ({
-    assetId: file.assetId, localName: file.localName, kind: file.kind, mime: file.mime,
-    size: file.size, objectKey: file.uploadKey, url: await repository.getPlannedMediaReference(file.name),
-    ...await repository.createUploadUrl({ key: file.uploadKey, mime: file.mime, size: file.size }),
-  }));
-  const prepared = async (submission) => submission.status === "submitted"
-    ? { submissionId: submission.id, status: "submitted", result: submission.result }
-    : {
-      submissionId: submission.id, status: "prepared", uploads: await uploads(submission),
-      instructions: "使用 uploadUrl 和 headers 以 PUT 上传本地文件原始字节，成功后调用 jingjie_submit_case，传原始拉片 JSON 和成功上传的 assetId；url 是稳定素材地址。完成提交登记后，用 url 调用 jingjie_get_media_access 获取私有 GET 签名并直接读取 OSS；uploadUrl 仅用于 PUT，未登记的临时素材不可预览。重试先查询状态：uploaded 跳过，awaiting_upload 沿用提交继续上传，unavailable 保留标识稍后查询，invalid 修正文件后用新 requestId 重新申请，原对象禁止覆盖。",
-    };
 
   return {
-    async getMediaAccess({ url }) {
-      if (typeof url !== "string" || url.length > 2048 || !isOssMediaUrl(url) || unsignedOssUrl(url) !== url) {
-        throw new ContentError("请提供已登记的无签名 OSS 素材地址");
-      }
-      const media = await repository.resolveMediaReference(url);
-      if (media?.storage?.provider !== "oss") {
-        throw new ContentError("素材不存在或尚未登记，请先完成 jingjie_submit_case", 404);
-      }
-      const mediaUrl = await repository.getMediaReference(media.name, media.storage);
-      if (mediaUrl !== url) throw new ContentError("素材地址与已登记对象不一致", 404);
-      const access = await repository.createMediaUrl(media.name, "GET", media.storage);
-      return { ...access, mediaUrl };
-    },
-
-    async prepareUpload({ requestId, files }) {
+    async presign({ requestId, files }) {
       identifier(requestId, "requestId");
       const normalized = manifest(files);
-      const config = await repository.getDirectUploadConfig();
-      if (!config.enabled) throw new ContentError("尚未配置 OSS 直传，请在服务器配置 JINGJIE_OSS_* 环境变量。", 503);
-      const id = randomUUID();
+      const media = await repository.planMediaUploads(normalized.map(({ localName, ...file }) => ({ ...file, name: localName })));
       const now = new Date().toISOString();
-      const planned = await Promise.all(normalized.map(async (file) => {
-        const name = `${randomUUID()}.${MEDIA_TYPES[file.mime].extension}`;
-        return { ...file, assetId: randomUUID(), name, uploadKey: await repository.makeUploadKey(id, name) };
-      }));
       const submission = await repository.prepareSubmission({
-        id, requestId, manifestHash: digest(normalized), status: "prepared", createdAt: now, updatedAt: now, files: planned,
-      });
-      return prepared(submission);
+        id: randomUUID(), requestId, manifestHash: digest(normalized), status: "prepared", createdAt: now, updatedAt: now,
+        files: normalized.map((file, index) => ({ ...file, assetId: randomUUID(), name: media[index].name, uploadKey: media[index].storage.key })),
+      }, media);
+      if (submission.status === "submitted") {
+        return { uploads: [], submissionId: submission.id, status: "submitted", result: submission.result };
+      }
+      const uploads = await Promise.all(submission.files.map(async (file) => ({
+        name: file.localName, kind: file.kind, mime: file.mime, size: file.size,
+        mediaUrl: await repository.getPlannedMediaReference(file.name),
+      })));
+      const signed = uploads.length ? await repository.presignMedia({ uploads }) : { uploads: [] };
+      return {
+        ...signed, submissionId: submission.id, status: "prepared",
+        uploads: signed.uploads.map((upload, index) => ({
+          ...upload, localName: submission.files[index].localName, mime: submission.files[index].mime,
+          assetId: submission.files[index].assetId, objectKey: submission.files[index].uploadKey,
+        })),
+        instructions: "使用 uploadUrl 和 headers 以 PUT 将本地文件原始字节直接上传正式 OSS 对象，使用返回的 public-read 权限。PUT 成功即可直接用公开 mediaUrl 预览，无需确认或复制；mediaUrl 也用于长期保存。上传完成后调用 jingjie_submit_case 保存资料，assets 只列真正上传成功的 assetId。PUT 过期时沿用原 requestId 和 files。重试先查询状态：uploaded 跳过，awaiting_upload 继续上传，unavailable 保留标识稍后查询，invalid 修正文件后用新 requestId 重新申请，原对象禁止覆盖。",
+      };
     },
 
     async getSubmissionStatus({ submissionId }) {
@@ -109,7 +93,7 @@ export function createSubmissionService(repository, { origin = "" } = {}) {
       if (submission.status === "submitted") return { submissionId, status: "submitted", result: submission.result };
       const files = await parallelMap(submission.files, async (file) => {
         try {
-          await repository.inspectUploadedObject({ key: file.uploadKey, kind: file.kind, size: file.size, mime: file.mime });
+          await repository.inspectMediaObject({ key: file.uploadKey, kind: file.kind, size: file.size, mime: file.mime });
           return { assetId: file.assetId, localName: file.localName, status: "uploaded" };
         } catch (error) {
           if (error.status === 404) return { assetId: file.assetId, localName: file.localName, status: "awaiting_upload" };
@@ -120,7 +104,7 @@ export function createSubmissionService(repository, { origin = "" } = {}) {
           };
         }
       });
-      return { ...await prepared(submission), files };
+      return { submissionId, status: "prepared", files };
     },
 
     async submitCase({ submissionId, data, assets }) {
@@ -134,7 +118,7 @@ export function createSubmissionService(repository, { origin = "" } = {}) {
         seen.add(asset.assetId);
         if (asset.objectKey != null && asset.objectKey !== file.uploadKey) throw new ContentError(`assets[${index}].objectKey 与签发路径不一致。`);
         const url = await repository.getPlannedMediaReference(file.name);
-        if (asset.url != null && asset.url !== url) throw new ContentError(`assets[${index}].url 与后端返回的 OSS 素材地址不一致。`);
+        if (asset.mediaUrl != null && asset.mediaUrl !== url) throw new ContentError(`assets[${index}].mediaUrl 与后端返回的 OSS 素材地址不一致。`);
         return { ...file, url };
       })).sort((a, b) => a.assetId.localeCompare(b.assetId));
       const payloadHash = digest({ data, assets: selected.map((file) => file.assetId) });
@@ -150,11 +134,14 @@ export function createSubmissionService(repository, { origin = "" } = {}) {
         throw new ContentError(error.message);
       }
       const confirmed = await parallelMap(selected, async (file) => {
-        const actual = await repository.inspectUploadedObject({ key: file.uploadKey, kind: file.kind, size: file.size, mime: file.mime });
-        const storage = await repository.promoteUploadedObject({ sourceKey: file.uploadKey, name: file.name, etag: actual.etag });
-        const url = await repository.getMediaReference(file.name, storage);
+        await repository.inspectMediaObject({ key: file.uploadKey, kind: file.kind, size: file.size, mime: file.mime });
+        const media = await repository.getMedia(file.name);
+        if (media?.storage?.provider !== "oss" || media.storage.key !== file.uploadKey || media.mime !== file.mime || media.size !== file.size) {
+          throw new ContentError("素材登记信息与本次提交不一致", 409);
+        }
+        const url = await repository.getMediaReference(file.name, media.storage);
         if (url !== file.url) throw new ContentError("正式素材地址与本次上传计划不一致，请重新检查后提交。", 409);
-        return { name: file.name, mime: actual.mime, size: actual.size, originalName: file.localName, storage };
+        return media;
       });
       const missing = submission.files.filter((file) => !seen.has(file.assetId)).map((file) => `未提交素材：${file.localName}`);
       const result = {

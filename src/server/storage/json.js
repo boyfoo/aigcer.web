@@ -5,10 +5,10 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import path from "node:path";
 import { ContentError } from "../errors.js";
-import { validateDocument, validMediaName } from "./document.js";
+import { validateDocument, validMediaName, sameStoredMedia } from "./document.js";
 import { validCaseId } from "../../lib/contentEntries.js";
 import { OssMediaStorage } from "./oss.js";
-import { mapMediaUrls, mediaNameFromUrl, matchesMediaReference, unsignedOssUrl } from "../../lib/mediaUrls.js";
+import { isOssMediaUrl, mapMediaUrls, mediaNameFromUrl, matchesMediaReference, unsignedOssUrl } from "../../lib/mediaUrls.js";
 
 const serialize = (value) => JSON.stringify(value, null, 2) + "\n";
 const storageError = (message) => new ContentError(`${message}；请检查数据文件，原数据不会重新初始化。`, 503);
@@ -227,10 +227,49 @@ export class JsonDataProvider {
     }
   }
 
-  async createMediaUrl(name, method, uploadedStorage) {
-    if (!validMediaName(name)) throw new ContentError("素材文件名无效");
-    const storage = uploadedStorage ?? await this.mediaStorage(name);
-    return storage ? this.oss.createMediaUrl(storage, method) : null;
+  async planMediaUploads(files) {
+    if (!Array.isArray(files) || files.length > 252) throw new ContentError("每批最多申请 252 个素材");
+    return files.map((file) => this.oss.planMediaUpload(file));
+  }
+
+  async presignMedia(input) {
+    if (!input || typeof input !== "object" || Array.isArray(input) ||
+        Object.keys(input).some((key) => key !== "uploads")) throw new ContentError("批量预签名参数无效");
+    const { uploads } = input;
+    if (!Array.isArray(uploads) || uploads.length < 1 || uploads.length > 252) {
+      throw new ContentError("每批需要 1 至 252 个上传文件");
+    }
+    const plans = await this.planMediaUploads(uploads);
+    const registered = new Map((await this.read()).media.map((item) => [item.name, item]));
+    const resolve = (url) => {
+      if (!isOssMediaUrl(url) || url.length > 2048) throw new ContentError("请提供已申请的 OSS 素材地址", 404);
+      const media = this.registeredMedia(url, registered);
+      if (!media?.storage || this.oss.getMediaReference(media.storage) !== unsignedOssUrl(url)) {
+        throw new ContentError("OSS 素材不存在或未申请", 404);
+      }
+      return media;
+    };
+    const uploadMedia = plans.map((plan, index) => {
+      if (uploads[index].mediaUrl === undefined) return plan;
+      const media = resolve(uploads[index].mediaUrl);
+      if (!sameStoredMedia({ ...plan, name: media.name, storage: media.storage }, media)) {
+        throw new ContentError("重新申请上传的文件信息与原申请不一致", 409);
+      }
+      return media;
+    });
+    const signedUploads = await Promise.all(uploadMedia.map((media) => this.oss.presignMedia(media)));
+    const newMedia = uploadMedia.filter((_, index) => uploads[index].mediaUrl === undefined);
+    if (newMedia.length) {
+      // Persist only declared metadata. The client uploads bytes and starts playback itself.
+      await this.update((document) => {
+        for (const media of newMedia) {
+          const existing = document.media.find((item) => item.name === media.name);
+          if (existing && !sameStoredMedia(existing, media)) throw new ContentError("素材标识已存在", 409);
+          if (!existing) document.media.push(media);
+        }
+      });
+    }
+    return { uploads: signedUploads };
   }
 
   async getMediaReference(name, uploadedStorage) {
@@ -259,17 +298,6 @@ export class JsonDataProvider {
     if (typeof url !== "string" || url.length > 2048) throw new ContentError("素材地址无效");
     const media = new Map((await this.read()).media.map((item) => [item.name, item]));
     return this.registeredMedia(url, media);
-  }
-
-  async resolveMediaAccess(value) {
-    const media = new Map((await this.read()).media.map((item) => [item.name, item]));
-    const urls = new Set();
-    mapMediaUrls(value, (url) => { if (this.registeredMedia(url, media)?.storage) urls.add(unsignedOssUrl(url)); return url; });
-    const signed = new Map(await Promise.all([...urls].map(async (url) => {
-      const item = this.registeredMedia(url, media);
-      return [url, (await this.oss.createMediaUrl(item.storage)).url];
-    })));
-    return mapMediaUrls(value, (url) => signed.get(unsignedOssUrl(url)) ?? url);
   }
 
   async resolveStaticMedia(value) {
@@ -313,11 +341,5 @@ export class JsonDataProvider {
   }
 
   async getDirectUploadConfig() { return this.oss.getDirectUploadConfig(); }
-  async makeUploadKey(submissionId, name) { return this.oss.makeUploadKey(submissionId, name); }
-  async createUploadUrl(input) { return this.oss.createUploadUrl(input); }
-  async createBrowserUpload(input) { return this.oss.createBrowserUpload(input); }
-  async verifyBrowserUpload(uploadToken) { return this.oss.verifyBrowserUpload(uploadToken); }
-  async removeUploadedObject(key) { return this.oss.removeUploadedObject(key); }
-  async inspectUploadedObject(input) { return this.oss.inspectUploadedObject(input); }
-  async promoteUploadedObject(input) { return this.oss.promoteUploadedObject(input); }
+  async inspectMediaObject(input) { return this.oss.inspectMediaObject(input); }
 }

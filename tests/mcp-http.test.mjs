@@ -3,36 +3,42 @@ import assert from "node:assert/strict";
 import { createInitialDocument } from "../src/server/repository.js";
 import { handleMcpRequest } from "../src/server/mcp.js";
 import { OssMediaStorage } from "../src/server/storage/oss.js";
-import { matchesMediaReference } from "../src/lib/mediaUrls.js";
+import { JsonDataProvider } from "../src/server/storage/json.js";
 
 const endpoint = "https://jingjie.example/mcp";
-const toolNames = ["jingjie_get_media_access", "jingjie_get_submission_status", "jingjie_prepare_upload", "jingjie_submit_case"];
+const toolNames = ["jingjie_get_submission_status", "jingjie_presign", "jingjie_submit_case"];
 
 function repositoryOptions() {
   let document = createInitialDocument([]);
-  return {
-    provider: {
-      async read() { return structuredClone(document); },
-      async update(work) {
-        const next = structuredClone(document);
-        const result = await work(next);
-        document = next;
-        return structuredClone(result);
-      },
-      async close() {},
-      async canonicalizeMediaUrls(value) { return structuredClone(value); },
-      async getDirectUploadConfig() { return { enabled: true, expiresSeconds: 900 }; },
-      async makeUploadKey(submissionId, name) { return `jingjie/uploads/${submissionId}/${name}`; },
-      async getPlannedMediaReference(name) { return `https://unit-bucket.oss-cn-hangzhou.aliyuncs.com/jingjie/media/${name}`; },
-      async createUploadUrl({ key, mime, size }) {
-        return {
-          uploadUrl: `https://unit-bucket.oss-cn-hangzhou.aliyuncs.com/${key}?Signature=test-signature`,
-          headers: { "Content-Type": mime, "Content-Length": String(size) },
-          expiresAt: new Date(Date.now() + 900000).toISOString(),
-        };
-      },
-    },
+  const oss = new OssMediaStorage({ env: {
+    JINGJIE_OSS_BUCKET: "unit-bucket", JINGJIE_OSS_REGION: "cn-hangzhou",
+    JINGJIE_OSS_ACCESS_KEY_ID: "unit-id", JINGJIE_OSS_ACCESS_KEY_SECRET: "unit-secret",
+  } });
+  const client = oss.client();
+  const sign = client.signatureUrlV4.bind(client);
+  client.signatureUrlV4 = async (method, ...args) => {
+    assert.equal(method, "PUT");
+    return sign(method, ...args);
   };
+  for (const method of ["head", "get", "getStream", "put", "putStream", "copy", "delete", "request"]) {
+    client[method] = async () => assert.fail(`MCP signing must not call OSS ${method}`);
+  }
+  const provider = {
+    oss,
+    async read() { return structuredClone(document); },
+    async update(work) {
+      const next = structuredClone(document);
+      const result = await work(next);
+      document = next;
+      return structuredClone(result);
+    },
+    async close() {},
+    async canonicalizeMediaUrls(value) { return structuredClone(value); },
+  };
+  for (const method of ["planMediaUploads", "presignMedia", "getPlannedMediaReference", "getMediaReference", "registeredMedia", "resolveMediaReference"]) {
+    provider[method] = JsonDataProvider.prototype[method];
+  }
+  return { provider };
 }
 
 function toolOutput(message) {
@@ -75,22 +81,27 @@ test("a remote client initializes, discovers the server's tool contracts, and ca
     assert.ok(tool.description.length > 20);
     assert.equal(tool.inputSchema.type, "object");
   }
-  const prepare = tools.find((tool) => tool.name === "jingjie_prepare_upload");
-  assert.ok(prepare.inputSchema.required.includes("requestId"));
-  assert.ok(prepare.inputSchema.required.includes("files"));
+  const prepare = tools.find((tool) => tool.name === "jingjie_presign");
+  assert.equal(prepare.inputSchema.properties.requestId.type, "string");
+  assert.deepEqual(prepare.inputSchema.required.sort(), ["files", "requestId"]);
+  assert.equal(prepare.inputSchema.properties.urls, undefined);
+  assert.equal(prepare.inputSchema.additionalProperties, false);
   const file = prepare.inputSchema.properties.files.items;
   for (const field of ["localName", "kind", "mime", "size"]) assert.ok(file.required.includes(field));
   const submit = tools.find((tool) => tool.name === "jingjie_submit_case");
   for (const field of ["submissionId", "data", "assets"]) assert.ok(submit.inputSchema.required.includes(field));
   assert.equal(prepare.outputSchema.properties.uploads.items.properties.uploadUrl.type, "string");
   assert.equal(prepare.outputSchema.properties.uploads.items.properties.headers.type, "object");
+  assert.equal(prepare.outputSchema.properties.uploads.items.properties.mediaUrl.type, "string");
+  assert.equal(prepare.outputSchema.properties.uploads.items.properties.uploadExpiresAt.type, "string");
+  assert.equal(prepare.outputSchema.properties.accesses, undefined);
+  assert.equal(prepare.outputSchema.properties.uploads.items.properties.url, undefined);
+  assert.equal(prepare.outputSchema.properties.uploads.items.properties.expiresAt, undefined);
   assert.equal(submit.outputSchema.properties.status.const, "draft");
   assert.equal(submit.outputSchema.properties.warnings.items.type, "string");
-  const access = tools.find((tool) => tool.name === "jingjie_get_media_access");
-  assert.deepEqual(access.inputSchema.required, ["url"]);
-  assert.equal(access.inputSchema.additionalProperties, false);
-  assert.deepEqual(access.outputSchema.required.sort(), ["expiresAt", "mediaUrl", "url"]);
-  assert.equal(access.annotations.readOnlyHint, true);
+  const status = tools.find((tool) => tool.name === "jingjie_get_submission_status");
+  assert.equal(status.annotations.readOnlyHint, true);
+  assert.equal(status.outputSchema.properties.uploads, undefined);
 
   const called = await rpc(options, "tools/call", {
     name: "jingjie_get_submission_status", arguments: { submissionId: "submission-not-found" },
@@ -116,74 +127,13 @@ test("clients can discover and read the backend's submission guide as an MCP res
   assert.match(guide.text, /原始文件字节/);
   assert.match(guide.text, /草稿/);
   assert.match(guide.text, /jingjie_get_submission_status/);
-  assert.match(guide.text, /jingjie_get_media_access/);
-  assert.match(guide.text, /GET 签名/);
-  assert.match(guide.text, /未登记的临时素材须先完成提交/);
+  assert.match(guide.text, /jingjie_presign/);
+  assert.match(guide.text, /PUT 成功即可直接用 mediaUrl 预览，无需确认或复制/);
+  assert.match(guide.text, /public-read/);
+  assert.doesNotMatch(guide.text, /GET 签名|续签|accesses/);
+  assert.doesNotMatch(guide.text, /jingjie_prepare_upload|jingjie_get_media_access/);
 });
 
-test("private media access returns only an expiring GET address for a registered canonical OSS object", async () => {
-  const options = repositoryOptions();
-  const name = "12345678-1234-4234-9234-123456789abc.png";
-  const media = {
-    name, mime: "image/png", size: 12, originalName: "cover.png",
-    storage: { provider: "oss", bucket: "unit-bucket", key: `jingjie/media/${name}` },
-  };
-  await options.provider.update((document) => { document.media.push(media); });
-  const oss = new OssMediaStorage({ env: {
-    JINGJIE_OSS_BUCKET: "unit-bucket", JINGJIE_OSS_REGION: "cn-hangzhou",
-    JINGJIE_OSS_ACCESS_KEY_ID: "unit-id", JINGJIE_OSS_ACCESS_KEY_SECRET: "unit-secret",
-  } });
-  options.provider.resolveMediaReference = async (url) => (await options.provider.read()).media
-    .find((item) => matchesMediaReference(url, item)) ?? null;
-  options.provider.getMediaReference = async (_name, storage) => oss.getMediaReference(storage);
-  let signatures = 0;
-  options.provider.createMediaUrl = async (registeredName, method, storage) => {
-    assert.equal(registeredName, name);
-    assert.equal(method, "GET");
-    assert.deepEqual(storage, media.storage);
-    signatures++;
-    return oss.createMediaUrl(storage, method);
-  };
-  for (const method of ["statMedia", "openMedia", "exportMedia", "inspectUploadedObject", "promoteUploadedObject"]) {
-    options.provider[method] = async () => assert.fail(`MCP media access must not call ${method}`);
-  }
-  const client = oss.client();
-  for (const method of ["head", "get", "getStream", "put", "putStream", "copy", "delete", "request"]) {
-    client[method] = async () => assert.fail(`MCP media access must not request OSS ${method}`);
-  }
-  const mediaUrl = oss.getMediaReference(media.storage);
-  const before = Date.now();
-  const called = await rpc(options, "tools/call", { name: "jingjie_get_media_access", arguments: { url: mediaUrl } });
-  const after = Date.now();
-  assert.equal(called.response.status, 200);
-  const access = toolOutput(called.message);
-  assert.deepEqual(Object.keys(access).sort(), ["expiresAt", "mediaUrl", "url"]);
-  assert.equal(access.mediaUrl, mediaUrl);
-  const signed = new URL(access.url);
-  assert.equal(`${signed.origin}${signed.pathname}`, mediaUrl);
-  assert.equal(signed.searchParams.get("x-oss-expires"), "3600");
-  assert.ok(signed.searchParams.get("x-oss-signature"));
-  assert.ok(Date.parse(access.expiresAt) >= before + 3600000);
-  assert.ok(Date.parse(access.expiresAt) <= after + 3600000);
-  assert.equal(signatures, 1);
-
-  const unknown = await rpc(options, "tools/call", {
-    name: "jingjie_get_media_access", arguments: { url: mediaUrl.replace(name, "ffffffff-ffff-4fff-8fff-ffffffffffff.png") },
-  });
-  assert.equal(unknown.message.result.isError, true);
-  assert.equal(unknown.message.result.structuredContent.error.status, 404);
-  const arbitrary = await rpc(options, "tools/call", {
-    name: "jingjie_get_media_access", arguments: { url: mediaUrl, bucket: "foreign-bucket", key: "private/secret.png" },
-  });
-  assert.ok(arbitrary.message.error || arbitrary.message.result?.isError);
-  const signedInput = await rpc(options, "tools/call", {
-    name: "jingjie_get_media_access", arguments: { url: access.url },
-  });
-  assert.equal(signedInput.message.result.isError, true);
-  assert.equal(signedInput.message.result.structuredContent.error.status, 400);
-  assert.equal(signatures, 1);
-  assert.deepEqual((await options.provider.read()).media, [media]);
-});
 
 test("same-origin requests and clients without Origin can connect; foreign browser origins are rejected", async () => {
   const options = repositoryOptions();
@@ -203,14 +153,20 @@ test("same-origin requests and clients without Origin can connect; foreign brows
 test("tool calls return upload URLs and save an incomplete draft without exposing server credentials", async () => {
   const options = repositoryOptions();
   const prepared = await rpc(options, "tools/call", {
-    name: "jingjie_prepare_upload",
+    name: "jingjie_presign",
     arguments: { requestId: "http-import", files: [{ localName: "cover.png", kind: "image", mime: "image/png", size: 12 }] },
   });
   assert.equal(prepared.response.status, 200);
   const planned = toolOutput(prepared.message);
   assert.equal(planned.status, "prepared");
-  assert.ok(planned.uploads[0].uploadUrl.includes("Signature="));
+  assert.ok(new URL(planned.uploads[0].uploadUrl).searchParams.get("x-oss-signature"));
+  assert.equal(planned.uploads[0].url, undefined);
+  assert.equal(planned.uploads[0].expiresAt, undefined);
+  assert.equal(planned.accesses, undefined);
+  assert.equal(new URL(planned.uploads[0].mediaUrl).search, "");
+  assert.match(planned.uploads[0].objectKey, /^jingjie\/media\//);
   assert.equal(planned.uploads[0].headers["Content-Type"], "image/png");
+  assert.equal(planned.uploads[0].headers["x-oss-object-acl"], "public-read");
   assert.doesNotMatch(prepared.text, /accessKeySecret|securityToken/i);
 
   const committed = await rpc(options, "tools/call", {
@@ -235,11 +191,11 @@ test("invalid tool arguments and malformed JSON produce explicit protocol errors
   }), { repositoryOptions: options });
   assert.equal(malformed.status, 400);
 
-  const invalid = await rpc(options, "tools/call", { name: "jingjie_prepare_upload", arguments: { files: [] } });
+  const invalid = await rpc(options, "tools/call", { name: "jingjie_presign", arguments: { files: [] } });
   assert.equal(invalid.response.status, 200);
   assert.ok(invalid.message.error || invalid.message.result?.isError);
   const planned = toolOutput((await rpc(options, "tools/call", {
-    name: "jingjie_prepare_upload", arguments: { requestId: "invalid-source", files: [] },
+    name: "jingjie_presign", arguments: { requestId: "invalid-source", files: [] },
   })).message);
   const invalidSource = await rpc(options, "tools/call", {
     name: "jingjie_submit_case", arguments: { submissionId: planned.submissionId, data: { kind: "image", title: 123 }, assets: [] },
@@ -248,6 +204,23 @@ test("invalid tool arguments and malformed JSON produce explicit protocol errors
   assert.equal(invalidSource.message.result.structuredContent.error.status, 400);
   assert.match(invalidSource.message.result.structuredContent.error.message, /title/);
   assert.deepEqual((await options.provider.read()).content, []);
+});
+
+test("the upload signing tool rejects removed access inputs without registering media or submissions", async () => {
+  const options = repositoryOptions();
+  const mediaUrl = "https://unit-bucket.oss-cn-hangzhou.aliyuncs.com/jingjie/media/12345678-1234-4234-9234-123456789abc.png";
+  for (const arguments_ of [
+    { urls: [mediaUrl] },
+    { requestId: "removed-access-input", files: [], urls: [mediaUrl] },
+    { requestId: "missing-files" },
+    { files: [] },
+  ]) {
+    const called = await rpc(options, "tools/call", { name: "jingjie_presign", arguments: arguments_ });
+    assert.ok(called.message.error || called.message.result?.isError);
+  }
+  const document = await options.provider.read();
+  assert.deepEqual(document.media, []);
+  assert.deepEqual(document.submissions, []);
 });
 
 test("the stateless HTTP endpoint does not leave an anonymous GET waiting on a stream", async () => {
@@ -271,8 +244,8 @@ test("modern MCP discovery exposes the same tools without the legacy initialize 
   assert.equal(listed.response.status, 200);
   assert.deepEqual(listed.message.result.tools.map((tool) => tool.name).sort(), toolNames);
   const called = await rpc(options, "tools/call", {
-    _meta: metadata, name: "jingjie_prepare_upload", arguments: { requestId: "modern-upload", files: [] },
-  }, { "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/call", "Mcp-Name": "jingjie_prepare_upload" });
+    _meta: metadata, name: "jingjie_presign", arguments: { requestId: "modern-upload", files: [] },
+  }, { "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/call", "Mcp-Name": "jingjie_presign" });
   assert.equal(called.response.status, 200, called.text);
   assert.equal(toolOutput(called.message).status, "prepared");
   const failure = await rpc(options, "tools/call", {

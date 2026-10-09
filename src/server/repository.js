@@ -5,6 +5,7 @@ import { normalizeDraft, normalizeContentEntry, presentCase } from "../lib/conte
 import { ContentError } from "./errors.js";
 import { createDataProvider } from "./storage/provider.js";
 import { initialMedia } from "./seedMedia.js";
+import { sameStoredMedia } from "./storage/document.js";
 
 export { ContentError } from "./errors.js";
 
@@ -44,11 +45,16 @@ export function createRepository({ directory, seeds = storyboardItems, provider 
       return row?.status === "published" ? presentCase(row.published) : null;
     },
     getSubmission: async (id) => (await storage.read()).submissions.find((entry) => entry.id === id) ?? null,
-    prepareSubmission: (submission) => storage.update((document) => {
+    prepareSubmission: (submission, media = []) => storage.update((document) => {
       const existing = document.submissions.find((entry) => entry.requestId === submission.requestId);
       if (existing) {
         if (existing.manifestHash !== submission.manifestHash) throw new ContentError("同一提交标识的文件清单发生变化，请为新的提交使用新的 requestId。", 409);
         return existing;
+      }
+      for (const item of media) {
+        const existingMedia = document.media.find((entry) => entry.name === item.name);
+        if (existingMedia && !sameStoredMedia(existingMedia, item)) throw new ContentError("素材标识已存在", 409);
+        if (!existingMedia) document.media.push(item);
       }
       document.submissions.push(submission);
       return submission;
@@ -63,10 +69,10 @@ export function createRepository({ directory, seeds = storyboardItems, provider 
       const value = normalizeDraft(await storage.canonicalizeMediaUrls(draft, [...document.media, ...media]));
       if (document.content.some((entry) => entry.id === value.id)) throw new ContentError("案例标识已存在，提交未覆盖原资料。", 409);
       for (const item of media) {
-        if (document.media.some((entry) => entry.name === item.name)) throw new ContentError("素材标识已存在，提交未覆盖原素材。", 409);
+        const registered = document.media.find((entry) => entry.name === item.name);
+        if (!sameStoredMedia(registered, item)) throw new ContentError("素材未申请或与已申请信息不一致，提交未覆盖原素材。", 409);
       }
       const now = new Date().toISOString();
-      document.media.push(...media);
       document.content.push({
         id: value.id, draft: value, published: null, status: "draft", revision: 1,
         updatedAt: now, publishedAt: null,
@@ -122,35 +128,17 @@ export function createRepository({ directory, seeds = storyboardItems, provider 
       if (document.media.some((item) => item.name === media.name)) throw new ContentError("素材已存在", 409);
       document.media.push(media);
     }),
-    confirmMedia: (media) => storage.update((document) => {
-      const existing = document.media.find((item) => item.name === media.name);
-      if (existing) {
-        if (["mime", "size", "originalName"].some((field) => existing[field] !== media[field]) ||
-            ["provider", "bucket", "key"].some((field) => existing.storage?.[field] !== media.storage[field])) {
-          throw new ContentError("素材已登记且与上传确认信息不一致", 409);
-        }
-        return existing;
-      }
-      document.media.push(media);
-      return media;
-    }),
     getMedia: async (name) => (await storage.read()).media.find((item) => item.name === name) ?? null,
-    createMediaUrl: (name, method, uploadedStorage) => storage.createMediaUrl(name, method, uploadedStorage),
+    planMediaUploads: (files) => storage.planMediaUploads(files),
+    presignMedia: (input) => storage.presignMedia(input),
     getMediaReference: (name, uploadedStorage) => storage.getMediaReference(name, uploadedStorage),
     getPlannedMediaReference: (name) => storage.getPlannedMediaReference(name),
     resolveMediaReference: (url) => storage.resolveMediaReference(url),
-    resolveMediaAccess: (value) => storage.resolveMediaAccess(value),
     resolveStaticMedia: (value) => storage.resolveStaticMedia(value),
     removeMedia: (name, uploadedStorage) => storage.removeMedia(name, uploadedStorage),
     exportMedia: (name, destination) => storage.exportMedia(name, destination),
     getDirectUploadConfig: () => storage.getDirectUploadConfig(),
-    makeUploadKey: (submissionId, name) => storage.makeUploadKey(submissionId, name),
-    createUploadUrl: (file) => storage.createUploadUrl(file),
-    createBrowserUpload: (input) => storage.createBrowserUpload(input),
-    verifyBrowserUpload: (uploadToken) => storage.verifyBrowserUpload(uploadToken),
-    removeUploadedObject: (key) => storage.removeUploadedObject(key),
-    inspectUploadedObject: (file) => storage.inspectUploadedObject(file),
-    promoteUploadedObject: (file) => storage.promoteUploadedObject(file),
+    inspectMediaObject: (file) => storage.inspectMediaObject(file),
   };
 }
 

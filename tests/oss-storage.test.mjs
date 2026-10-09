@@ -4,31 +4,30 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
-import OSS from "ali-oss";
 import { OssMediaStorage } from "../src/server/storage/oss.js";
 import { JsonDataProvider } from "../src/server/storage/json.js";
-import { ContentError, createInitialDocument, createRepository } from "../src/server/repository.js";
-import { mediaAccess } from "../src/server/media.js";
-import { isOssMediaUrl, mapMediaUrls, mediaNameFromUrl, ossAccessExpiresAt } from "../src/lib/mediaUrls.js";
-import { requestMediaAccess, requestOfflineImage } from "../src/lib/contentClient.js";
+import { createInitialDocument, createRepository } from "../src/server/repository.js";
+import { isOssMediaUrl, mapMediaUrls, mediaNameFromUrl } from "../src/lib/mediaUrls.js";
 
 const env = {
   JINGJIE_OSS_BUCKET: "jingjie-test", JINGJIE_OSS_REGION: "cn-hangzhou",
   JINGJIE_OSS_ACCESS_KEY_ID: "test-access-key", JINGJIE_OSS_ACCESS_KEY_SECRET: "secret-must-stay-server-side",
   JINGJIE_OSS_UPLOAD_TTL_SECONDS: "300", JINGJIE_OSS_PREFIX: "jingjie",
 };
-const submissionId = "12345678-1234-1234-1234-123456789abc", name = "12345678-1234-1234-1234-123456789def.png";
-const key = `jingjie/uploads/${submissionId}/${name}`;
+const name = "12345678-1234-1234-1234-123456789def.png";
+const key = `jingjie/media/${name}`;
 const mediaReference = (mediaName) => `https://${env.JINGJIE_OSS_BUCKET}.oss-${env.JINGJIE_OSS_REGION}.aliyuncs.com/jingjie/media/${mediaName}`;
 const png = Buffer.concat([Buffer.from("89504e470d0a1a0a", "hex"), Buffer.alloc(1100, 7)]);
 const originalEtag = '"abcdef0123456789"';
 const object = (bytes = png, mime = "image/png", etag = originalEtag) => ({ bytes, mime, etag });
+const media = { name, mime: "image/png", size: png.length, originalName: "frame.png", storage: { provider: "oss", bucket: env.JINGJIE_OSS_BUCKET, key } };
 
 function fixture() {
   const objects = new Map([[key, object()]]), calls = [];
   const missing = () => Object.assign(new Error("missing"), { status: 404, code: "NoSuchKey" });
   const sdk = {
     async signatureUrlV4(method, expiresSeconds, options, key) {
+      assert.equal(method, "PUT");
       calls.push(["signatureUrlV4", method, expiresSeconds, options, key]);
       const signature = calls.filter(([operation]) => operation === "signatureUrlV4").length;
       return `https://jingjie-test.oss-cn-hangzhou.aliyuncs.com/${key}?x-oss-expires=${expiresSeconds}&signature=${signature}-${method}`;
@@ -39,28 +38,11 @@ function fixture() {
       if (!entry) throw missing();
       return { res: { headers: { "content-length": String(entry.bytes.length), "content-type": entry.mime, etag: entry.etag } } };
     },
-    async get(key, options) {
-      calls.push(["get", key, options]);
+    async getStream(key) {
+      calls.push(["getStream", key]);
       const entry = objects.get(key);
       if (!entry) throw missing();
-      if (options.headers["If-Match"] !== entry.etag) throw Object.assign(new Error("changed"), { status: 412 });
-      const range = /^bytes=(\d+)-(\d+)$/.exec(options.headers.Range);
-      return { content: entry.bytes.subarray(Number(range[1]), Number(range[2]) + 1) };
-    },
-    async copy(target, source, options) {
-      calls.push(["copy", target, source, options]);
-      const entry = objects.get(source);
-      if (!entry) throw missing();
-      if (entry.etag !== options.headers["If-Match"]) throw Object.assign(new Error("changed"), { status: 412 });
-      if (objects.has(target)) throw Object.assign(new Error("existing"), { status: 409 });
-      objects.set(target, { ...entry, bytes: Buffer.from(entry.bytes) });
-    },
-    async getStream(key, options) {
-      calls.push(["getStream", key, options]);
-      const entry = objects.get(key);
-      if (!entry) throw missing();
-      const range = options?.headers?.Range && /^bytes=(\d+)-(\d+)$/.exec(options.headers.Range);
-      return { stream: Readable.from([range ? entry.bytes.subarray(Number(range[1]), Number(range[2]) + 1) : entry.bytes]) };
+      return { stream: Readable.from([entry.bytes]) };
     },
     async delete(key) { calls.push(["delete", key]); objects.delete(key); },
   };
@@ -91,93 +73,9 @@ test("OSS media parsing accepts canonical and signed object URLs while rejecting
   }
 });
 
-test("OSS access expiry parsing returns exact valid and expired timestamps for V4 and legacy signatures", () => {
-  const canonical = mediaReference(name);
-  const validV4 = `${canonical}?x-oss-signature=valid&x-oss-date=20801009T010203Z&x-oss-expires=3600`;
-  const expiredV4 = `${canonical}?x-oss-signature=expired&x-oss-date=20000101T000000Z&x-oss-expires=3600`;
-  assert.equal(ossAccessExpiresAt(validV4), "2080-10-09T02:02:03.000Z");
-  assert.equal(ossAccessExpiresAt(expiredV4), "2000-01-01T01:00:00.000Z");
-  assert.ok(Date.parse(ossAccessExpiresAt(validV4)) > Date.now());
-  assert.ok(Date.parse(ossAccessExpiresAt(expiredV4)) < Date.now());
-  for (const iso of ["2080-10-09T02:02:03.000Z", "2000-01-01T01:00:00.000Z"]) {
-    const legacy = `${canonical}?Signature=legacy&Expires=${Date.parse(iso) / 1000}`;
-    assert.equal(ossAccessExpiresAt(legacy), iso);
-  }
-});
-
-test("OSS access expiry parsing rejects missing signatures, malformed dates and invalid or overflowing expiry values", () => {
-  const canonical = mediaReference(name);
-  const invalidQueries = [
-    "", "x-oss-date=20261009T010203Z&x-oss-expires=3600", "x-oss-signature=&x-oss-date=20261009T010203Z&x-oss-expires=3600",
-    "x-oss-signature=one&x-oss-expires=3600", "x-oss-signature=one&x-oss-date=20261009T010203Z",
-    ...["0", "-1", "1.5", "NaN", "8640000000000", "999999999999999999"].map((expires) => `x-oss-signature=one&x-oss-date=20261009T010203Z&x-oss-expires=${expires}`),
-    ...["20260230T010203Z", "20261309T010203Z", "20261009T250203Z", "20261009T010263Z", "2026-10-09T01:02:03Z"].map((date) => `x-oss-signature=one&x-oss-date=${date}&x-oss-expires=3600`),
-    "Expires=123456", "Signature=&Expires=123456", "Signature=legacy", "Signature=legacy&Expires=-1", "Signature=legacy&Expires=1.5", "Signature=legacy&Expires=8640000000001", "Signature=legacy&Expires=9999999999999999",
-  ];
-  for (const query of invalidQueries) assert.equal(ossAccessExpiresAt(`${canonical}?${query}`), null, query);
-  for (const value of [null, undefined, "/media/abc-123.png", "not-a-url", "https://example.com/photo.jpg?Signature=external&Expires=3495678900"]) {
-    assert.equal(ossAccessExpiresAt(value), null);
-  }
-});
-
-test("the client reuses unexpired OSS signatures and reads offline image bytes directly from OSS", async (t) => {
-  const signed = `${mediaReference(name)}?x-oss-signature=valid&x-oss-date=20801009T010203Z&x-oss-expires=3600`;
-  const controller = new AbortController(), requests = [];
-  t.mock.method(globalThis, "fetch", async (url, options) => {
-    requests.push({ url, options });
-    return new Response(png, { headers: { "Content-Type": "image/png" } });
-  });
-  assert.deepEqual(await requestMediaAccess(signed, controller.signal), { url: signed, mediaUrl: mediaReference(name), expiresAt: "2080-10-09T02:02:03.000Z" });
-  assert.deepEqual(requests, []);
-  const response = await requestOfflineImage(signed, controller.signal);
-  assert.deepEqual(Buffer.from(await response.arrayBuffer()), png);
-  assert.equal(requests.length, 1);
-  assert.equal(requests[0].url, signed);
-  assert.equal(requests[0].options.signal, controller.signal);
-});
-
-test("unsigned and expired OSS image requests obtain only metadata before fetching OSS bytes", async (t) => {
-  const canonical = mediaReference(name);
-  const current = `${canonical}?x-oss-signature=current&x-oss-date=20801009T010203Z&x-oss-expires=3600`;
-  for (const source of [canonical, `${canonical}?x-oss-signature=expired&x-oss-date=20000101T000000Z&x-oss-expires=3600`]) {
-    await t.test(source === canonical ? "unsigned URL" : "expired URL", async (t) => {
-      const requests = [];
-      t.mock.method(globalThis, "fetch", async (url, options) => {
-        requests.push({ url, options });
-        if (url === "/api/media/access") return Response.json({ url: current, mediaUrl: canonical, expiresAt: "2080-10-09T02:02:03.000Z" });
-        assert.equal(url, current);
-        return new Response(png, { headers: { "Content-Type": "image/png" } });
-      });
-      const response = await requestOfflineImage(source);
-      assert.deepEqual(Buffer.from(await response.arrayBuffer()), png);
-      assert.deepEqual(requests.map(({ url }) => url), ["/api/media/access", current]);
-      assert.equal(requests[0].options.method, "POST");
-      assert.deepEqual(JSON.parse(requests[0].options.body), { url: source });
-      assert.equal(requests[0].options.cache, "no-store");
-      assert.equal(requests[1].options.method, undefined);
-    });
-  }
-});
-
-test("local and external media keep their addresses and failed OSS reads do not fall back to a byte proxy", async (t) => {
-  const canonical = mediaReference(name);
-  const signed = `${canonical}?x-oss-signature=valid&x-oss-date=20801009T010203Z&x-oss-expires=3600`;
-  const requests = [];
-  t.mock.method(globalThis, "fetch", async (url) => {
-    requests.push(url);
-    return new Response("OSS read failed", { status: 403 });
-  });
-  for (const source of [`/media/${name}`, "https://example.com/photo.jpg?size=large", "https://oayun.oss-cn-shenzhen.aliyuncs.com/b/260901/public-video.mp4"]) {
-    assert.deepEqual(await requestMediaAccess(source), { url: source, mediaUrl: source, expiresAt: null });
-  }
-  assert.deepEqual(requests, []);
-  const response = await requestOfflineImage(signed);
-  assert.equal(response.status, 403);
-  assert.deepEqual(requests, [signed]);
-});
 
 test("media transformation covers record snapshots and all case media fields without rewriting prose or source data", () => {
-  const original = mediaReference(name), replacement = `${original}?x-oss-signature=one-hour`;
+  const original = mediaReference(name), replacement = `/media/${name}`;
   const item = {
     image: original, analysis: original, prompt: original,
     video: { src: original, shots: [{ image: original, endImage: original, narrative: original }], cast: [{ image: original, note: original }] },
@@ -196,131 +94,87 @@ test("media transformation covers record snapshots and all case media fields wit
   assert.equal(transformed[0].source.image, original);
 });
 
-test("OSS V4 upload URLs sign exact headers without disclosing the server secret", async () => {
+test("OSS plans formal public object metadata and signs only its PUT upload", async () => {
   const storage = new OssMediaStorage({ env });
   assert.deepEqual(storage.getDirectUploadConfig(), { enabled: true, expiresSeconds: 300 });
-  assert.equal(storage.makeUploadKey(submissionId, name), key);
-  const result = await storage.createUploadUrl({ key, mime: "image/png", size: png.length });
-  const url = new URL(result.uploadUrl);
-  assert.equal(url.protocol, "https:");
-  assert.equal(url.hostname, "jingjie-test.oss-cn-hangzhou.aliyuncs.com");
-  assert.equal(url.pathname, `/${key}`);
-  assert.equal(url.searchParams.get("x-oss-signature-version"), "OSS4-HMAC-SHA256");
-  assert.equal(url.searchParams.get("x-oss-expires"), "300");
-  assert.equal(url.searchParams.get("x-oss-additional-headers"), "content-length");
+  const planned = await storage.planMediaUpload({ name: "source.png", kind: "image", mime: "image/png", size: png.length });
+  assert.match(planned.name, /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.png$/);
+  assert.deepEqual(planned, { name: planned.name, mime: "image/png", size: png.length, originalName: "source.png", storage: { provider: "oss", bucket: env.JINGJIE_OSS_BUCKET, key: `jingjie/media/${planned.name}` } });
+  const startedAt = Date.now();
+  const result = await storage.presignMedia(planned);
+  const finishedAt = Date.now();
+  const put = new URL(result.uploadUrl);
+  assert.equal(put.protocol, "https:");
+  assert.equal(put.hostname, "jingjie-test.oss-cn-hangzhou.aliyuncs.com");
+  assert.equal(put.pathname, `/${planned.storage.key}`);
+  assert.equal(put.searchParams.get("x-oss-signature-version"), "OSS4-HMAC-SHA256");
+  assert.equal(put.searchParams.get("x-oss-expires"), "300");
+  assert.equal(put.searchParams.get("x-oss-additional-headers"), null);
   assert.equal(result.headers["Content-Type"], "image/png");
-  assert.equal(result.headers["Content-Length"], String(png.length));
+  assert.ok(!Object.keys(result.headers).some((header) => header.toLowerCase() === "content-length"));
   assert.equal(result.headers["x-oss-forbid-overwrite"], "true");
-  assert.equal(result.headers["x-oss-object-acl"], "private");
-  assert.ok(Date.parse(result.expiresAt) > Date.now());
+  assert.equal(result.headers["x-oss-object-acl"], "public-read");
+  assert.ok(Date.parse(result.uploadExpiresAt) >= startedAt + 300000);
+  assert.ok(Date.parse(result.uploadExpiresAt) <= finishedAt + 300000);
+  assert.deepEqual(Object.keys(result).sort(), ["headers", "kind", "mediaUrl", "name", "size", "uploadExpiresAt", "uploadUrl"]);
+  assert.equal(result.mediaUrl, storage.getMediaReference(planned.storage));
+  assert.equal(new URL(result.mediaUrl).search, "");
   assert.ok(!JSON.stringify(result).includes(env.JINGJIE_OSS_ACCESS_KEY_SECRET));
-  await assert.rejects(storage.createUploadUrl({ key: `jingjie/media/${name}`, mime: "image/png", size: 1 }), /上传目录/);
-  await assert.rejects(storage.createUploadUrl({ key, mime: "image/jpeg", size: 1 }), (error) => error.status === 415);
-  await assert.rejects(storage.createUploadUrl({ key, mime: "image/png", size: 21 * 1024 * 1024 }), (error) => error.status === 413);
-  assert.throws(() => storage.makeUploadKey("../escape", name), /标识/);
 });
 
 test("disabled, partial and invalid OSS settings fail explicitly without returning credentials", async () => {
   const disabled = new OssMediaStorage({ env: {} });
   assert.equal(disabled.getDirectUploadConfig().enabled, false);
-  await assert.rejects(disabled.createUploadUrl({ key, mime: "image/png", size: 1 }), (error) => error.status === 503);
+  await assert.rejects(disabled.presignMedia(media), (error) => error.status === 503);
   assert.throws(() => new OssMediaStorage({ env: { JINGJIE_OSS_BUCKET: "jingjie-test" } }), /配置不完整/);
   assert.throws(() => new OssMediaStorage({ env: { ...env, JINGJIE_OSS_PREFIX: "../escape" } }), /配置无效/);
   assert.throws(() => new OssMediaStorage({ env: { ...env, JINGJIE_OSS_UPLOAD_TTL_SECONDS: "9000" } }), /配置无效/);
+  await assert.rejects(new OssMediaStorage({ env }).presignMedia({ ...media, storage: { ...media.storage, bucket: "another-bucket" } }), (error) => error.status === 503);
 });
 
-test("private media access URLs sign GET and HEAD for one hour without revealing the server secret", async () => {
-  const storage = new OssMediaStorage({ env });
-  const remote = { provider: "oss", bucket: env.JINGJIE_OSS_BUCKET, key: `jingjie/media/${name}` };
-  const startedAt = Date.now();
-  const get = await storage.createMediaUrl(remote);
-  const head = await storage.createMediaUrl(remote, "HEAD");
-  for (const result of [get, head]) {
-    const url = new URL(result.url);
-    assert.equal(url.protocol, "https:");
-    assert.equal(url.hostname, "jingjie-test.oss-cn-hangzhou.aliyuncs.com");
-    assert.equal(url.pathname, `/${remote.key}`);
-    assert.equal(url.searchParams.get("x-oss-signature-version"), "OSS4-HMAC-SHA256");
-    assert.equal(url.searchParams.get("x-oss-expires"), "3600");
-    assert.equal(url.searchParams.get("x-oss-additional-headers"), null);
-    assert.ok(Date.parse(result.expiresAt) >= startedAt + 3600000);
-    assert.ok(Date.parse(result.expiresAt) <= Date.now() + 3600000);
-    assert.ok(Date.parse(ossAccessExpiresAt(result.url)) >= startedAt + 3599000);
-    assert.ok(Math.abs(Date.parse(ossAccessExpiresAt(result.url)) - Date.parse(result.expiresAt)) < 1000);
-    assert.doesNotMatch(JSON.stringify(result), new RegExp(env.JINGJIE_OSS_ACCESS_KEY_SECRET));
+test("PUT lifetime accepts its bounds and rejects invalid upload settings", async () => {
+  for (const seconds of [60, 600, 3600]) {
+    const storage = new OssMediaStorage({ env: { ...env, JINGJIE_OSS_UPLOAD_TTL_SECONDS: String(seconds) } });
+    const result = await storage.presignMedia(media);
+    assert.equal(new URL(result.uploadUrl).searchParams.get("x-oss-expires"), String(seconds));
+    assert.equal(storage.getDirectUploadConfig().expiresSeconds, seconds);
+    assert.equal(new URL(result.mediaUrl).search, "");
   }
-  assert.notEqual(new URL(get.url).searchParams.get("x-oss-signature"), new URL(head.url).searchParams.get("x-oss-signature"));
+  for (const seconds of ["59", "3601", "1.5", "invalid"]) {
+    assert.throws(() => new OssMediaStorage({ env: { ...env, JINGJIE_OSS_UPLOAD_TTL_SECONDS: seconds } }), (error) => error.status === 503);
+  }
 });
 
-test("media access TTL has explicit configuration bounds and is independent of upload TTL", async () => {
-  const remote = { provider: "oss", bucket: env.JINGJIE_OSS_BUCKET, key: `jingjie/media/${name}` };
-  for (const seconds of [60, 600, 86400]) {
-    const storage = new OssMediaStorage({ env: { ...env, JINGJIE_OSS_ACCESS_TTL_SECONDS: String(seconds) } });
-    assert.equal(new URL((await storage.createMediaUrl(remote)).url).searchParams.get("x-oss-expires"), String(seconds));
-    assert.equal(storage.getDirectUploadConfig().expiresSeconds, 300);
-  }
-  for (const seconds of ["59", "86401", "1.5", "invalid"]) {
-    assert.throws(() => new OssMediaStorage({ env: { ...env, JINGJIE_OSS_ACCESS_TTL_SECONDS: seconds } }), (error) => error.status === 503);
-  }
-  await assert.rejects(new OssMediaStorage({ env: {} }).createMediaUrl(remote), (error) => error.status === 503);
-  await assert.rejects(new OssMediaStorage({ env }).createMediaUrl({ ...remote, bucket: "another-bucket" }), (error) => error.status === 503);
-  await assert.rejects(new OssMediaStorage({ env }).createMediaUrl(remote, "PUT"), (error) => error.status === 405);
-});
 
-test("uploaded objects require matching size and actual file signatures, not only Content-Type", async () => {
+test("MCP object inspection checks formal object size and MIME with HEAD and never reads bytes", async () => {
   const { storage, objects, calls } = fixture();
   const input = { key, kind: "image", size: png.length, mime: "image/png" };
-  assert.deepEqual(await storage.inspectUploadedObject(input), { size: png.length, mime: "image/png", etag: originalEtag });
-  const read = calls.find(([method]) => method === "get");
-  assert.equal(read[2].headers.Range, "bytes=0-1023");
-  assert.equal(read[2].headers["If-Match"], originalEtag);
-  await assert.rejects(storage.inspectUploadedObject({ ...input, size: png.length - 1 }), (error) => error.status === 409);
+  const inspected = await storage.inspectMediaObject(input);
+  assert.equal(inspected.size, png.length);
+  assert.equal(inspected.mime, "image/png");
+  assert.deepEqual(calls, [["head", key]]);
+  for (const invalid of [
+    { ...input, key: `jingjie/uploads/12345678/${name}` },
+    { ...input, key: `other/media/${name}` },
+    { ...input, key: `jingjie/media/../${name}` },
+    { ...input, kind: "video" },
+    { ...input, mime: "image/jpeg" },
+  ]) await assert.rejects(storage.inspectMediaObject(invalid), (error) => error.status === 415);
+  assert.deepEqual(calls, [["head", key]]);
+  await assert.rejects(storage.inspectMediaObject({ ...input, size: png.length - 1 }), (error) => error.status === 409);
   objects.set(key, object(Buffer.alloc(png.length), "image/png"));
-  await assert.rejects(storage.inspectUploadedObject(input), (error) => error.status === 415);
+  assert.equal((await storage.inspectMediaObject(input)).size, png.length);
   objects.set(key, object(png, "image/jpeg"));
-  await assert.rejects(storage.inspectUploadedObject(input), (error) => error.status === 415);
+  await assert.rejects(storage.inspectMediaObject(input), (error) => error.status === 415);
   objects.delete(key);
-  await assert.rejects(storage.inspectUploadedObject(input), (error) => error.status === 404);
+  await assert.rejects(storage.inspectMediaObject(input), (error) => error.status === 404);
+  assert.ok(calls.every(([operation]) => operation === "head"));
 });
 
-test("promotion copies the verified ETag into a protected namespace and retries reuse only identical bytes", async () => {
-  const { storage, objects, calls } = fixture();
-  const input = { sourceKey: key, name, etag: originalEtag };
-  const result = await storage.promoteUploadedObject(input);
-  assert.deepEqual(result, { provider: "oss", bucket: "jingjie-test", key: `jingjie/media/${name}` });
-  const copy = calls.find(([method]) => method === "copy");
-  assert.equal(copy[3].headers["If-Match"], originalEtag);
-  assert.equal(copy[3].headers["x-oss-forbid-overwrite"], "true");
-  assert.equal(copy[3].headers["x-oss-object-acl"], "private");
-  assert.deepEqual(await storage.promoteUploadedObject(input), result);
-  assert.equal(calls.filter(([method]) => method === "copy").length, 1);
-  objects.set(result.key, object(png, "image/png", '"deadbeef"'));
-  await assert.rejects(storage.promoteUploadedObject(input), (error) => error.status === 409);
-  objects.delete(result.key);
-  objects.set(key, object(png, "image/png", '"c0ffee"'));
-  await assert.rejects(storage.promoteUploadedObject(input), (error) => error.status === 409);
-  assert.equal(objects.has(result.key), false);
-  await assert.rejects(storage.promoteUploadedObject({ ...input, sourceKey: `jingjie/media/${name}` }), /上传目录/);
-});
-
-test("the installed SDK emits source ETag and target overwrite protection for CopyObject", async () => {
-  let request;
-  const client = new OSS({ region: "oss-cn-hangzhou", bucket: "jingjie-test", accessKeyId: "id", accessKeySecret: "secret", authorizationV4: true });
-  client.request = async (params) => {
-    request = params;
-    return { data: { ETag: originalEtag }, res: {} };
-  };
-  await client.copy(`jingjie/media/${name}`, key, { headers: { "If-Match": originalEtag, "x-oss-forbid-overwrite": "true" } });
-  assert.equal(request.method, "PUT");
-  assert.equal(request.headers["x-oss-copy-source-if-match"], originalEtag);
-  assert.equal(request.headers["x-oss-forbid-overwrite"], "true");
-  assert.ok(request.headers["x-oss-copy-source"].includes(encodeURIComponent(key)));
-});
-
-test("registered private OSS storage refuses backend byte reads while preserving Sites export and local media", async (t) => {
+test("registered public OSS storage refuses backend byte reads while preserving Sites export and local media", async (t) => {
   const directory = await temporaryDirectory(t);
   const { storage, objects, calls } = fixture();
-  const remote = await storage.promoteUploadedObject({ sourceKey: key, name, etag: originalEtag });
+  const remote = media.storage;
   const provider = new JsonDataProvider({ directory, initialize: () => createInitialDocument([]), oss: storage });
   await provider.update((document) => document.media.push({ name, mime: "image/png", size: png.length, originalName: "frame.png", storage: remote }));
   assert.deepEqual(await provider.statMedia(name), { size: png.length });
@@ -343,9 +197,11 @@ test("registered private OSS storage refuses backend byte reads while preserving
   assert.deepEqual(await provider.statMedia(localName), { size: localBytes.length });
 });
 
-test("saving signed OSS media persists canonical addresses across cover, video, frames and cast", async (t) => {
+test("content save, read and publication keep public canonical media fields without signing", async (t) => {
   const directory = await temporaryDirectory(t);
-  const { storage } = fixture();
+  const { storage, sdk, calls } = fixture();
+  storage.presignMedia = async () => assert.fail("content operations must not request upload or access signatures");
+  sdk.signatureUrlV4 = async () => assert.fail("content operations must not call the SDK signer");
   const provider = new JsonDataProvider({ directory, initialize: () => createInitialDocument([]), oss: storage });
   const repository = createRepository({ provider });
   const videoName = "abc-123.mp4", localName = "abc-456.png";
@@ -355,8 +211,8 @@ test("saving signed OSS media persists canonical addresses across cover, video, 
     }
     document.media.push({ name: localName, mime: "image/png", size: png.length, originalName: localName });
   });
-  const signedImage = (await provider.createMediaUrl(name)).url;
-  const signedVideo = (await provider.createMediaUrl(videoName)).url;
+  const signedImage = `${mediaReference(name)}?x-oss-signature=old-image&x-oss-expires=60`;
+  const signedVideo = `${mediaReference(videoName)}?Signature=old-video&Expires=1`;
   const external = "https://another-bucket.oss-cn-hangzhou.aliyuncs.com/photo.jpg?x-oss-signature=external&size=large";
   const draft = {
     kind: "视频", title: "真实 OSS 地址", image: signedImage, analysis: `保留文字中的 /media/${name}`,
@@ -382,23 +238,30 @@ test("saving signed OSS media persists canonical addresses across cover, video, 
   assert.doesNotMatch(JSON.stringify(mediaFields(detail.draft)), /signature|x-oss-/i);
 
   const canonicalRecords = await repository.listRecords();
-  const first = await repository.resolveMediaAccess(canonicalRecords);
-  const second = await repository.resolveMediaAccess(canonicalRecords);
-  assert.notEqual(first[0].draft.image, second[0].draft.image);
+  const reread = await repository.getRecord(saved.id);
+  const publicSnapshot = await repository.getPublished(saved.id);
+  const publicList = await repository.listPublished();
+  assert.deepEqual(mediaFields(reread.draft), expected);
+  assert.deepEqual(mediaFields(publicSnapshot), expected);
+  assert.deepEqual(mediaFields(publicList[0]), expected);
   assert.deepEqual(mediaFields(canonicalRecords[0].draft), expected);
-  for (const signed of mediaFields(first[0].draft)) assert.ok(new URL(signed).searchParams.has("x-oss-expires"));
-  assert.equal(first[0].draft.video.cast[1].image, external);
-  assert.equal(first[0].draft.video.cast[2].image, `/media/${localName}`);
-  assert.equal(first[0].hasChanges, false);
+  for (const url of mediaFields(publicSnapshot)) assert.equal(new URL(url).search, "");
+  assert.equal(reread.draft.video.cast[1].image, external);
+  assert.equal(reread.draft.video.cast[2].image, `/media/${localName}`);
+  assert.equal(reread.hasChanges, false);
   assert.equal(await readFile(path.join(directory, "content", `${saved.id}.json`), "utf8"), stored);
 
   const staticRecords = await repository.resolveStaticMedia(canonicalRecords);
   assert.deepEqual(mediaFields(staticRecords[0].draft), [`/media/${name}`, `/media/${videoName}`, `/media/${name}`, `/media/${name}`, `/media/${name}`]);
   assert.equal(staticRecords[0].draft.video.cast[1].image, external);
   assert.deepEqual(mediaFields(canonicalRecords[0].draft), expected);
-  const signedSaved = await repository.change({ action: "save", id: first[0].id, revision: first[0].revision, draft: first[0].draft });
-  assert.equal(signedSaved.hasChanges, false);
-  assert.deepEqual(mediaFields(signedSaved.draft), expected);
+  const savedAgain = await repository.change({ action: "save", id: reread.id, revision: reread.revision, draft: reread.draft });
+  assert.equal(savedAgain.hasChanges, false);
+  assert.deepEqual(mediaFields(savedAgain.draft), expected);
+  const document = await provider.read();
+  assert.deepEqual(mediaFields(document.content[0].draft), expected);
+  assert.deepEqual(mediaFields(document.content[0].published), expected);
+  assert.deepEqual(calls, []);
 });
 
 test("registered legacy OSS references migrate both draft and published snapshots on read without changing publication state", async (t) => {
@@ -446,82 +309,35 @@ test("without OSS configuration registered local references remain intact and pl
   assert.equal(await configured.resolveMediaReference(mediaReference("abc-456.png")), null);
 });
 
-test("the media access endpoint refreshes registered canonical and signed OSS addresses without reading bytes", async (t) => {
+test("the provider reuses registered OSS upload metadata and rejects local or unknown objects before signing", async (t) => {
   const directory = await temporaryDirectory(t);
   const { storage, calls } = fixture();
   const provider = new JsonDataProvider({ directory, initialize: () => createInitialDocument([]), oss: storage });
-  const remote = { provider: "oss", bucket: env.JINGJIE_OSS_BUCKET, key: `jingjie/media/${name}` };
-  await provider.update((document) => document.media.push({ name, mime: "image/png", size: png.length, originalName: "frame.png", storage: remote }));
-  const request = new Request("http://localhost/api/media/access", { method: "POST" });
-  const urls = [];
-  for (const reference of [mediaReference(name), `${mediaReference(name)}?x-oss-signature=expired&x-oss-expires=60`]) {
-    const response = await mediaAccess(request, { url: reference }, { provider });
-    assert.equal(response.status, 200);
-    assert.equal(response.headers.get("Cache-Control"), "private, no-store");
-    assert.equal(response.headers.get("Location"), null);
-    const result = await response.json();
-    assert.equal(result.mediaUrl, mediaReference(name));
-    assert.equal(new URL(result.url).pathname, `/${remote.key}`);
-    assert.equal(new URL(result.url).searchParams.get("x-oss-expires"), "3600");
-    assert.ok(Date.parse(result.expiresAt) > Date.now());
-    urls.push(result.url);
-  }
-  assert.notEqual(urls[0], urls[1]);
-  assert.equal(calls.filter(([operation]) => operation === "signatureUrlV4").length, 2);
-  assert.equal(calls.some(([operation]) => ["getStream", "head", "get"].includes(operation)), false);
-  for (const reference of ["not-a-url", mediaReference("abc-456.png"), `https://another-bucket.oss-cn-hangzhou.aliyuncs.com/jingjie/media/${name}`, `https://jingjie-test.oss-cn-hangzhou.aliyuncs.com/another-prefix/media/${name}`]) {
-    await assert.rejects(mediaAccess(request, { url: reference }, { provider }), (error) => error.status === 404);
-  }
-  assert.equal(calls.filter(([operation]) => operation === "signatureUrlV4").length, 2);
-  assert.doesNotMatch(await readFile(path.join(directory, "media.json"), "utf8"), /signature|expiresAt|x-oss-/i);
-});
-
-test("the media access endpoint rejects download parameters without reading or signing media", async (t) => {
-  const directory = await temporaryDirectory(t);
-  const { storage, calls } = fixture();
-  const provider = new JsonDataProvider({ directory, initialize: () => createInitialDocument([]), oss: storage });
-  const request = new Request("http://localhost/api/media/access", { method: "POST" });
-  for (const download of ["offline-report", "download", null, true]) {
-    await assert.rejects(mediaAccess(request, { url: mediaReference(name), download }, { provider }), (error) => error.status === 400);
-  }
-  assert.deepEqual(calls, []);
-});
-test("the provider signs registered OSS media and keeps local media on the local read path", async (t) => {
-  const directory = await temporaryDirectory(t);
-  const { storage, calls } = fixture();
-  const provider = new JsonDataProvider({ directory, initialize: () => createInitialDocument([]), oss: storage });
-  const remote = { provider: "oss", bucket: env.JINGJIE_OSS_BUCKET, key: `jingjie/media/${name}` };
   const localName = "abc-123.png";
   await provider.update((document) => {
-    document.media.push({ name, mime: "image/png", size: png.length, originalName: "remote.png", storage: remote });
+    document.media.push(media);
     document.media.push({ name: localName, mime: "image/png", size: png.length, originalName: "local.png" });
   });
-  const signed = await provider.createMediaUrl(name, "HEAD");
-  assert.equal(new URL(signed.url).pathname, `/${remote.key}`);
-  assert.deepEqual(calls, [["signatureUrlV4", "HEAD", 3600, {}, remote.key]]);
-  assert.equal(await provider.createMediaUrl(localName), null);
-  assert.equal(await provider.createMediaUrl("abc-456.png"), null);
+  const upload = { name: media.originalName, kind: "image", mime: media.mime, size: media.size, mediaUrl: mediaReference(name) };
+  const signedBatch = await provider.presignMedia({ uploads: [upload] });
+  assert.deepEqual(Object.keys(signedBatch), ["uploads"]);
+  const signed = signedBatch.uploads[0];
+  assert.equal(signed.mediaUrl, mediaReference(name));
+  assert.equal(new URL(signed.uploadUrl).pathname, "/" + key);
+  assert.deepEqual(calls, [["signatureUrlV4", "PUT", 300, { headers: {
+    "Content-Type": "image/png", "x-oss-forbid-overwrite": "true", "x-oss-object-acl": "public-read",
+  } }, key]]);
+  for (const url of ["/media/" + localName, mediaReference("abc-456.png")]) {
+    await assert.rejects(provider.presignMedia({ uploads: [{ ...upload, mediaUrl: url }] }), (error) => error.status === 404);
+  }
   assert.equal(calls.length, 1);
+  assert.equal((await provider.read()).media.length, 2);
 });
 
-test("media access refuses local media without signing or reading the local file", async (t) => {
-  const directory = await temporaryDirectory(t);
-  const { storage, calls } = fixture();
-  const provider = new JsonDataProvider({ directory, initialize: () => createInitialDocument([]), oss: storage });
-  await provider.update((document) => document.media.push({ name, mime: "image/png", size: png.length, originalName: "local.png" }));
-  await assert.rejects(mediaAccess(new Request("http://localhost/api/media/access", { method: "POST" }), { url: `/media/${name}` }, { provider }), (error) => error.status === 404);
-  assert.deepEqual(calls, []);
-  await assert.rejects(readdir(path.join(directory, "uploads")), { code: "ENOENT" });
-});
-
-test("OSS access signing failures surface as 503 without reading media bytes", async (t) => {
-  const directory = await temporaryDirectory(t);
+test("OSS signing failures surface as 503 without leaking SDK diagnostics or reading bytes", async () => {
   const { storage, sdk, calls } = fixture();
   sdk.signatureUrlV4 = async () => { throw new Error("private SDK signing diagnostic"); };
-  const provider = new JsonDataProvider({ directory, initialize: () => createInitialDocument([]), oss: storage });
-  const remote = { provider: "oss", bucket: env.JINGJIE_OSS_BUCKET, key: `jingjie/media/${name}` };
-  await provider.update((document) => document.media.push({ name, mime: "image/png", size: png.length, originalName: "frame.png", storage: remote }));
-  await assert.rejects(mediaAccess(new Request("http://localhost/api/media/access", { method: "POST" }), { url: mediaReference(name) }, { provider }), (error) => {
+  await assert.rejects(storage.presignMedia(media), (error) => {
     assert.equal(error.status, 503);
     assert.match(error.message, /OSS/);
     assert.doesNotMatch(error.message, /private SDK signing diagnostic/);
