@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "id": "case-227965e8-ed65-4293-b0fc-fa7e1510d2f3",
+  "draft": {
+    "id": "case-227965e8-ed65-4293-b0fc-fa7e1510d2f3",
+    "kind": "视频",
+    "title": "春日园林古装人像：溪边休憩、廊下回望与撑伞过桥",
+    "description": "一段春日园林古装女性人像展示视频，由溪边触水、廊下坐姿回望和撑伞过桥三个长镜头组成。作者在原帖将其描述为 AI 视频。以下为对下载文件实际画面的观察与剪辑分析，创作意图部分属于分析推断。",
+    "analysis": "两个硬切位于10.333333秒和20.200000秒。第一镜从脚部特写后拉并上抬到坐姿中全景，第二镜从双腿向躯干与面部移动并收紧，第三镜横向跟随撑伞过桥，三镜约等长。第一处切点保留腿部视觉元素，但座位从溪边石块变为木凳，属于姿态和场景串联；第二处从面部特写切到过桥较宽画面，释放空间并增加运动。作品主要展示人物、服装材质和春日气氛，未呈现明确的事件因果链。镜内景别变化不另计镜头。",
+    "prompt": "",
+    "image": "",
+    "duration": "00:00",
+    "tags": [],
+    "tagValues": {},
+    "type": [],
+    "emotion": [],
+    "lighting": [],
+    "movement": [],
+    "video": {
+      "src": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/c1955783-37ce-4950-ae9e-2a441dd2ff98.mp4",
+      "durationSeconds": 0,
+      "isMock": false,
+      "shots": [
+        {
+          "id": "s01",
+          "start": 0,
+          "end": 10.333333,
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/b99602db-03f9-4b48-bd90-837468c75872.jpg",
+          "endImage": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/523ad792-bdd0-4beb-b2d3-c6758a415dea.jpg",
+          "narrative": "约10.33秒的持续镜头，用脚部微动作和涟漪维持动态，从触感细节进入整体环境。后拉的主要作用是逐步交代人物位置。结尾切至另一坐姿的腿部近景，借相同视觉元素衔接，但不是连续动作匹配。",
+          "title": "溪边触水：从局部到人物与环境",
+          "summary": "双脚位于浅水溪边、石块前方，浅青白纱裙从画面左上落入。人物缓慢抬落脚部，水面出现涟漪。镜头逐渐拉开，人物坐在左侧溪石上，后方可见粉色花树、石拱桥与右侧亭子。",
+          "facts": {},
+          "analysis": [],
+          "imagePrompt": "",
+          "videoPrompt": ""
+        },
+        {
+          "id": "s02",
+          "start": 10.333333,
+          "end": 20.2,
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/4b2076d3-756f-4f96-9f42-659afea9646d.jpg",
+          "endImage": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/3fbeb824-010d-4a7a-92f1-267f225b8681.jpg",
+          "narrative": "约9.87秒，镜内的身体局部到面部转换持续提供新信息。抬眼对视是全片最明确的注意力提升点，也使展示从材质与姿态转为人物表情。面部特写后硬切较宽的行走画面，形成由紧到松的景别对照。",
+          "title": "廊下回望：从双腿移向面部",
+          "summary": "女性倚坐在木凳上，双腿向右伸展，浅色纱料铺在凳面。随着视线沿身体上移，可见腰饰、置于腹前的手、长发与耳饰。后段人物由垂眼逐渐转为看向镜头，以面部特写结束。",
+          "facts": {},
+          "analysis": [],
+          "imagePrompt": "",
+          "videoPrompt": ""
+        },
+        {
+          "id": "s03",
+          "start": 20.2,
+          "end": 29.966667,
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/57e0ca50-9141-4f27-9a2b-00a4504e3712.jpg",
+          "endImage": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/5add00c9-8914-4ea4-aba9-bf61a6c3cacb.jpg",
+          "narrative": "约9.77秒，行走与横向跟随接替前两镜的坐姿动作，扩大空间并使画面持续流动。飘动纱袖与落花承担收尾的抒情效果，未见单独片尾或叙事情节闭合。",
+          "title": "撑伞过桥：横向运动与落花收尾",
+          "summary": "女性持白色纸伞沿石拱桥由左向右移动。灰色桥栏遮挡下肢，粉色花枝占据画面上部，后方是绿植、溪石和流水。纱袖与长发轻摆，末段可见较明显的飘落花瓣。",
+          "facts": {},
+          "analysis": [],
+          "imagePrompt": "",
+          "videoPrompt": ""
+        }
+      ],
+      "cast": [
+        {
+          "id": "a",
+          "name": "古装女性主体",
+          "note": "",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/3fbeb824-010d-4a7a-92f1-267f225b8681.jpg"
+        }
+      ]
+    }
+  },
+  "published": null
+}

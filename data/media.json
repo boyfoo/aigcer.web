@@ -341,6 +341,83 @@
         "bucket": "jingjie-sh",
         "key": "jingjie/media/9ed5abdb-8174-44b1-a9df-e6bd0a2ac1f2.mp4"
       }
+    },
+    {
+      "name": "b99602db-03f9-4b48-bd90-837468c75872.jpg",
+      "mime": "image/jpeg",
+      "size": 649307,
+      "originalName": "frames/S01a.jpg",
+      "storage": {
+        "provider": "oss",
+        "bucket": "jingjie-sh",
+        "key": "jingjie/media/b99602db-03f9-4b48-bd90-837468c75872.jpg"
+      }
+    },
+    {
+      "name": "523ad792-bdd0-4beb-b2d3-c6758a415dea.jpg",
+      "mime": "image/jpeg",
+      "size": 1038671,
+      "originalName": "frames/S01b.jpg",
+      "storage": {
+        "provider": "oss",
+        "bucket": "jingjie-sh",
+        "key": "jingjie/media/523ad792-bdd0-4beb-b2d3-c6758a415dea.jpg"
+      }
+    },
+    {
+      "name": "4b2076d3-756f-4f96-9f42-659afea9646d.jpg",
+      "mime": "image/jpeg",
+      "size": 601718,
+      "originalName": "frames/S02a.jpg",
+      "storage": {
+        "provider": "oss",
+        "bucket": "jingjie-sh",
+        "key": "jingjie/media/4b2076d3-756f-4f96-9f42-659afea9646d.jpg"
+      }
+    },
+    {
+      "name": "3fbeb824-010d-4a7a-92f1-267f225b8681.jpg",
+      "mime": "image/jpeg",
+      "size": 673718,
+      "originalName": "frames/S02b.jpg",
+      "storage": {
+        "provider": "oss",
+        "bucket": "jingjie-sh",
+        "key": "jingjie/media/3fbeb824-010d-4a7a-92f1-267f225b8681.jpg"
+      }
+    },
+    {
+      "name": "57e0ca50-9141-4f27-9a2b-00a4504e3712.jpg",
+      "mime": "image/jpeg",
+      "size": 922358,
+      "originalName": "frames/S03a.jpg",
+      "storage": {
+        "provider": "oss",
+        "bucket": "jingjie-sh",
+        "key": "jingjie/media/57e0ca50-9141-4f27-9a2b-00a4504e3712.jpg"
+      }
+    },
+    {
+      "name": "5add00c9-8914-4ea4-aba9-bf61a6c3cacb.jpg",
+      "mime": "image/jpeg",
+      "size": 905854,
+      "originalName": "frames/S03b.jpg",
+      "storage": {
+        "provider": "oss",
+        "bucket": "jingjie-sh",
+        "key": "jingjie/media/5add00c9-8914-4ea4-aba9-bf61a6c3cacb.jpg"
+      }
+    },
+    {
+      "name": "c1955783-37ce-4950-ae9e-2a441dd2ff98.mp4",
+      "mime": "video/mp4",
+      "size": 43657244,
+      "originalName": "GrayNoteLab_2108214667713909166.mp4",
+      "storage": {
+        "provider": "oss",
+        "bucket": "jingjie-sh",
+        "key": "jingjie/media/c1955783-37ce-4950-ae9e-2a441dd2ff98.mp4"
+      }
     }
   ]
 }
