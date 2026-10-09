@@ -7,6 +7,7 @@ import { createRepository, createInitialDocument } from "../src/server/repositor
 import { JsonDataProvider } from "../src/server/storage/json.js";
 import { OssMediaStorage } from "../src/server/storage/oss.js";
 import { createSubmissionService } from "../src/server/mcpSubmissions.js";
+import { createDraftService } from "../src/server/mcpDrafts.js";
 import { MEDIA_LIMITS } from "../src/lib/mediaFormats.js";
 
 const png = Buffer.from("89504e470d0a1a0a00000000", "hex");
@@ -309,6 +310,28 @@ test("a failed persistence transaction leaves the submission prepared and can be
   assert.equal(result.status, "draft");
   assert.equal((await repository.listRecords()).length, 1);
   assert.equal((await provider.read()).media.length, 1);
+});
+
+test("editing a submitted draft persists across restart and can use a newly uploaded replacement asset", async (t) => {
+  const state = await fixture(t);
+  const prepared = await state.service.presign({ requestId: "editable-import", files: [imageFile] });
+  state.objects.set(prepared.uploads[0].objectKey, png);
+  const data = { kind: "image", title: "原始导入", image: imageFile.localName };
+  const saved = await state.service.submitCase({ submissionId: prepared.submissionId, data, assets: prepared.uploads.map(asset) });
+  const drafts = createDraftService(state.repository);
+  const current = await drafts.getDraft({ caseId: saved.caseId });
+  const replacement = await state.service.presign({ requestId: "replace-draft-cover", files: [{ ...imageFile, localName: "new-cover.png" }] });
+  const upload = replacement.uploads[0];
+  await assert.rejects(drafts.updateDraft({ caseId: saved.caseId, revision: current.revision, patch: { image: upload.mediaUrl } }), (error) => error.status === 404);
+  state.objects.set(upload.objectKey, png);
+  const updated = await drafts.updateDraft({ caseId: saved.caseId, revision: current.revision, patch: { title: "修改后的资料", image: upload.mediaUrl } });
+  assert.equal(updated.revision, 2);
+  assert.equal(updated.draft.image, upload.mediaUrl);
+  const restarted = state.open();
+  assert.deepEqual(await createDraftService(restarted.repository).getDraft({ caseId: saved.caseId }), updated);
+  assert.equal((await restarted.repository.listRecords()).length, 1);
+  assert.deepEqual((await restarted.repository.getSubmission(prepared.submissionId)).source.data, data);
+  assert.deepEqual((await restarted.service.getSubmissionStatus({ submissionId: prepared.submissionId })).result, saved);
 });
 
 test("empty file manifests can save incomplete drafts without signing an empty batch", async (t) => {

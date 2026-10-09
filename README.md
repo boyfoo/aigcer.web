@@ -66,15 +66,17 @@ Get-Command node.exe, npm.cmd | Select-Object Name, Source
 
 普通 Next.js 服务提供 Streamable HTTP MCP 地址：`https://你的域名/mcp`。AI 客户端添加此远程 URL 后，会从后端发现工具名称、说明、输入/输出结构和提交流程指南，无需在本地安装镜界 MCP 服务。支持 2025 协议的初始化流程和 2026 协议的服务发现。客户端需要具备读取本地文件和执行 HTTP 上传、读取的能力；只有远程 MCP 连接、不能访问本地文件的客户端无法直传本地素材。
 
-工具标题、说明及服务指南使用网站名称“镜界”，明确对应“提交到镜界”“上传到镜界”“把拉片结果保存到镜界”等请求，并说明申请地址、直传素材、保存草稿及恢复上传的调用顺序。客户端连接后可重新获取工具列表查看这些说明；实际是否调用仍由客户端和模型根据对话判断。
+工具标题、说明及服务指南使用网站名称“镜界”，明确对应“提交到镜界”“上传到镜界”“把拉片结果保存到镜界”等请求，并说明申请地址、直传素材、保存草稿、恢复上传及按草稿 ID 修改资料的调用顺序。客户端连接后可重新获取工具列表查看这些说明；实际是否调用仍由客户端和模型根据对话判断。
 
 在服务器按 `.env.example` 配置 `SITE_URL`、持久数据目录，以及 `JINGJIE_OSS_BUCKET`、`JINGJIE_OSS_REGION`（如 `cn-hangzhou`）、`JINGJIE_OSS_ACCESS_KEY_ID`、`JINGJIE_OSS_ACCESS_KEY_SECRET`。后台录入与 MCP 预上传共用同一 OSS Bucket 和目录前缀，图片、视频均由浏览器或 MCP 客户端直接 PUT 到 OSS；网站上传预签名接口仅接收 JSON 元数据，批量签发 PUT 地址并预登记素材。对象使用 `public-read` 权限，素材预览和播放直接读取公开 OSS 地址。上传必须配置 OSS，未配置时返回 503，只配置部分项会报配置错误。Bucket CORS 需允许站点来源的 PUT、GET、HEAD，以及 `Content-Type`、`x-oss-*` 请求头；开发来源与生产来源均须覆盖。可选 `JINGJIE_OSS_SECURITY_TOKEN` 适用于临时凭据，凭据到期前需更新服务端配置。密钥始终在服务端，浏览器与 MCP 客户端仅收到具有有限有效期和指定对象路径的上传 URL。
 
 | MCP 工具 | 用途 |
 | --- | --- |
 | `jingjie_presign` | 唯一上传签名工具；传 `requestId` 和 `files` 批量获取 `submissionId`、`uploads`，包含 `assetId`、`objectKey`、公开素材地址 `mediaUrl` 与 PUT `uploadUrl`/`uploadExpiresAt`/`headers` |
-| `jingjie_submit_case` | 传 `submissionId`、原始拉片 JSON `data` 和成功上传的 `assets`，核对 OSS 元信息并保存草稿，返回编辑/预览链接、镜头数量与缺失项 |
-| `jingjie_get_submission_status` | 只查询保存结果与 OSS 对象元信息，返回逐文件状态，不签发地址 |
+| `jingjie_submit_case` | 传 `submissionId`、原始拉片 JSON `data` 和成功上传的 `assets`，核对 OSS 元信息并保存草稿，返回草稿 `caseId`、编辑/预览链接、镜头数量与缺失项 |
+| `jingjie_get_submission_status` | 只查询首次提交的保存结果与 OSS 对象元信息，返回逐文件状态，不签发地址 |
+| `jingjie_get_draft` | 传 `caseId`，读取当前编辑稿及其 `revision`，供继续修改或核对保存结果 |
+| `jingjie_update_draft` | 传 `caseId`、刚读取的 `revision` 和草稿字段 `patch`，保存修改并返回更新后的编辑稿；不会发布内容 |
 
 文件清单示例：
 
@@ -94,9 +96,33 @@ Get-Command node.exe, npm.cmd | Select-Object Name, Source
 
 上传完成后，提交参数形如 `{submissionId, data: 原始shots.json对象, assets: [{assetId, mediaUrl, objectKey}]}`；`mediaUrl` 和 `objectKey` 可省略，提供时必须是后端返回的原值。`mediaUrl` 同时用于资料保存、预览和播放，`uploadUrl` 仅用于 PUT 上传。保存前后端通过 OSS HEAD 核对所选文件的大小和 Content-Type，不读取文件内容。单张图片的 `data` 使用 `{kind:"image",title,image:"图片localName",description,analysis,prompt}`。
 
-后端直接接收 [reelbench-skills](https://github.com/eternityspring/reelbench-skills) 产生的 `shots.json`，转换已知枚举和资料字段。`source` 对应视频 `localName`；首尾帧默认匹配 `frames/S01a.jpg`、`frames/S01b.jpg`，也可在镜头 `image`、`endImage` 指定路径，人物图片用 `cast.image` 指定。`frame` 转为概述、`size/camera` 转为景别/运镜、`rhythmNote` 转为叙事、`audio` 作为来源提供的台词。未知枚举和缺失素材留空并返回提示，不推测模型参数或提示词，来源机器复核不转成作者人工确认。原始 JSON 与标识映射保存在提交记录中，不随公开内容或 Sites 导出。
+后端直接接收 [reelbench-skills](https://github.com/eternityspring/reelbench-skills) 产生的 `shots.json`，转换已知枚举和资料字段。`source` 对应视频 `localName`；真实视频时长使用 `data.meta.durationSeconds`，不映射原始 JSON 顶层的 `duration`。首尾帧默认匹配 `frames/S01a.jpg`、`frames/S01b.jpg`，也可在镜头 `image`、`endImage` 指定路径，人物图片用 `cast.image` 指定。`frame` 转为概述、`size/camera` 转为景别/运镜、`rhythmNote` 转为叙事、`audio` 作为来源提供的台词。未知枚举和缺失素材留空并返回提示，不推测模型参数或提示词，来源机器复核不转成作者人工确认。原始 JSON 与标识映射保存在提交记录中，不随公开内容或 Sites 导出。
 
 断网或地址过期时先查询状态，跳过 `uploaded` 文件，只重新上传 `awaiting_upload` 文件。`unavailable` 表示 OSS 暂时无法核验，保留标识后稍后查询；`invalid` 表示文件核验失败，按返回原因处理，错误格式文件不能用原地址覆盖，应修正后新建提交。PUT 地址过期时，用原 `requestId` 与相同 `files` 调用 `jingjie_presign`；状态查询只核对元信息，不返回新签名。申请与提交均可重试：沿用相同 `requestId`、`submissionId` 和原资料，不会重复创建案例；相同标识配不同清单或资料会返回冲突。草稿允许缺图或不完整资料，保存与手动发布分开。
+
+### 按草稿 ID 继续修改
+
+首次提交返回的 `caseId` 就是草稿 ID，也是案例的稳定 ID；客户端应保留它作为后续读取、修改的目标。`submissionId` 只标识一次上传与导入，提交状态和幂等重试返回的首次结果均属于历史记录，不能作为当前编辑稿或当前 `revision`。
+
+修改前调用 `jingjie_get_draft({caseId})`，返回 `{caseId,status,revision,draft,updatedAt,publishedAt,hasChanges,previewUrl,editUrl}`。随后调用 `jingjie_update_draft({caseId,revision,patch})`，使用刚读取的版本号和需要修改的字段。例如补充真实视频时长：
+
+```json
+{
+  "caseId": "case-...",
+  "revision": 1,
+  "patch": {
+    "video": { "durationSeconds": 29.966667 }
+  }
+}
+```
+
+`patch` 使用网站编辑稿字段，可包含 `title`、`description`、`analysis`、`prompt`、`image`、`duration`、`tags`、`tagValues`、`type`、`emotion`、`lighting`、`movement` 和 `video`；`video` 可包含 `src`、`durationSeconds`、`metadata`、`cast`、`shots`。`video`、`metadata` 和顶层 `tagValues` 按字段合并，数组全量替换；省略字段保留原值，传 `""` 或 `[]` 清空对应文本或数组，`metadata` 的单个字段可传 `null` 清除。案例的 `id`、`kind`、`video.isMock` 不可修改。修改镜头时传完整 `shots` 数组，沿用已有镜头 `id`，以保留镜头收藏和导航关联。
+
+`duration` 仅用于图片分镜的时长文本；视频草稿传顶层 `duration` 会报错，需使用 `video.durationSeconds`。
+
+新增或替换素材时，先正常调用 `jingjie_presign` 并完成 PUT，再在 `patch` 中引用已上传的公开 `mediaUrl`。服务器会核对新引用的素材登记、类型和 OSS HEAD 元信息；不能填写 PUT 签名地址。替换视频 `src` 默认清除旧视频的时长和参数，只有此次明确提供的对应字段会保留。
+
+MCP 修改不导入作者人工复核确认；资料或视频发生变化会清除旧确认，未发生变化则保留。已发布和已下架案例也只修改编辑稿，公开快照与上下架状态由网站的手动操作管理。保存结果因断网等原因不确定时，调用 `jingjie_get_draft` 核对当前内容；遇到 409 版本冲突时重新读取并合并修改，不用旧版本盲目覆盖。
 
 浏览器来源默认限制为本站，原生 MCP 客户端没有 `Origin` 时可以连接；需要跨域浏览器客户端时，用 `JINGJIE_MCP_ALLOWED_ORIGINS` 配置逗号分隔的完整来源地址。此来源检查沿用当前免登录产品边界，不是账号认证。远程服务需要普通 Next.js 部署，Sites 静态站点不提供 `/mcp`。
 

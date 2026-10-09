@@ -9,7 +9,7 @@
     "build:sites": "node scripts/build-sites.mjs",
     "start": "next start --hostname 127.0.0.1 --port 5174",
     "preview": "npm run start",
-    "test": "node --test tests/tag-settings.test.mjs tests/content.test.mjs tests/reference-projects.test.mjs tests/content-entries.test.mjs tests/publishing.test.mjs tests/storage-provider.test.mjs tests/study-report.test.mjs tests/creation-references.test.mjs tests/creation-navigation.test.mjs tests/filter-examples.test.mjs tests/filter-example-preparation.test.mjs tests/reelbench-import.test.mjs tests/oss-storage.test.mjs tests/batch-presign.test.mjs tests/browser-uploads.test.mjs tests/mcp-submissions.test.mjs tests/mcp-http.test.mjs",
+    "test": "node --test tests/tag-settings.test.mjs tests/content.test.mjs tests/reference-projects.test.mjs tests/content-entries.test.mjs tests/publishing.test.mjs tests/storage-provider.test.mjs tests/study-report.test.mjs tests/creation-references.test.mjs tests/creation-navigation.test.mjs tests/filter-examples.test.mjs tests/filter-example-preparation.test.mjs tests/reelbench-import.test.mjs tests/oss-storage.test.mjs tests/batch-presign.test.mjs tests/browser-uploads.test.mjs tests/mcp-submissions.test.mjs tests/mcp-drafts.test.mjs tests/mcp-http.test.mjs",
     "data:migrate": "node scripts/migrate-sqlite-to-json.mjs",
     "data:filter-examples": "node scripts/prepare-filter-examples.mjs",
     "test:publishing": "node scripts/test-publishing.mjs",
