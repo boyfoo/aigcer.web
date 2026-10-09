@@ -12,14 +12,24 @@ import { JsonDataProvider } from "./json.js";
  * @typedef {Object} DataProvider
  * @property {() => Promise<import('./document.js').DataDocument>} read
  * @property {<T>(work: (document: import('./document.js').DataDocument) => T | Promise<T>) => Promise<T>} update
- * @property {(name: string, chunks: AsyncIterable<Uint8Array>) => Promise<void>} writeMedia
+ * @property {(name: string, chunks: AsyncIterable<Uint8Array>) => Promise<void>} writeMedia Local data migration only; uploads use OSS presigned URLs.
+ * @property {(name: string, method?: 'GET' | 'HEAD', uploadedStorage?: import('./document.js').StoredMedia['storage']) => Promise<{url: string, expiresAt: string} | null>} createMediaUrl
+ * @property {(name: string, uploadedStorage?: import('./document.js').StoredMedia['storage']) => Promise<string>} getMediaReference
+ * @property {(name: string) => Promise<string>} getPlannedMediaReference
+ * @property {(url: string) => Promise<import('./document.js').StoredMedia | null>} resolveMediaReference
+ * @property {<T>(value: T, media?: import('./document.js').StoredMedia[]) => Promise<T>} canonicalizeMediaUrls
+ * @property {<T>(value: T) => Promise<T>} resolveMediaAccess
+ * @property {<T>(value: T) => Promise<T>} resolveStaticMedia
  * @property {(name: string) => Promise<{size: number} | null>} statMedia
  * @property {(name: string, range?: {start: number, end: number}) => Promise<ReadableStream>} openMedia
- * @property {(name: string) => Promise<void>} removeMedia
+ * @property {(name: string, uploadedStorage?: import('./document.js').StoredMedia['storage']) => Promise<void>} removeMedia
  * @property {(name: string, destination: string) => Promise<void>} exportMedia
  * @property {() => Promise<{enabled: boolean, expiresSeconds: number}>} getDirectUploadConfig
  * @property {(submissionId: string, name: string) => Promise<string>} makeUploadKey
  * @property {(input: {key: string, mime: string, size: number}) => Promise<{uploadUrl: string, headers: Object, expiresAt: string}>} createUploadUrl
+ * @property {(input: {name: string, kind: string, mime: string, size: number}) => Promise<{uploadToken: string, uploadUrl: string, headers: Object, expiresAt: string, mediaUrl: string}>} createBrowserUpload
+ * @property {(uploadToken: string) => Promise<Object>} verifyBrowserUpload
+ * @property {(key: string) => Promise<void>} removeUploadedObject
  * @property {(input: {key: string, kind: string, size: number, mime: string}) => Promise<{size: number, mime: string, etag: string}>} inspectUploadedObject
  * @property {(input: {sourceKey: string, name: string, etag: string}) => Promise<{provider: 'oss', bucket: string, key: string}>} promoteUploadedObject
  * @property {() => Promise<void>} close

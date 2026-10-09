@@ -40,7 +40,7 @@ test("local case and shot links use the actual preview route and preserve query 
 
 test("media sources reject scripts, temporary blobs and invalid image data", () => {
   for (const source of ["javascript:alert(1)", "blob:https://example.com/x", "file:///C:/video.mp4", "//elsewhere.com/x", "/\\elsewhere.com/x", "https://user:password@example.com/x", "data:image/svg+xml,<svg></svg>"]) assert.equal(isMediaUrl(source), false, source);
-  for (const source of ["https://example.com/video.mp4", "/images/night-lounge.png"]) assert.equal(isMediaUrl(source), true, source);
+  for (const source of ["https://example.com/video.mp4", "/images/avatar-curator.png"]) assert.equal(isMediaUrl(source), true, source);
   assert.equal(isMediaUrl("data:image/png;base64,aGVsbG8="), false);
   assert.throws(() => normalizeDraft({ ...entry(), image: "data:image/png;base64,aGVsbG8=" }), /封面/);
   assert.throws(() => normalizeContentEntry({ ...entry(), image: "blob:expired" }), /封面/);

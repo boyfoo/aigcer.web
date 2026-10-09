@@ -2,9 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createInitialDocument } from "../src/server/repository.js";
 import { handleMcpRequest } from "../src/server/mcp.js";
+import { OssMediaStorage } from "../src/server/storage/oss.js";
+import { matchesMediaReference } from "../src/lib/mediaUrls.js";
 
 const endpoint = "https://jingjie.example/mcp";
-const toolNames = ["jingjie_get_submission_status", "jingjie_prepare_upload", "jingjie_submit_case"];
+const toolNames = ["jingjie_get_media_access", "jingjie_get_submission_status", "jingjie_prepare_upload", "jingjie_submit_case"];
 
 function repositoryOptions() {
   let document = createInitialDocument([]);
@@ -18,8 +20,10 @@ function repositoryOptions() {
         return structuredClone(result);
       },
       async close() {},
+      async canonicalizeMediaUrls(value) { return structuredClone(value); },
       async getDirectUploadConfig() { return { enabled: true, expiresSeconds: 900 }; },
       async makeUploadKey(submissionId, name) { return `jingjie/uploads/${submissionId}/${name}`; },
+      async getPlannedMediaReference(name) { return `https://unit-bucket.oss-cn-hangzhou.aliyuncs.com/jingjie/media/${name}`; },
       async createUploadUrl({ key, mime, size }) {
         return {
           uploadUrl: `https://unit-bucket.oss-cn-hangzhou.aliyuncs.com/${key}?Signature=test-signature`,
@@ -82,6 +86,11 @@ test("a remote client initializes, discovers the server's tool contracts, and ca
   assert.equal(prepare.outputSchema.properties.uploads.items.properties.headers.type, "object");
   assert.equal(submit.outputSchema.properties.status.const, "draft");
   assert.equal(submit.outputSchema.properties.warnings.items.type, "string");
+  const access = tools.find((tool) => tool.name === "jingjie_get_media_access");
+  assert.deepEqual(access.inputSchema.required, ["url"]);
+  assert.equal(access.inputSchema.additionalProperties, false);
+  assert.deepEqual(access.outputSchema.required.sort(), ["expiresAt", "mediaUrl", "url"]);
+  assert.equal(access.annotations.readOnlyHint, true);
 
   const called = await rpc(options, "tools/call", {
     name: "jingjie_get_submission_status", arguments: { submissionId: "submission-not-found" },
@@ -107,6 +116,73 @@ test("clients can discover and read the backend's submission guide as an MCP res
   assert.match(guide.text, /原始文件字节/);
   assert.match(guide.text, /草稿/);
   assert.match(guide.text, /jingjie_get_submission_status/);
+  assert.match(guide.text, /jingjie_get_media_access/);
+  assert.match(guide.text, /GET 签名/);
+  assert.match(guide.text, /未登记的临时素材须先完成提交/);
+});
+
+test("private media access returns only an expiring GET address for a registered canonical OSS object", async () => {
+  const options = repositoryOptions();
+  const name = "12345678-1234-4234-9234-123456789abc.png";
+  const media = {
+    name, mime: "image/png", size: 12, originalName: "cover.png",
+    storage: { provider: "oss", bucket: "unit-bucket", key: `jingjie/media/${name}` },
+  };
+  await options.provider.update((document) => { document.media.push(media); });
+  const oss = new OssMediaStorage({ env: {
+    JINGJIE_OSS_BUCKET: "unit-bucket", JINGJIE_OSS_REGION: "cn-hangzhou",
+    JINGJIE_OSS_ACCESS_KEY_ID: "unit-id", JINGJIE_OSS_ACCESS_KEY_SECRET: "unit-secret",
+  } });
+  options.provider.resolveMediaReference = async (url) => (await options.provider.read()).media
+    .find((item) => matchesMediaReference(url, item)) ?? null;
+  options.provider.getMediaReference = async (_name, storage) => oss.getMediaReference(storage);
+  let signatures = 0;
+  options.provider.createMediaUrl = async (registeredName, method, storage) => {
+    assert.equal(registeredName, name);
+    assert.equal(method, "GET");
+    assert.deepEqual(storage, media.storage);
+    signatures++;
+    return oss.createMediaUrl(storage, method);
+  };
+  for (const method of ["statMedia", "openMedia", "exportMedia", "inspectUploadedObject", "promoteUploadedObject"]) {
+    options.provider[method] = async () => assert.fail(`MCP media access must not call ${method}`);
+  }
+  const client = oss.client();
+  for (const method of ["head", "get", "getStream", "put", "putStream", "copy", "delete", "request"]) {
+    client[method] = async () => assert.fail(`MCP media access must not request OSS ${method}`);
+  }
+  const mediaUrl = oss.getMediaReference(media.storage);
+  const before = Date.now();
+  const called = await rpc(options, "tools/call", { name: "jingjie_get_media_access", arguments: { url: mediaUrl } });
+  const after = Date.now();
+  assert.equal(called.response.status, 200);
+  const access = toolOutput(called.message);
+  assert.deepEqual(Object.keys(access).sort(), ["expiresAt", "mediaUrl", "url"]);
+  assert.equal(access.mediaUrl, mediaUrl);
+  const signed = new URL(access.url);
+  assert.equal(`${signed.origin}${signed.pathname}`, mediaUrl);
+  assert.equal(signed.searchParams.get("x-oss-expires"), "3600");
+  assert.ok(signed.searchParams.get("x-oss-signature"));
+  assert.ok(Date.parse(access.expiresAt) >= before + 3600000);
+  assert.ok(Date.parse(access.expiresAt) <= after + 3600000);
+  assert.equal(signatures, 1);
+
+  const unknown = await rpc(options, "tools/call", {
+    name: "jingjie_get_media_access", arguments: { url: mediaUrl.replace(name, "ffffffff-ffff-4fff-8fff-ffffffffffff.png") },
+  });
+  assert.equal(unknown.message.result.isError, true);
+  assert.equal(unknown.message.result.structuredContent.error.status, 404);
+  const arbitrary = await rpc(options, "tools/call", {
+    name: "jingjie_get_media_access", arguments: { url: mediaUrl, bucket: "foreign-bucket", key: "private/secret.png" },
+  });
+  assert.ok(arbitrary.message.error || arbitrary.message.result?.isError);
+  const signedInput = await rpc(options, "tools/call", {
+    name: "jingjie_get_media_access", arguments: { url: access.url },
+  });
+  assert.equal(signedInput.message.result.isError, true);
+  assert.equal(signedInput.message.result.structuredContent.error.status, 400);
+  assert.equal(signatures, 1);
+  assert.deepEqual((await options.provider.read()).media, [media]);
 });
 
 test("same-origin requests and clients without Origin can connect; foreign browser origins are rejected", async () => {

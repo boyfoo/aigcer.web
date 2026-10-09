@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createRepository } from "../src/server/repository.js";
-import { identifyMedia, byteRange } from "../src/server/media.js";
+import { identifyMedia } from "../src/lib/mediaFormats.js";
 import { sameOrigin } from "../src/server/http.js";
 import { decodeFavorites, encodeFavorites } from "../src/lib/favorites.js";
 import { createDefaultTagGroups, reconcileTagFilters } from "../src/tagSettings.js";
@@ -17,7 +17,7 @@ function database(t) {
   t.after(async () => { await repository.close(); assert.ok(path.resolve(directory).startsWith(path.resolve(prefix))); rmSync(directory, { recursive: true, force: true }); });
   return { repository, directory };
 }
-const input = { kind: "分镜", title: "本地上传案例", image: "/images/night-lounge.png", duration: "00:08", prompt: "", analysis: "", tags: [] };
+const input = { kind: "分镜", title: "本地上传案例", image: "/images/avatar-curator.png", duration: "00:08", prompt: "", analysis: "", tags: [] };
 const act = (repository, action, record, draft = record.draft) => repository.change({ action, id: record.id, revision: record.revision, draft });
 
 test("draft persistence, manual publication, pending edits, unlisting and relisting form an isolated lifecycle", async (t) => {
@@ -120,14 +120,10 @@ test("site-wide tags persist and reject conflicting saves", async (t) => {
   await assert.rejects(() => repository.saveTags([], current.revision), (error) => error.status === 409);
 });
 
-test("media content detection, byte ranges and cross-site write rejection", () => {
+test("media content detection and cross-site write rejection", () => {
   assert.equal(identifyMedia(Buffer.from("89504e470d0a1a0a", "hex"), "image").mime, "image/png");
   assert.throws(() => identifyMedia(Buffer.from("<svg><script>alert(1)</script></svg>"), "image"), (error) => error.status === 415);
   assert.throws(() => identifyMedia(Buffer.from("this is not video.mp4"), "video"));
-  assert.deepEqual(byteRange("bytes=2-6", 10), { start: 2, end: 6 });
-  assert.deepEqual(byteRange("bytes=-3", 10), { start: 7, end: 9 });
-  assert.deepEqual(byteRange("bytes=6-", 10), { start: 6, end: 9 });
-  for (const range of ["bytes=9-3", "bytes=20-", "bytes=0-1,3-4", "bytes=-0"]) assert.throws(() => byteRange(range, 10));
   assert.throws(() => sameOrigin(new Request("http://localhost/api/content", { headers: { Origin: "https://elsewhere.example" } })), (error) => error.status === 403);
   assert.doesNotThrow(() => sameOrigin(new Request("http://internal/api/content", { headers: { Host: "127.0.0.1:5174", Origin: "http://127.0.0.1:5174" } })));
 });

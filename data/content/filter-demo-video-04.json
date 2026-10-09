@@ -8,7 +8,7 @@
     "description": "虚构筛选测试资料；封面为布局占位图。视频仅用于播放器测试，画面不对应虚构场景。两段虚构镜头方案分别为：人物在室内机库机械化，机器人骨架逐层展开为机甲装甲，再起飞离开机库；能量光束、火花与发光接缝体现力量。固定监控视角俯看室内狭窄通道，机器人持枪械与盾牌交火；碰撞引发局部爆炸，火花、烟尘和碎裂物遮住出口。",
     "analysis": "",
     "prompt": "仅测试镜头分类与组合筛选。前段拟定为人物在室内机库机械化，机器人骨架逐层展开为机甲装甲，再起飞离开机库；能量光束、火花与发光接缝体现力量。后段拟定为固定监控视角俯看室内狭窄通道，机器人持枪械与盾牌交火；碰撞引发局部爆炸，火花、烟尘和碎裂物遮住出口。",
-    "image": "/media/ffd58d04d2d74f446a8b2b991cbda8f7.png",
+    "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/ffd58d04d2d74f446a8b2b991cbda8f7.png",
     "duration": "00:32",
     "tags": [],
     "tagValues": {},
@@ -25,7 +25,7 @@
           "id": "test-opening",
           "start": 0,
           "end": 16.1615,
-          "image": "/media/ffd58d04d2d74f446a8b2b991cbda8f7.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/ffd58d04d2d74f446a8b2b991cbda8f7.png",
           "tagValues": {
             "subject": [
               "人物",
@@ -108,7 +108,7 @@
           "id": "test-action",
           "start": 16.1615,
           "end": 32.323,
-          "image": "/media/327491a66e092bfcc8ccfc50ea8d5456.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/327491a66e092bfcc8ccfc50ea8d5456.png",
           "tagValues": {
             "subject": [
               "机器人",
@@ -200,7 +200,7 @@
     "description": "虚构筛选测试资料；封面为布局占位图。视频仅用于播放器测试，画面不对应虚构场景。两段虚构镜头方案分别为：人物在室内机库机械化，机器人骨架逐层展开为机甲装甲，再起飞离开机库；能量光束、火花与发光接缝体现力量。固定监控视角俯看室内狭窄通道，机器人持枪械与盾牌交火；碰撞引发局部爆炸，火花、烟尘和碎裂物遮住出口。",
     "analysis": "",
     "prompt": "仅测试镜头分类与组合筛选。前段拟定为人物在室内机库机械化，机器人骨架逐层展开为机甲装甲，再起飞离开机库；能量光束、火花与发光接缝体现力量。后段拟定为固定监控视角俯看室内狭窄通道，机器人持枪械与盾牌交火；碰撞引发局部爆炸，火花、烟尘和碎裂物遮住出口。",
-    "image": "/media/ffd58d04d2d74f446a8b2b991cbda8f7.png",
+    "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/ffd58d04d2d74f446a8b2b991cbda8f7.png",
     "duration": "00:32",
     "tags": [],
     "tagValues": {},
@@ -217,7 +217,7 @@
           "id": "test-opening",
           "start": 0,
           "end": 16.1615,
-          "image": "/media/ffd58d04d2d74f446a8b2b991cbda8f7.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/ffd58d04d2d74f446a8b2b991cbda8f7.png",
           "tagValues": {
             "subject": [
               "人物",
@@ -300,7 +300,7 @@
           "id": "test-action",
           "start": 16.1615,
           "end": 32.323,
-          "image": "/media/327491a66e092bfcc8ccfc50ea8d5456.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/327491a66e092bfcc8ccfc50ea8d5456.png",
           "tagValues": {
             "subject": [
               "机器人",

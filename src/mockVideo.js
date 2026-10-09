@@ -9,7 +9,7 @@ export const mockVideo = {
       start: 0,
       end: 6,
       title: "先交代空间",
-      image: "/images/night-cinema.png",
+      image: "/media/19f663ff29a7fdaef30f2daa3e01425545206c11152535511d70f67696856801.png",
       summary: "用一个较远的视点交代街道、建筑和人物的位置，让观众先进入故事发生的环境。",
       facts: { 景别: "远景", 运镜: "缓慢推进", 构图: "单点透视", 光影: "冷暖对比" },
       analysis: [
@@ -25,7 +25,7 @@ export const mockVideo = {
       start: 6,
       end: 12,
       title: "靠近人物情绪",
-      image: "/images/night-passenger.png",
+      image: "/media/ffa2fd42f2e36eac62e22229d759d6fb015a06fc3c6070ca6482fe3d77b4e7fe.png",
       summary: "从环境切到人物侧脸，让情绪通过视线和细小动作逐渐显露。",
       facts: { 景别: "近景", 运镜: "固定镜头", 构图: "侧面留白", 光影: "柔和侧光" },
       analysis: [
@@ -41,7 +41,7 @@ export const mockVideo = {
       start: 12,
       end: 19,
       title: "用细节连接叙事",
-      image: "/images/night-film-reel.png",
+      image: "/media/5602f57cd6f6f2eface865d319003c5544ed366e99cbfca84a3ee017b48a8a26.png",
       summary: "用物件特写承接人物情绪，让材质、光线和微小运动补充故事信息。",
       facts: { 景别: "特写", 运镜: "微距推近", 构图: "对角线", 光影: "暖色轮廓光" },
       analysis: [
@@ -57,7 +57,7 @@ export const mockVideo = {
       start: 19,
       end: 26,
       title: "跟随动作向前",
-      image: "/images/night-rain-street.png",
+      image: "/media/8a309fb9445733ae9550868151def210437918e8252156e0fb651cb1311206c0.png",
       summary: "重新回到较开阔的空间，用人物行走和镜头跟随推动叙事。",
       facts: { 景别: "中远景", 运镜: "背后跟拍", 构图: "纵深构图", 光影: "霓虹反射" },
       analysis: [
@@ -73,7 +73,7 @@ export const mockVideo = {
       start: 26,
       end: 32.323,
       title: "留一个安静的结尾",
-      image: "/images/night-lounge.png",
+      image: "/media/2f347b70da8771584c844a90af017ef05948560b1b1ab4630ec01016ad80d0ed.png",
       summary: "以空镜收尾，将注意力从动作转向环境，让情绪在画面中停留。",
       facts: { 景别: "全景", 运镜: "固定镜头", 构图: "框中框", 光影: "室内暖光" },
       analysis: [

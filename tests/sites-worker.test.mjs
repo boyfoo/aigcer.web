@@ -3,6 +3,9 @@ import { access, readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 import worker from "../worker/index.js";
 import { withRepository } from "../src/server/repository.js";
+import { isOssMediaUrl } from "../src/lib/mediaUrls.js";
+
+const mediaUrls = (item) => [item.image, item.video?.src, ...(item.video?.shots.flatMap((shot) => [shot.image, shot.endImage]) ?? []), ...(item.video?.cast?.map((person) => person.image) ?? [])];
 
 test("serves existing static assets without a fallback", async () => {
   const calls = [];
@@ -102,15 +105,40 @@ test("exported case pages contain full text without executing JavaScript", async
   assert.match(settings, /name="robots" content="noindex, nofollow"/);
 });
 
+test("published OSS references become local media in the static case HTML and hydration data", async () => {
+  const snapshots = await withRepository(async (repository) => {
+    const published = await repository.listPublished();
+    const urls = [...new Set(published.flatMap(mediaUrls).filter(isOssMediaUrl))];
+    const registered = new Map(await Promise.all(urls.map(async (url) => [url, await repository.resolveMediaReference(url)])));
+    return { published, exported: await repository.resolveStaticMedia(published), registered };
+  });
+  for (const [index, item] of snapshots.published.entries()) {
+    const original = mediaUrls(item);
+    const exported = mediaUrls(snapshots.exported[index]);
+    const html = await readFile(new URL(`../dist/client/cases/${item.id}.html`, import.meta.url), "utf8");
+    for (const [assetIndex, url] of original.entries()) {
+      if (!isOssMediaUrl(url)) continue;
+      if (!snapshots.registered.get(url)?.storage) {
+        assert.equal(exported[assetIndex], url, `External OSS media must keep its original address: ${item.id}`);
+        continue;
+      }
+      assert.match(exported[assetIndex], /^\/media\//, `Unmapped OSS material: ${item.id}`);
+      assert.ok(html.includes(exported[assetIndex]), `Missing static media reference: ${item.id}`);
+      assert.ok(!html.includes(url), `Static handoff still points to OSS: ${item.id}`);
+      await access(new URL(`../dist/client${exported[assetIndex]}`, import.meta.url));
+    }
+  }
+});
+
 test("static handoff excludes the database and runtime API handlers", async () => {
   const files = await readdir(new URL("../dist/", import.meta.url), { recursive: true });
   assert.ok(!files.some((name) => /(?:sqlite|(?:^|[\\/])(?:content|tags|media|submissions)\.json$|\.runtime\.js$)/.test(name)));
   assert.ok(!files.some((name) => /(?:^|[\\/])content[\\/].*\.json$/.test(name)));
   assert.ok(!files.some((name) => /^client[\\/]api[\\/]/.test(name)));
   assert.ok(!files.some((name) => /^client[\\/]mcp(?:[\\/]|\.|$)/.test(name)));
-  const published = await withRepository((repository) => repository.listPublished());
+  const published = await withRepository(async (repository) => repository.resolveStaticMedia(await repository.listPublished()));
   for (const item of published) {
-    for (const url of [item.image, item.video?.src, ...(item.video?.shots.flatMap((shot) => [shot.image, shot.endImage]) ?? []), ...(item.video?.cast?.map((person) => person.image) ?? [])]) {
+    for (const url of mediaUrls(item)) {
       if (url?.startsWith("/media/")) await access(new URL(`../dist/client${url}`, import.meta.url));
     }
   }

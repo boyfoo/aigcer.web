@@ -8,7 +8,7 @@
     "description": "虚构筛选测试资料；封面为布局占位图。视频仅用于播放器测试，画面不对应虚构场景。两段虚构镜头方案分别为：人物在晨雾森林持双刀连续回旋劈砍，踢击后投掷短刀；对手与主角交换位置，发光刀轨和拖影强调速度与优雅。人物在雾夜森林完成兽化，化作动物形态的怪兽并分身追逐；前景与远处的分身轮流奔跑、跳跃，尾迹带着火焰。",
     "analysis": "",
     "prompt": "仅测试镜头分类与组合筛选。前段拟定为人物在晨雾森林持双刀连续回旋劈砍，踢击后投掷短刀；对手与主角交换位置，发光刀轨和拖影强调速度与优雅。后段拟定为人物在雾夜森林完成兽化，化作动物形态的怪兽并分身追逐；前景与远处的分身轮流奔跑、跳跃，尾迹带着火焰。",
-    "image": "/media/0b09fb0e005694bc89538429cd7bd1f8.png",
+    "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/0b09fb0e005694bc89538429cd7bd1f8.png",
     "duration": "00:32",
     "tags": [],
     "tagValues": {},
@@ -25,7 +25,7 @@
           "id": "test-opening",
           "start": 0,
           "end": 16.1615,
-          "image": "/media/0b09fb0e005694bc89538429cd7bd1f8.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/0b09fb0e005694bc89538429cd7bd1f8.png",
           "tagValues": {
             "subject": [
               "人物"
@@ -106,7 +106,7 @@
           "id": "test-action",
           "start": 16.1615,
           "end": 32.323,
-          "image": "/media/979896abed50631f325c364a5e820a4d.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/979896abed50631f325c364a5e820a4d.png",
           "tagValues": {
             "subject": [
               "人物",
@@ -199,7 +199,7 @@
     "description": "虚构筛选测试资料；封面为布局占位图。视频仅用于播放器测试，画面不对应虚构场景。两段虚构镜头方案分别为：人物在晨雾森林持双刀连续回旋劈砍，踢击后投掷短刀；对手与主角交换位置，发光刀轨和拖影强调速度与优雅。人物在雾夜森林完成兽化，化作动物形态的怪兽并分身追逐；前景与远处的分身轮流奔跑、跳跃，尾迹带着火焰。",
     "analysis": "",
     "prompt": "仅测试镜头分类与组合筛选。前段拟定为人物在晨雾森林持双刀连续回旋劈砍，踢击后投掷短刀；对手与主角交换位置，发光刀轨和拖影强调速度与优雅。后段拟定为人物在雾夜森林完成兽化，化作动物形态的怪兽并分身追逐；前景与远处的分身轮流奔跑、跳跃，尾迹带着火焰。",
-    "image": "/media/0b09fb0e005694bc89538429cd7bd1f8.png",
+    "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/0b09fb0e005694bc89538429cd7bd1f8.png",
     "duration": "00:32",
     "tags": [],
     "tagValues": {},
@@ -216,7 +216,7 @@
           "id": "test-opening",
           "start": 0,
           "end": 16.1615,
-          "image": "/media/0b09fb0e005694bc89538429cd7bd1f8.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/0b09fb0e005694bc89538429cd7bd1f8.png",
           "tagValues": {
             "subject": [
               "人物"
@@ -297,7 +297,7 @@
           "id": "test-action",
           "start": 16.1615,
           "end": 32.323,
-          "image": "/media/979896abed50631f325c364a5e820a4d.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/979896abed50631f325c364a5e820a4d.png",
           "tagValues": {
             "subject": [
               "人物",

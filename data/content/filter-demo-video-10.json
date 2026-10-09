@@ -8,7 +8,7 @@
     "description": "虚构筛选测试资料；封面为布局占位图。视频仅用于播放器测试，画面不对应虚构场景。两段虚构镜头方案分别为：植物在室内温室和室外庭院经历生长与枯萎，建筑窗线提供季节参照；拟定纪录片段记录自然变化，表达宁静、治愈和温暖。动物鱼群在白天水下穿过植物，捕食者追逐时鱼群向远处散开；拟定纪录片段先交代鱼群关系，再观察近处动物反应。",
     "analysis": "",
     "prompt": "仅测试镜头分类与组合筛选。前段拟定为植物在室内温室和室外庭院经历生长与枯萎，建筑窗线提供季节参照；拟定纪录片段记录自然变化，表达宁静、治愈和温暖。后段拟定为动物鱼群在白天水下穿过植物，捕食者追逐时鱼群向远处散开；拟定纪录片段先交代鱼群关系，再观察近处动物反应。",
-    "image": "/media/879ff03a8cd4f9019fb0b1f95c6d3c67.png",
+    "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/879ff03a8cd4f9019fb0b1f95c6d3c67.png",
     "duration": "00:32",
     "tags": [],
     "tagValues": {},
@@ -25,7 +25,7 @@
           "id": "test-opening",
           "start": 0,
           "end": 16.1615,
-          "image": "/media/879ff03a8cd4f9019fb0b1f95c6d3c67.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/879ff03a8cd4f9019fb0b1f95c6d3c67.png",
           "tagValues": {
             "subject": [
               "植物",
@@ -99,7 +99,7 @@
           "id": "test-action",
           "start": 16.1615,
           "end": 32.323,
-          "image": "/media/8873e7db9134d9f5f52890a0c624ebb0.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/8873e7db9134d9f5f52890a0c624ebb0.png",
           "tagValues": {
             "subject": [
               "动物",
@@ -181,7 +181,7 @@
     "description": "虚构筛选测试资料；封面为布局占位图。视频仅用于播放器测试，画面不对应虚构场景。两段虚构镜头方案分别为：植物在室内温室和室外庭院经历生长与枯萎，建筑窗线提供季节参照；拟定纪录片段记录自然变化，表达宁静、治愈和温暖。动物鱼群在白天水下穿过植物，捕食者追逐时鱼群向远处散开；拟定纪录片段先交代鱼群关系，再观察近处动物反应。",
     "analysis": "",
     "prompt": "仅测试镜头分类与组合筛选。前段拟定为植物在室内温室和室外庭院经历生长与枯萎，建筑窗线提供季节参照；拟定纪录片段记录自然变化，表达宁静、治愈和温暖。后段拟定为动物鱼群在白天水下穿过植物，捕食者追逐时鱼群向远处散开；拟定纪录片段先交代鱼群关系，再观察近处动物反应。",
-    "image": "/media/879ff03a8cd4f9019fb0b1f95c6d3c67.png",
+    "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/879ff03a8cd4f9019fb0b1f95c6d3c67.png",
     "duration": "00:32",
     "tags": [],
     "tagValues": {},
@@ -198,7 +198,7 @@
           "id": "test-opening",
           "start": 0,
           "end": 16.1615,
-          "image": "/media/879ff03a8cd4f9019fb0b1f95c6d3c67.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/879ff03a8cd4f9019fb0b1f95c6d3c67.png",
           "tagValues": {
             "subject": [
               "植物",
@@ -272,7 +272,7 @@
           "id": "test-action",
           "start": 16.1615,
           "end": 32.323,
-          "image": "/media/8873e7db9134d9f5f52890a0c624ebb0.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/8873e7db9134d9f5f52890a0c624ebb0.png",
           "tagValues": {
             "subject": [
               "动物",

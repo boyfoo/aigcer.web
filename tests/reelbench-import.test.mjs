@@ -46,6 +46,24 @@ test("reelbench material maps to an editable draft without mutating the source",
   assert.equal(shot.videoPrompt, "");
 });
 
+test("confirmed unsigned OSS media addresses fill every case media field without local aliases", () => {
+  const source = videoData();
+  source.image = "frames/S01a.jpg";
+  const files = media().map((file, index) => ({ ...file, url: `https://unit-bucket.oss-cn-hangzhou.aliyuncs.com/jingjie/media/abc-${index + 1}.${file.kind === "video" ? "mp4" : "jpg"}` }));
+  const result = convert(source, files);
+  assert.equal(result.draft.image, files[1].url);
+  assert.equal(result.draft.video.src, files[0].url);
+  assert.equal(result.draft.video.shots[0].image, files[1].url);
+  assert.equal(result.draft.video.shots[0].endImage, files[2].url);
+  assert.equal(result.draft.video.cast[0].image, files[3].url);
+  assert.deepEqual(result.warnings, []);
+  assert.doesNotMatch(JSON.stringify(result.draft), /"\/media\//);
+  for (const query of ["?Signature=temporary", "?x-oss-signature=temporary&x-oss-expires=3600"]) {
+    const signed = files.map((file, index) => index === 0 ? { ...file, url: file.url + query } : file);
+    assert.throws(() => convert(source, signed), /media\[0\]\.url/);
+  }
+});
+
 test("enumerations retain their actual taxonomy meaning and missing transitions stay unknown", () => {
   const source = videoData();
   Object.assign(source.shots[0], { size: "wide", camera: "rack-focus", category: "insert", rhythm: "close", transitionIn: "match-cut" });

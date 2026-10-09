@@ -8,7 +8,7 @@
     "description": "虚构筛选测试资料；封面为布局占位图。视频仅用于播放器测试，画面不对应虚构场景。两段虚构镜头方案分别为：人物骑动物持长枪穿过白天沙漠，奔跑登场后向靶标刺击，再投出长枪；烟尘让移动方向与速度清楚可见。人物在雪天雪地蓄力，用斧劈砍冰冻障碍；特写记录斧刃接触后的碎裂，寒冷环境中的握持细节体现力量。",
     "analysis": "",
     "prompt": "仅测试镜头分类与组合筛选。前段拟定为人物骑动物持长枪穿过白天沙漠，奔跑登场后向靶标刺击，再投出长枪；烟尘让移动方向与速度清楚可见。后段拟定为人物在雪天雪地蓄力，用斧劈砍冰冻障碍；特写记录斧刃接触后的碎裂，寒冷环境中的握持细节体现力量。",
-    "image": "/media/fedc5e1c8096fd112dc41f0a78b26fb0.png",
+    "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/fedc5e1c8096fd112dc41f0a78b26fb0.png",
     "duration": "00:32",
     "tags": [],
     "tagValues": {},
@@ -25,7 +25,7 @@
           "id": "test-opening",
           "start": 0,
           "end": 16.1615,
-          "image": "/media/fedc5e1c8096fd112dc41f0a78b26fb0.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/fedc5e1c8096fd112dc41f0a78b26fb0.png",
           "tagValues": {
             "subject": [
               "人物",
@@ -107,7 +107,7 @@
           "id": "test-action",
           "start": 16.1615,
           "end": 32.323,
-          "image": "/media/9e900571e76e941af16f3d9cdf1d1fa9.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/9e900571e76e941af16f3d9cdf1d1fa9.png",
           "tagValues": {
             "subject": [
               "人物"
@@ -193,7 +193,7 @@
     "description": "虚构筛选测试资料；封面为布局占位图。视频仅用于播放器测试，画面不对应虚构场景。两段虚构镜头方案分别为：人物骑动物持长枪穿过白天沙漠，奔跑登场后向靶标刺击，再投出长枪；烟尘让移动方向与速度清楚可见。人物在雪天雪地蓄力，用斧劈砍冰冻障碍；特写记录斧刃接触后的碎裂，寒冷环境中的握持细节体现力量。",
     "analysis": "",
     "prompt": "仅测试镜头分类与组合筛选。前段拟定为人物骑动物持长枪穿过白天沙漠，奔跑登场后向靶标刺击，再投出长枪；烟尘让移动方向与速度清楚可见。后段拟定为人物在雪天雪地蓄力，用斧劈砍冰冻障碍；特写记录斧刃接触后的碎裂，寒冷环境中的握持细节体现力量。",
-    "image": "/media/fedc5e1c8096fd112dc41f0a78b26fb0.png",
+    "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/fedc5e1c8096fd112dc41f0a78b26fb0.png",
     "duration": "00:32",
     "tags": [],
     "tagValues": {},
@@ -210,7 +210,7 @@
           "id": "test-opening",
           "start": 0,
           "end": 16.1615,
-          "image": "/media/fedc5e1c8096fd112dc41f0a78b26fb0.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/fedc5e1c8096fd112dc41f0a78b26fb0.png",
           "tagValues": {
             "subject": [
               "人物",
@@ -292,7 +292,7 @@
           "id": "test-action",
           "start": 16.1615,
           "end": 32.323,
-          "image": "/media/9e900571e76e941af16f3d9cdf1d1fa9.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/9e900571e76e941af16f3d9cdf1d1fa9.png",
           "tagValues": {
             "subject": [
               "人物"

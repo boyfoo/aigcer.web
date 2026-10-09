@@ -1,5 +1,6 @@
 import { createStudyReport } from "./studyReport.js";
 import { createOfflineReportHtml } from "./offlineStudy.js";
+import { requestOfflineImage } from "./contentClient.js";
 
 export function downloadFile(contents, name, type) {
   const url = URL.createObjectURL(new Blob([contents], { type }));
@@ -18,7 +19,7 @@ export async function downloadOfflineStudy(item) {
   for (let i = 0; i < urls.length; i += 4) {
     await Promise.all(urls.slice(i, i + 4).map(async (url) => {
       try {
-        const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        const response = await requestOfflineImage(url, AbortSignal.timeout(8000));
         if (!response.ok) throw new Error("图片读取失败");
         const blob = await response.blob();
         if (!/^image\/(png|jpeg|webp|gif)$/.test(blob.type) || blob.size > 20 * 1024 * 1024 || embeddedBytes + blob.size > 128 * 1024 * 1024) throw new Error("图片过大或格式不支持");

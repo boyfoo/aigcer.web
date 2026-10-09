@@ -8,7 +8,7 @@
     "description": "虚构筛选测试资料；封面为布局占位图。视频仅用于播放器测试，画面不对应虚构场景。两段虚构镜头方案分别为：人物在雨夜废墟中举盾格挡怪兽，再以剑蓄力重击；镜头贴近持剑双手，雷电和冲击波突出力量与临场感。室内实验影像把液体视作抽象物体，发光液滴物体变形、缩小、消散并重组，液体飞溅留下拖影；强调优雅与失重感。",
     "analysis": "",
     "prompt": "仅测试镜头分类与组合筛选。前段拟定为人物在雨夜废墟中举盾格挡怪兽，再以剑蓄力重击；镜头贴近持剑双手，雷电和冲击波突出力量与临场感。后段拟定为室内实验影像把液体视作抽象物体，发光液滴物体变形、缩小、消散并重组，液体飞溅留下拖影；强调优雅与失重感。",
-    "image": "/media/6f1bccf9ddf5228beccf0a8bd03d7441.png",
+    "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/6f1bccf9ddf5228beccf0a8bd03d7441.png",
     "duration": "00:32",
     "tags": [],
     "tagValues": {},
@@ -25,7 +25,7 @@
           "id": "test-opening",
           "start": 0,
           "end": 16.1615,
-          "image": "/media/6f1bccf9ddf5228beccf0a8bd03d7441.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/6f1bccf9ddf5228beccf0a8bd03d7441.png",
           "tagValues": {
             "subject": [
               "人物",
@@ -112,7 +112,7 @@
           "id": "test-action",
           "start": 16.1615,
           "end": 32.323,
-          "image": "/media/47db8ea88a67f30d250f3b195dd80001.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/47db8ea88a67f30d250f3b195dd80001.png",
           "tagValues": {
             "subject": [
               "抽象物体"
@@ -199,7 +199,7 @@
     "description": "虚构筛选测试资料；封面为布局占位图。视频仅用于播放器测试，画面不对应虚构场景。两段虚构镜头方案分别为：人物在雨夜废墟中举盾格挡怪兽，再以剑蓄力重击；镜头贴近持剑双手，雷电和冲击波突出力量与临场感。室内实验影像把液体视作抽象物体，发光液滴物体变形、缩小、消散并重组，液体飞溅留下拖影；强调优雅与失重感。",
     "analysis": "",
     "prompt": "仅测试镜头分类与组合筛选。前段拟定为人物在雨夜废墟中举盾格挡怪兽，再以剑蓄力重击；镜头贴近持剑双手，雷电和冲击波突出力量与临场感。后段拟定为室内实验影像把液体视作抽象物体，发光液滴物体变形、缩小、消散并重组，液体飞溅留下拖影；强调优雅与失重感。",
-    "image": "/media/6f1bccf9ddf5228beccf0a8bd03d7441.png",
+    "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/6f1bccf9ddf5228beccf0a8bd03d7441.png",
     "duration": "00:32",
     "tags": [],
     "tagValues": {},
@@ -216,7 +216,7 @@
           "id": "test-opening",
           "start": 0,
           "end": 16.1615,
-          "image": "/media/6f1bccf9ddf5228beccf0a8bd03d7441.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/6f1bccf9ddf5228beccf0a8bd03d7441.png",
           "tagValues": {
             "subject": [
               "人物",
@@ -303,7 +303,7 @@
           "id": "test-action",
           "start": 16.1615,
           "end": 32.323,
-          "image": "/media/47db8ea88a67f30d250f3b195dd80001.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/47db8ea88a67f30d250f3b195dd80001.png",
           "tagValues": {
             "subject": [
               "抽象物体"

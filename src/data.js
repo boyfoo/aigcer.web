@@ -4,7 +4,7 @@ export const storyboardItems = [
   {
     id: "night-cinema",
     title: "雨夜老电影院",
-    image: "/images/night-cinema.png",
+    image: "/media/19f663ff29a7fdaef30f2daa3e01425545206c11152535511d70f67696856801.png",
     duration: "00:32",
     kind: "视频",
     video: mockVideo,
@@ -21,7 +21,7 @@ export const storyboardItems = [
   {
     id: "night-projector",
     title: "放映室的光",
-    image: "/images/night-projector.png",
+    image: "/media/464a0111c44b7f48c5e6ee7a7ad42a6bf6ba544d1e823790a127b84488813cb8.png",
     duration: "00:32",
     kind: "视频",
     video: mockVideo,
@@ -37,7 +37,7 @@ export const storyboardItems = [
   {
     id: "night-lounge",
     title: "雨窗旧厅",
-    image: "/images/night-lounge.png",
+    image: "/media/2f347b70da8771584c844a90af017ef05948560b1b1ab4630ec01016ad80d0ed.png",
     duration: "00:08",
     kind: "分镜",
     type: "故事片",
@@ -52,7 +52,7 @@ export const storyboardItems = [
   {
     id: "night-passenger",
     title: "夜车窗边",
-    image: "/images/night-passenger.png",
+    image: "/media/ffa2fd42f2e36eac62e22229d759d6fb015a06fc3c6070ca6482fe3d77b4e7fe.png",
     duration: "00:10",
     kind: "分镜",
     type: "短片",
@@ -67,7 +67,7 @@ export const storyboardItems = [
   {
     id: "night-rain-street",
     title: "雨巷独行",
-    image: "/images/night-rain-street.png",
+    image: "/media/8a309fb9445733ae9550868151def210437918e8252156e0fb651cb1311206c0.png",
     duration: "00:32",
     kind: "视频",
     video: mockVideo,
@@ -83,7 +83,7 @@ export const storyboardItems = [
   {
     id: "night-film-reel",
     title: "胶片余温",
-    image: "/images/night-film-reel.png",
+    image: "/media/5602f57cd6f6f2eface865d319003c5544ed366e99cbfca84a3ee017b48a8a26.png",
     duration: "00:06",
     kind: "分镜",
     type: "广告",

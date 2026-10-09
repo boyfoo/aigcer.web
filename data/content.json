@@ -4,7 +4,7 @@
     {
       "id": "night-cinema",
       "status": "published",
-      "revision": 2,
+      "revision": 3,
       "updatedAt": "2026-09-29T08:06:20.583Z",
       "publishedAt": "2026-09-29T08:06:20.583Z",
       "position": 0,
@@ -14,7 +14,7 @@
     {
       "id": "night-projector",
       "status": "published",
-      "revision": 1,
+      "revision": 2,
       "updatedAt": "2026-09-07T00:00:00.000Z",
       "publishedAt": "2026-09-07T00:00:00.000Z",
       "position": 1,
@@ -24,7 +24,7 @@
     {
       "id": "night-lounge",
       "status": "published",
-      "revision": 1,
+      "revision": 2,
       "updatedAt": "2026-09-07T00:00:00.000Z",
       "publishedAt": "2026-09-07T00:00:00.000Z",
       "position": 2,
@@ -34,7 +34,7 @@
     {
       "id": "night-passenger",
       "status": "published",
-      "revision": 1,
+      "revision": 2,
       "updatedAt": "2026-09-07T00:00:00.000Z",
       "publishedAt": "2026-09-07T00:00:00.000Z",
       "position": 3,
@@ -44,7 +44,7 @@
     {
       "id": "night-rain-street",
       "status": "published",
-      "revision": 1,
+      "revision": 2,
       "updatedAt": "2026-09-07T00:00:00.000Z",
       "publishedAt": "2026-09-07T00:00:00.000Z",
       "position": 4,
@@ -54,7 +54,7 @@
     {
       "id": "night-film-reel",
       "status": "published",
-      "revision": 1,
+      "revision": 2,
       "updatedAt": "2026-09-07T00:00:00.000Z",
       "publishedAt": "2026-09-07T00:00:00.000Z",
       "position": 5,

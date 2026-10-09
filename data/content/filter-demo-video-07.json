@@ -8,7 +8,7 @@
     "description": "虚构筛选测试资料；封面为布局占位图。视频仅用于播放器测试，画面不对应虚构场景。两段虚构镜头方案分别为：人物持法杖漂浮在太空，能量光束和雷电穿过空中，发光粒子渐渐消散；悬浮飞行体现失重感与神秘感。人物背着日常背包从狭窄平台奔跑、跳跃后坠落，绳索逐渐绷紧；雾天看不到谷底，失重感和紧张感持续上升。",
     "analysis": "",
     "prompt": "仅测试镜头分类与组合筛选。前段拟定为人物持法杖漂浮在太空，能量光束和雷电穿过空中，发光粒子渐渐消散；悬浮飞行体现失重感与神秘感。后段拟定为人物背着日常背包从狭窄平台奔跑、跳跃后坠落，绳索逐渐绷紧；雾天看不到谷底，失重感和紧张感持续上升。",
-    "image": "/media/31d26fca6873b41523ffa5e99b4ea9f7.png",
+    "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/31d26fca6873b41523ffa5e99b4ea9f7.png",
     "duration": "00:32",
     "tags": [],
     "tagValues": {},
@@ -25,7 +25,7 @@
           "id": "test-opening",
           "start": 0,
           "end": 16.1615,
-          "image": "/media/31d26fca6873b41523ffa5e99b4ea9f7.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/31d26fca6873b41523ffa5e99b4ea9f7.png",
           "tagValues": {
             "subject": [
               "人物",
@@ -111,7 +111,7 @@
           "id": "test-action",
           "start": 16.1615,
           "end": 32.323,
-          "image": "/media/d34e194a8b031b3b461da53f2cd0c7db.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/d34e194a8b031b3b461da53f2cd0c7db.png",
           "tagValues": {
             "subject": [
               "人物"
@@ -197,7 +197,7 @@
     "description": "虚构筛选测试资料；封面为布局占位图。视频仅用于播放器测试，画面不对应虚构场景。两段虚构镜头方案分别为：人物持法杖漂浮在太空，能量光束和雷电穿过空中，发光粒子渐渐消散；悬浮飞行体现失重感与神秘感。人物背着日常背包从狭窄平台奔跑、跳跃后坠落，绳索逐渐绷紧；雾天看不到谷底，失重感和紧张感持续上升。",
     "analysis": "",
     "prompt": "仅测试镜头分类与组合筛选。前段拟定为人物持法杖漂浮在太空，能量光束和雷电穿过空中，发光粒子渐渐消散；悬浮飞行体现失重感与神秘感。后段拟定为人物背着日常背包从狭窄平台奔跑、跳跃后坠落，绳索逐渐绷紧；雾天看不到谷底，失重感和紧张感持续上升。",
-    "image": "/media/31d26fca6873b41523ffa5e99b4ea9f7.png",
+    "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/31d26fca6873b41523ffa5e99b4ea9f7.png",
     "duration": "00:32",
     "tags": [],
     "tagValues": {},
@@ -214,7 +214,7 @@
           "id": "test-opening",
           "start": 0,
           "end": 16.1615,
-          "image": "/media/31d26fca6873b41523ffa5e99b4ea9f7.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/31d26fca6873b41523ffa5e99b4ea9f7.png",
           "tagValues": {
             "subject": [
               "人物",
@@ -300,7 +300,7 @@
           "id": "test-action",
           "start": 16.1615,
           "end": 32.323,
-          "image": "/media/d34e194a8b031b3b461da53f2cd0c7db.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/d34e194a8b031b3b461da53f2cd0c7db.png",
           "tagValues": {
             "subject": [
               "人物"

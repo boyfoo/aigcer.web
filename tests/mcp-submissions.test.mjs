@@ -6,6 +6,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { createRepository, createInitialDocument } from "../src/server/repository.js";
 import { JsonDataProvider } from "../src/server/storage/json.js";
+import { OssMediaStorage } from "../src/server/storage/oss.js";
 import { createSubmissionService } from "../src/server/mcpSubmissions.js";
 import { identifyMedia, MEDIA_LIMITS } from "../src/lib/mediaFormats.js";
 
@@ -27,6 +28,8 @@ async function fixture(t) {
   function open() {
     const provider = new JsonDataProvider({ directory, initialize: () => createInitialDocument([]) });
     provider.getDirectUploadConfig = async () => ({ enabled: true, expiresSeconds: 900 });
+    provider.getPlannedMediaReference = async (name) => `https://unit-bucket.oss-cn-hangzhou.aliyuncs.com/jingjie/media/${name}`;
+    provider.getMediaReference = async (name, storage) => `https://${storage.bucket}.oss-cn-hangzhou.aliyuncs.com/${storage.key}`;
     provider.makeUploadKey = async (submissionId, name) => `jingjie/uploads/${submissionId}/${name}`;
     provider.createUploadUrl = async ({ key, mime, size }) => ({
       uploadUrl: `https://unit-bucket.oss-cn-hangzhou.aliyuncs.com/${key}?Signature=signature-${++signatures}`,
@@ -73,7 +76,9 @@ test("upload preparation returns scoped presigned URLs and stable asset identifi
     assert.equal(upload.headers["Content-Type"], upload.mime);
     assert.equal(upload.headers["Content-Length"], String(upload.size));
     assert.ok(Date.parse(upload.expiresAt) > Date.now());
-    assert.match(upload.url, /^\/media\//);
+    assert.match(upload.url, /^https:\/\/unit-bucket\.oss-cn-hangzhou\.aliyuncs\.com\/jingjie\/media\/[a-f0-9-]+\.(png|mp4)$/);
+    assert.equal(new URL(upload.url).search, "");
+    assert.notEqual(upload.url, upload.uploadUrl);
   }
   assert.doesNotMatch(JSON.stringify(prepared), /accessKeySecret|securityToken|server-only-secret/i);
   const retried = await service.prepareUpload({ requestId: "local-analysis-1", files: [...files].reverse() });
@@ -126,6 +131,98 @@ test("a successful submission registers verified OSS assets and saves one unpubl
   assert.equal(document.media[0].originalName, imageFile.localName);
   assert.equal(promotions.length, 1);
   assert.equal(document.submissions[0].source.data.title, "图片分析");
+  assert.doesNotMatch(JSON.stringify(document.content), /Signature=|uploadUrl|"\/media\//i);
+  const published = await repository.change({ action: "publish", id: record.id, revision: record.revision, draft: record.draft });
+  assert.equal(published.status, "published");
+  assert.equal((await repository.getPublished(record.id)).image, upload.url);
+});
+
+test("registered private media receives a one-hour GET signature without reading object bytes", async (t) => {
+  const { service, provider, objects } = await fixture(t);
+  const prepared = await service.prepareUpload({ requestId: "private-media-access", files: [imageFile] });
+  const upload = prepared.uploads[0];
+  objects.set(upload.objectKey, png);
+  await service.submitCase({
+    submissionId: prepared.submissionId,
+    data: { kind: "image", title: "私有素材", image: imageFile.localName },
+    assets: [asset(upload)],
+  });
+  provider.oss = new OssMediaStorage({ env: {
+    JINGJIE_OSS_BUCKET: "unit-bucket", JINGJIE_OSS_REGION: "cn-hangzhou",
+    JINGJIE_OSS_ACCESS_KEY_ID: "unit-id", JINGJIE_OSS_ACCESS_KEY_SECRET: "unit-secret",
+  } });
+  for (const method of ["statMedia", "openMedia", "exportMedia", "inspectUploadedObject", "promoteUploadedObject"]) {
+    provider[method] = async () => assert.fail(`getMediaAccess must not call ${method}`);
+  }
+  const client = provider.oss.client();
+  for (const method of ["head", "get", "getStream", "put", "putStream", "copy", "delete", "request"]) {
+    client[method] = async () => assert.fail(`getMediaAccess must not request OSS ${method}`);
+  }
+  const sign = provider.createMediaUrl.bind(provider);
+  const calls = [];
+  provider.createMediaUrl = async (...args) => { calls.push(args); return sign(...args); };
+  const before = Date.now();
+  const access = await service.getMediaAccess({ url: upload.url });
+  const after = Date.now();
+  assert.deepEqual(Object.keys(access).sort(), ["expiresAt", "mediaUrl", "url"]);
+  assert.equal(access.mediaUrl, upload.url);
+  const signed = new URL(access.url);
+  assert.equal(`${signed.origin}${signed.pathname}`, upload.url);
+  assert.equal(signed.searchParams.get("x-oss-expires"), "3600");
+  assert.equal(signed.searchParams.get("x-oss-signature-version"), "OSS4-HMAC-SHA256");
+  assert.ok(signed.searchParams.get("x-oss-signature"));
+  assert.ok(Date.parse(access.expiresAt) >= before + 3600000);
+  assert.ok(Date.parse(access.expiresAt) <= after + 3600000);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][1], "GET");
+  assert.equal(calls[0][2].provider, "oss");
+  assert.equal((await provider.read()).media[0].name, calls[0][0]);
+  assert.doesNotMatch(JSON.stringify((await provider.read()).content), /x-oss-signature|Signature=/i);
+});
+
+test("private media access rejects unregistered objects and noncanonical or foreign references before signing", async (t) => {
+  const { service, provider, objects } = await fixture(t);
+  const prepared = await service.prepareUpload({ requestId: "access-registration-boundary", files: [imageFile] });
+  const upload = prepared.uploads[0];
+  provider.createMediaUrl = async () => assert.fail("unregistered media must never receive a signature");
+  await assert.rejects(service.getMediaAccess({ url: upload.url }), (error) => error.status === 404);
+  objects.set(upload.objectKey, png);
+  await service.submitCase({
+    submissionId: prepared.submissionId, data: { kind: "image", image: imageFile.localName }, assets: [asset(upload)],
+  });
+  for (const url of [
+    upload.url.replace("unit-bucket.", "foreign-bucket."),
+    upload.url.replace("oss-cn-hangzhou", "oss-cn-shanghai"),
+    upload.url.replace("/jingjie/media/", "/other/media/"),
+    upload.url.replace(/[^/]+$/, "ffffffff-ffff-4fff-8fff-ffffffffffff.png"),
+  ]) await assert.rejects(service.getMediaAccess({ url }), (error) => error.status === 404);
+  for (const url of [
+    upload.uploadUrl, `${upload.url}?Signature=expired`, `${upload.url}#preview`,
+    `/media/${upload.url.split("/").at(-1)}`, "https://unrelated.example/image.png", "not-a-url", null,
+  ]) await assert.rejects(service.getMediaAccess({ url }), (error) => error.status === 400);
+  await provider.update((document) => { delete document.media[0].storage; });
+  await assert.rejects(service.getMediaAccess({ url: upload.url }), (error) => error.status === 404);
+});
+
+test("video, cover, shot frames and cast portraits persist the final unsigned OSS references", async (t) => {
+  const { service, repository, objects } = await fixture(t);
+  const files = [videoFile, imageFile, ...["frames/S01a.png", "frames/S01b.png", "cast/P1.png"].map((localName) => ({ ...imageFile, localName }))];
+  const prepared = await service.prepareUpload({ requestId: "all-video-media", files });
+  for (const upload of prepared.uploads) objects.set(upload.objectKey, upload.kind === "video" ? mp4 : png);
+  const data = structuredClone(source);
+  data.image = imageFile.localName;
+  data.cast[0].image = "cast/P1.png";
+  data.shots[0].image = "frames/S01a.png";
+  data.shots[0].endImage = "frames/S01b.png";
+  const result = await service.submitCase({ submissionId: prepared.submissionId, data, assets: prepared.uploads.map(asset) });
+  const { draft } = await repository.getRecord(result.caseId);
+  const byName = new Map(prepared.uploads.map((upload) => [upload.localName, upload.url]));
+  assert.equal(draft.image, byName.get(imageFile.localName));
+  assert.equal(draft.video.src, byName.get(videoFile.localName));
+  assert.equal(draft.video.shots[0].image, byName.get("frames/S01a.png"));
+  assert.equal(draft.video.shots[0].endImage, byName.get("frames/S01b.png"));
+  assert.equal(draft.video.cast[0].image, byName.get("cast/P1.png"));
+  assert.doesNotMatch(JSON.stringify(draft), /Signature=|uploadUrl|"\/media\//i);
 });
 
 test("omitted files remain explicit missing material and can be saved in an incomplete video draft", async (t) => {
@@ -171,6 +268,9 @@ test("submissions cannot replace an issued asset URL or object key with arbitrar
   const data = { kind: "image", image: imageFile.localName };
   for (const supplied of [
     { ...asset(upload), url: "https://unrelated.example/foreign.png" },
+    { ...asset(upload), url: upload.uploadUrl },
+    { ...asset(upload), url: `${upload.url}?Signature=expired-upload` },
+    { ...asset(upload), url: `/media/${upload.url.split("/").at(-1)}` },
     { ...asset(upload), objectKey: "other/uploads/foreign.png" },
     { ...asset(upload), assetId: "unknown-asset" },
   ]) await assert.rejects(service.submitCase({ submissionId: prepared.submissionId, data, assets: [supplied] }));

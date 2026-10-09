@@ -1,5 +1,6 @@
 import { normalizeDraft, validCaseId } from "./contentEntries.js";
 import { cameraMoves, rhythmRoles, shotCategories, shotSizes, shotTransitions } from "./studyReport.js";
+import { isOssMediaUrl, mediaNameFromUrl } from "./mediaUrls.js";
 
 const enums = {
   size: { none: "无景别", "extreme-wide": "大远景", wide: "全景", "medium-wide": "中远景", medium: "中景", "medium-close": "中近景", close: "特写", "extreme-close": "大特写" },
@@ -63,7 +64,9 @@ function mediaResolver(media, warnings) {
     const localName = text(item.localName, `media[${index}].localName`, 2048);
     if (!localName) fail(`media[${index}].localName`, "本地文件名不能为空");
     if (!["image", "video"].includes(item.kind)) fail(`media[${index}].kind`, "素材类型无效");
-    if (typeof item.url !== "string" || !/^\/media\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(item.url)) fail(`media[${index}].url`, "需要已登记的 /media/ 素材地址");
+    const ossUrl = isOssMediaUrl(item.url) ? new URL(item.url) : null;
+    const unsignedOss = ossUrl && mediaNameFromUrl(item.url) && !ossUrl.search && !ossUrl.hash;
+    if (typeof item.url !== "string" || (!unsignedOss && !/^\/media\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(item.url))) fail(`media[${index}].url`, "需要已确认的无签名 OSS 素材地址或本地素材地址");
     return { ...item, path: localPath(localName) };
   });
   const paths = new Set();

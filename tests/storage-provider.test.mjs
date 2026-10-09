@@ -11,7 +11,7 @@ import { createDataProvider, storageRoot } from "../src/server/storage/provider.
 import { JsonDataProvider } from "../src/server/storage/json.js";
 import { migrateSqlite } from "../scripts/migrate-sqlite-to-json.mjs";
 
-const input = { kind: "分镜", title: "持久化测试", image: "/images/night-lounge.png", analysis: "公开分析" };
+const input = { kind: "分镜", title: "持久化测试", image: "/images/avatar-curator.png", analysis: "公开分析" };
 async function directory(t) {
   const result = await mkdtemp(path.join(tmpdir(), "jingjie-provider-"));
   t.after(async () => {
@@ -103,6 +103,7 @@ test("the repository accepts a different async provider and closes it after work
   const provider = {
     async read() { await delay(2); assert.equal(closed, false); return structuredClone(document); },
     async update(work) { await delay(2); const next = structuredClone(document); const result = await work(next); document = next; return structuredClone(result); },
+    async canonicalizeMediaUrls(value) { return structuredClone(value); },
     async close() { closed = true; },
   };
   await withRepository(async (repository) => {

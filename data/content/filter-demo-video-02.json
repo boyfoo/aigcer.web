@@ -8,7 +8,7 @@
     "description": "虚构筛选测试资料；封面为布局占位图。视频仅用于播放器测试，画面不对应虚构场景。两段虚构镜头方案分别为：人物在城市雨巷拔刀，劈开障碍后闪避追赶者；只使用刀，不出现剑，第一视角随着奔跑和跳跃冲过狭窄空间。第三视角观看人物举剑与巨大化的怪兽对峙，盾牌挡住冲击后回身重击，把对方击飞；雪地和雪天强化双方体量差。",
     "analysis": "",
     "prompt": "仅测试镜头分类与组合筛选。前段拟定为人物在城市雨巷拔刀，劈开障碍后闪避追赶者；只使用刀，不出现剑，第一视角随着奔跑和跳跃冲过狭窄空间。后段拟定为第三视角观看人物举剑与巨大化的怪兽对峙，盾牌挡住冲击后回身重击，把对方击飞；雪地和雪天强化双方体量差。",
-    "image": "/media/30d2e222edab3dcd68cc714a842841c9.png",
+    "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/30d2e222edab3dcd68cc714a842841c9.png",
     "duration": "00:32",
     "tags": [],
     "tagValues": {},
@@ -25,7 +25,7 @@
           "id": "test-opening",
           "start": 0,
           "end": 16.1615,
-          "image": "/media/30d2e222edab3dcd68cc714a842841c9.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/30d2e222edab3dcd68cc714a842841c9.png",
           "tagValues": {
             "subject": [
               "人物"
@@ -109,7 +109,7 @@
           "id": "test-action",
           "start": 16.1615,
           "end": 32.323,
-          "image": "/media/d732533bea195eaf0e48d219f962fb60.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/d732533bea195eaf0e48d219f962fb60.png",
           "tagValues": {
             "subject": [
               "人物",
@@ -205,7 +205,7 @@
     "description": "虚构筛选测试资料；封面为布局占位图。视频仅用于播放器测试，画面不对应虚构场景。两段虚构镜头方案分别为：人物在城市雨巷拔刀，劈开障碍后闪避追赶者；只使用刀，不出现剑，第一视角随着奔跑和跳跃冲过狭窄空间。第三视角观看人物举剑与巨大化的怪兽对峙，盾牌挡住冲击后回身重击，把对方击飞；雪地和雪天强化双方体量差。",
     "analysis": "",
     "prompt": "仅测试镜头分类与组合筛选。前段拟定为人物在城市雨巷拔刀，劈开障碍后闪避追赶者；只使用刀，不出现剑，第一视角随着奔跑和跳跃冲过狭窄空间。后段拟定为第三视角观看人物举剑与巨大化的怪兽对峙，盾牌挡住冲击后回身重击，把对方击飞；雪地和雪天强化双方体量差。",
-    "image": "/media/30d2e222edab3dcd68cc714a842841c9.png",
+    "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/30d2e222edab3dcd68cc714a842841c9.png",
     "duration": "00:32",
     "tags": [],
     "tagValues": {},
@@ -222,7 +222,7 @@
           "id": "test-opening",
           "start": 0,
           "end": 16.1615,
-          "image": "/media/30d2e222edab3dcd68cc714a842841c9.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/30d2e222edab3dcd68cc714a842841c9.png",
           "tagValues": {
             "subject": [
               "人物"
@@ -306,7 +306,7 @@
           "id": "test-action",
           "start": 16.1615,
           "end": 32.323,
-          "image": "/media/d732533bea195eaf0e48d219f962fb60.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/d732533bea195eaf0e48d219f962fb60.png",
           "tagValues": {
             "subject": [
               "人物",

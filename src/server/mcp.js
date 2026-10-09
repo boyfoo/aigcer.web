@@ -13,6 +13,7 @@ const guide = `镜界用于保存和学习真实视频、图片及逐镜头资�
 3. 上传完成后调用 jingjie_submit_case，data 传原始 shots.json（无需重写英文枚举），assets 只列真正上传成功的 assetId，可附返回的 url 和 objectKey。单张图片的 data 使用 {kind:"image",title,image:"原始localName",description,analysis,prompt}。
 4. 网络中断或 uploadUrl 过期时调用 jingjie_get_submission_status；uploaded 文件跳过，只用新地址上传 awaiting_upload 文件。unavailable 表示暂时无法核验，保留标识稍后查询；invalid 表示文件核验失败，修正后用新 requestId 重新申请，原对象禁止覆盖。正常重试必须沿用 requestId、submissionId，保存结果不确定时重试原 submit 参数，不创建新的提交。
 5. 视频 source 对应视频 localName；首尾帧默认 frames/S01a.jpg、frames/S01b.jpg，可在每镜 image/endImage 指定相对路径。人物图片可在 cast.image 指定。后端保留原始资料，将 frame 映射到概述、size/camera 到景别/运镜、rhythmNote 到叙事，audio 视为来源提供的台词，不视为自动转写。
+6. 完成 jingjie_submit_case 登记后，需要查看私有图片或视频时，用无签名的稳定 url 调用 jingjie_get_media_access。返回的 url 是默认 1 小时有效的 GET 签名，客户端直接访问 OSS；mediaUrl 用于长期保存，expiresAt 表示访问期限。uploadUrl 只用于 PUT，不能用来读取，未登记的临时素材须先完成提交。后端不返回素材文件字节。
 最多100镜头、50人物、252素材、1条原视频。图片最大20MiB、视频最大512MiB。缺失帧、未录入资料保留为空并提示；不推测提示词、模型参数，不把机器检查导入为作者人工复核。返回编辑链接、预览链接和实际缺失项。`;
 
 const requestId = z.string().regex(/^[a-zA-Z0-9_-]{1,120}$/).describe("本次提交的唯一标识，建议 UUID；重试沿用，新的提交才换标识。");
@@ -74,6 +75,17 @@ export function createJingjieMcpServer({ repositoryOptions, origin = "" } = {}) 
     inputSchema: z.object({ submissionId }).strict(), outputSchema: status,
     annotations: { ...annotations, readOnlyHint: true },
   }, invoke("getSubmissionStatus"));
+  server.registerTool("jingjie_get_media_access", {
+    title: "镜界 · 获取私有素材访问地址",
+    description: "查看已登记的私有图片或视频时，用无签名 OSS 素材网址获取默认 1 小时有效的 GET 签名地址。客户端直接读取 OSS，后端只签发地址，不传输素材字节。新上传的临时对象须先完成 jingjie_submit_case 登记；不接受临时 PUT 地址、任意 Bucket 或对象 Key。",
+    inputSchema: z.object({ url: z.string().url().max(2048).describe("已登记的无签名 OSS 素材完整网址。") }).strict(),
+    outputSchema: z.object({
+      url: z.string().describe("临时 OSS GET 签名地址，仅用于直接读取。"),
+      mediaUrl: z.string().describe("长期保存的无签名 OSS 素材地址。"),
+      expiresAt: z.string().describe("GET 签名访问期限，ISO 8601 格式。"),
+    }),
+    annotations: { ...annotations, readOnlyHint: true },
+  }, invoke("getMediaAccess"));
   server.registerResource("submission-guide", "jingjie://submission-guide", {
     title: "镜界 · 提交流程与数据约定", description: "用户要求“提交到镜界”时，本地拉片资料、视频和图片的直传与草稿保存流程。", mimeType: "text/plain",
   }, async () => ({ contents: [{ uri: "jingjie://submission-guide", mimeType: "text/plain", text: guide }] }));

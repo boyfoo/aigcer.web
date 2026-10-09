@@ -1,14 +1,28 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { access } from "node:fs/promises";
 import { casePath, collections, collectionPath, getCase, getCases, getCollectionCases } from "../src/lib/content.js";
+import { createInitialDocument } from "../src/server/repository.js";
+import { validateDocument } from "../src/server/storage/document.js";
 import { getSiteUrl, pageMetadata } from "../src/lib/seo.js";
 import { buildSitemap } from "../src/lib/sitemap.js";
 const sitemap = () => buildSitemap(getCases(), getSiteUrl());
 import robots from "../src/app/robots.js";
 import { clampSeekTime, formatVideoTime, getShotAtTime } from "../src/lib/videoTimeline.js";
 
-test("every case has a unique stable route and an existing image", async () => {
+function assertRegisteredImage(document, image) {
+  assert.match(image, /^\/media\/[a-f0-9]{64}\.png$/);
+  const media = document.media.find(({ name }) => image === `/media/${name}`);
+  assert.ok(media, `Image is not registered: ${image}`);
+  assert.equal(media.mime, "image/png");
+  assert.ok(media.size > 0);
+  assert.equal(media.storage.provider, "oss");
+  assert.equal(media.storage.key, `jingjie/media/${media.name}`);
+}
+
+test("every case has a unique stable route and a registered OSS image", () => {
+  const document = validateDocument(createInitialDocument());
+  assert.equal(document.media.length, 6);
+  assert.deepEqual(validateDocument(createInitialDocument([])).media, []);
   const cases = getCases();
   assert.ok(cases.length);
   assert.equal(new Set(cases.map(({ id }) => id)).size, cases.length);
@@ -16,9 +30,12 @@ test("every case has a unique stable route and an existing image", async () => {
     assert.match(item.id, /^[a-z0-9]+(?:-[a-z0-9]+)*$/);
     assert.equal(getCase(item.id), item);
     assert.equal(casePath(item.id), `/cases/${item.id}`);
-    await access(new URL(`../public${item.image}`, import.meta.url));
+    assertRegisteredImage(document, item.image);
   }
   assert.equal(getCase("missing-case"), null);
+  const originalMedia = structuredClone(document.media);
+  document.media[0].storage.key = `other/media/${document.media[0].name}`;
+  assert.deepEqual(createInitialDocument().media, originalMedia);
 });
 
 test("collections contain only their intended case types", () => {
@@ -66,7 +83,8 @@ test("unconfigured previews do not advertise a fabricated public domain", () => 
   }
 });
 
-test("video cases have ordered, contiguous, playable shot ranges and complete reference content", async () => {
+test("video cases have ordered, contiguous, playable shot ranges and complete reference content", () => {
+  const document = validateDocument(createInitialDocument());
   const videos = getCases().filter((item) => item.kind === "视频");
   assert.ok(videos.length);
   for (const { video } of videos) {
@@ -78,7 +96,7 @@ test("video cases have ordered, contiguous, playable shot ranges and complete re
       assert.equal(shot.start, previousEnd);
       assert.ok(shot.end > shot.start && shot.end <= video.durationSeconds);
       assert.ok(shot.title && shot.summary && shot.analysis.length && shot.imagePrompt && shot.videoPrompt);
-      await access(new URL(`../public${shot.image}`, import.meta.url));
+      assertRegisteredImage(document, shot.image);
       previousEnd = shot.end;
     }
     assert.equal(previousEnd, video.durationSeconds);

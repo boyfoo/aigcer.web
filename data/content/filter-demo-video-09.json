@@ -8,7 +8,7 @@
     "description": "虚构筛选测试资料；封面为布局占位图。视频仅用于播放器测试，画面不对应虚构场景。两段虚构镜头方案分别为：人物在室内暖光舞台舞蹈，经过日常衣架时换装，分身组成舞群；舞者入画、出画和位置交换带来温暖、优雅的表演。人物在城市夜晚的室内望向雨窗，建筑与日常茶杯留在室内暖光中；故事通过闪回旧日和闪前未来表达怀旧、孤独与希望。",
     "analysis": "",
     "prompt": "仅测试镜头分类与组合筛选。前段拟定为人物在室内暖光舞台舞蹈，经过日常衣架时换装，分身组成舞群；舞者入画、出画和位置交换带来温暖、优雅的表演。后段拟定为人物在城市夜晚的室内望向雨窗，建筑与日常茶杯留在室内暖光中；故事通过闪回旧日和闪前未来表达怀旧、孤独与希望。",
-    "image": "/media/98d5b6bc11f602aa7a6732cd58c1d47d.png",
+    "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/98d5b6bc11f602aa7a6732cd58c1d47d.png",
     "duration": "00:32",
     "tags": [],
     "tagValues": {},
@@ -25,7 +25,7 @@
           "id": "test-opening",
           "start": 0,
           "end": 16.1615,
-          "image": "/media/98d5b6bc11f602aa7a6732cd58c1d47d.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/98d5b6bc11f602aa7a6732cd58c1d47d.png",
           "tagValues": {
             "subject": [
               "人物"
@@ -111,7 +111,7 @@
           "id": "test-action",
           "start": 16.1615,
           "end": 32.323,
-          "image": "/media/6f3df750c414eb765d658443e2f72ce6.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/6f3df750c414eb765d658443e2f72ce6.png",
           "tagValues": {
             "subject": [
               "人物",
@@ -203,7 +203,7 @@
     "description": "虚构筛选测试资料；封面为布局占位图。视频仅用于播放器测试，画面不对应虚构场景。两段虚构镜头方案分别为：人物在室内暖光舞台舞蹈，经过日常衣架时换装，分身组成舞群；舞者入画、出画和位置交换带来温暖、优雅的表演。人物在城市夜晚的室内望向雨窗，建筑与日常茶杯留在室内暖光中；故事通过闪回旧日和闪前未来表达怀旧、孤独与希望。",
     "analysis": "",
     "prompt": "仅测试镜头分类与组合筛选。前段拟定为人物在室内暖光舞台舞蹈，经过日常衣架时换装，分身组成舞群；舞者入画、出画和位置交换带来温暖、优雅的表演。后段拟定为人物在城市夜晚的室内望向雨窗，建筑与日常茶杯留在室内暖光中；故事通过闪回旧日和闪前未来表达怀旧、孤独与希望。",
-    "image": "/media/98d5b6bc11f602aa7a6732cd58c1d47d.png",
+    "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/98d5b6bc11f602aa7a6732cd58c1d47d.png",
     "duration": "00:32",
     "tags": [],
     "tagValues": {},
@@ -220,7 +220,7 @@
           "id": "test-opening",
           "start": 0,
           "end": 16.1615,
-          "image": "/media/98d5b6bc11f602aa7a6732cd58c1d47d.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/98d5b6bc11f602aa7a6732cd58c1d47d.png",
           "tagValues": {
             "subject": [
               "人物"
@@ -306,7 +306,7 @@
           "id": "test-action",
           "start": 16.1615,
           "end": 32.323,
-          "image": "/media/6f3df750c414eb765d658443e2f72ce6.png",
+          "image": "https://jingjie-sh.oss-cn-shanghai.aliyuncs.com/jingjie/media/6f3df750c414eb765d658443e2f72ce6.png",
           "tagValues": {
             "subject": [
               "人物",
