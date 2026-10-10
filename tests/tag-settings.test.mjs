@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { storyboardItems } from "../src/data.js";
-import { CREATION_PRIMARY_GROUP_IDS, CREATION_TECHNIQUE_GROUP_IDS } from "../src/lib/creationTags.js";
 import { createCreationReferences, filterCreationReferences } from "../src/lib/creationReferences.js";
 import {
   createDefaultTagGroups,
@@ -12,10 +11,8 @@ import {
   validateTagGroups,
 } from "../src/tagSettings.js";
 
-test("creation conditions precede filming techniques and support a combined reference query", () => {
+test("default creation tags support a combined reference query", () => {
   const groups = createDefaultTagGroups();
-  assert.deepEqual(groups.slice(0, CREATION_PRIMARY_GROUP_IDS.length).map(({ id }) => id), CREATION_PRIMARY_GROUP_IDS);
-  assert.deepEqual(groups.slice(CREATION_PRIMARY_GROUP_IDS.length).map(({ id }) => id), CREATION_TECHNIQUE_GROUP_IDS);
   assert.equal(validateTagGroups(groups), "");
   const item = {
     id: "sword-reference",

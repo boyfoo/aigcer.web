@@ -131,7 +131,7 @@ export function ContentEntry({ onBack, onNavigate, onDirtyChange }) {
           tagValues={caseSelections}
           title="案例分类与标签"
           idPrefix="entry-tags"
-          hint="标记整条案例的内容。具体镜头的创作条件请在下方逐镜填写；每组可多选，也可直接新增标签。"
+          hint="分类与左侧筛选一致，展开分类后点击标签即可选择或取消，也可直接新增。这里标记整条案例，具体镜头的创作条件请在下方逐镜填写。"
           disabled={blocked}
           onSelect={selectTags}
           onBusyChange={setSavingTags}

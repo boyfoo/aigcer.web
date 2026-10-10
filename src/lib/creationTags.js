@@ -1,14 +1,3 @@
-export const CREATION_PRIMARY_GROUP_IDS = [
-  "subject",
-  "props",
-  "action",
-  "transformation",
-  "intent",
-  "viewpoint",
-  "environment",
-  "effects",
-];
-
 export const CREATION_SHOT_FACT_GROUPS = {
   "shot-size": "景别",
   movement: "运镜",
@@ -46,7 +35,3 @@ export const creationTagGroups = [
   group("emotion", "情绪", ["温暖", "宁静", "怀旧", "孤独", "希望", "紧张", "治愈"]),
   group("lighting", "光影", ["自然光", "黄金时刻", "蓝调时刻", "室内暖光", "逆光", "柔光", "硬光"]),
 ];
-
-export const CREATION_TECHNIQUE_GROUP_IDS = creationTagGroups
-  .filter(({ id }) => !CREATION_PRIMARY_GROUP_IDS.includes(id))
-  .map(({ id }) => id);

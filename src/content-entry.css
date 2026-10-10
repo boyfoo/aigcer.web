@@ -28,6 +28,28 @@
 .entry-tags-heading { margin-bottom: 14px; }
 .entry-tags-heading h3 { margin: 0; }
 .entry-tags-heading .ant-btn, .entry-tag-label .ant-btn { color: var(--accent); }
+.entry-tag-categories { margin-bottom: 24px; }
+.entry-tag-category { border-bottom: 1px solid var(--line); }
+.entry-tag-category-heading { margin: 0; }
+.entry-tag-category-heading > button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 48px; padding: 10px 0; border: 0; background: transparent; color: var(--text); font-size: 15px; font-weight: 400; text-align: left; cursor: pointer; }
+.entry-tag-category-heading > button > span { display: flex; align-items: center; gap: 8px; flex: none; color: var(--muted); font-size: 12px; }
+.entry-tag-category-heading > button > .is-active { color: var(--accent); }
+.entry-tag-category-heading .lucide { width: 14px; height: 14px; }
+.entry-tag-category-heading [aria-expanded="true"] .lucide { transform: rotate(180deg); }
+.entry-tag-category-heading > button:focus-visible, .entry-tag-options > button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.entry-tag-groups { display: grid; gap: 24px; padding: 12px 0 24px; }
+.entry-tag-groups[hidden] { display: none; }
+.entry-tag-label h5 { margin: 0; color: var(--muted); font-size: 14px; font-weight: 500; }
+.entry-tag-label h5 small { margin-left: 10px; font-size: 12px; font-weight: 400; }
+.entry-tag-label > div { display: flex; flex-wrap: wrap; gap: 4px; }
+.entry-tag-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr)); gap: 4px 16px; margin-top: 8px; }
+.entry-tag-options > button { display: flex; justify-content: flex-start; gap: 6px; min-width: 0; min-height: 36px; overflow-wrap: anywhere; }
+.entry-tag-options > button > span { min-width: 0; }
+.entry-tag-options .option-check { flex: none; width: 14px; height: 14px; }
+@media (prefers-reduced-motion: no-preference) {
+  .entry-tag-options .option-check path { transition: stroke-dashoffset 140ms ease; }
+}
+.entry-tag-options > button:disabled, .entry-tag-category-heading > button:disabled { cursor: not-allowed; opacity: .5; }
 .entry-tag-dialog { padding-top: 18px; }
 .entry-image-field { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 18px; align-items: center; }
 .entry-image-preview { display: grid; place-items: center; aspect-ratio: 16 / 10; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--surface); }
