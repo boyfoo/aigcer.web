@@ -120,6 +120,11 @@
           "id": "props-11",
           "label": "日常物件",
           "value": "日常物件"
+        },
+        {
+          "id": "tag-8676d841-cc32-493d-8098-4c6ea7a9e9c2",
+          "label": "伞",
+          "value": "伞"
         }
       ]
     },
@@ -226,6 +231,11 @@
           "id": "action-19",
           "label": "舞蹈",
           "value": "舞蹈"
+        },
+        {
+          "id": "tag-0f4c6d75-175e-40e6-9f8b-728ed9292ae3",
+          "label": "行走",
+          "value": "行走"
         }
       ]
     },
@@ -460,6 +470,11 @@
           "id": "environment-15",
           "label": "雾天",
           "value": "雾天"
+        },
+        {
+          "id": "tag-7a5d46c1-4761-47da-b771-51249c87cc3a",
+          "label": "园林",
+          "value": "园林"
         }
       ]
     },
@@ -1163,5 +1178,5 @@
       ]
     }
   ],
-  "revision": 2
+  "revision": 3
 }
